@@ -1,6 +1,8 @@
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
+import UserButton from "@/modules/auth/components/user-button";
+import LogoutButton from "@/modules/auth/components/logout-button";
 
 export default async function Home() {
 
@@ -9,6 +11,9 @@ export default async function Home() {
       <Button>
         Get Started
       </Button>
+      <div className="absolute top-4 right-4">
+        <UserButton />
+      </div>
     </div>
      
   );
