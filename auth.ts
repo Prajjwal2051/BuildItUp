@@ -1,3 +1,4 @@
+import { getUserById } from './modules/auth/actions/index';
 import { db } from '@/lib/db';
 import NextAuth from "next-auth"
 import {prismaAdapter} from "@next-auth/prisma-adapter"
@@ -111,17 +112,41 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return true;
         },
 
-        async jwt() { },
-        async session() { },
-    },
+        /**
+         * JWT callback — runs whenever a JSON Web Token is created or updated.
+         * Here we enhance the token with custom user details (like role) from our DB
+         * so the client can access them later in the session.
+         */
+        async jwt({token}) { 
+            // ⚠️ If the token has no subject (user ID), we can't look up the user, so just return it as-is.
+            if(!token.sub) return token
+            
+            const existingUser = await getUserById(token.sub)
+            if(!existingUser) return token
 
-    secret: process.env.NEXTAUTH_SECRET,
-    adapter: PrismaAdapter(db),
-    ...authConfig,
-});
+            token.name = existingUser.name
+            token.email = existingUser.email
+            // token.picture = existingUser.image
+            token.role = existingUser.role
+            return token
+        },
+        /**
+         * Session callback — runs when the client checks the session (e.g. useSession()).
+         * We copy the data we stored in the JWT (like ID and role) into the session object
+         * so the frontend can easily read `session.user.role`.
+         */
+        async session({session,token}) {
+            if(token.sub && session.user) {
+                session.user.id=token.sub
+            }
 
-        async jwt(){},
-        async session(){},
+            // ⚠️ "token.sib" looks like a typo for "token.sub" or just "token.role".
+            if(token.sib && session.user) {
+                session.user.role=token.role
+            }
+
+            return session
+         },
     },
     secret:process.env.NEXTAUTH_SECRET,
     adapter:prismaAdapter(db),
