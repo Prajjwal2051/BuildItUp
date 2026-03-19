@@ -1,43 +1,43 @@
 import NextAuth from "next-auth";
-import { 
+import {
     DEFAULT_LOGIN_REDIRECT,
     apiAuthPrefix,
     publicRoutes,
     authRoutes,
 
- } from "./route";
+} from "./route";
 
- import authConfig from "./auth.config";
+import authConfig from "./auth.config";
 
- const {auth}=NextAuth(authConfig)
+const { auth } = NextAuth(authConfig)
 
- export default auth((req)=>{
-    const {nextUrl} = req
+export default auth((req) => {
+    const { nextUrl } = req
     const isLoggedIn = !!req.auth
 
     const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
     const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
     const isAuthRoute = authRoutes.includes(nextUrl.pathname);
 
-    if(isApiAuthRoute){
+    if (isApiAuthRoute) {
         return null
     }
 
-    if(isAuthRoute){
-        if(isLoggedIn){
-            return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT,req.url))
+    if (isAuthRoute) {
+        if (isLoggedIn) {
+            return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT, req.url))
         }
         return null
     }
-    if(!isLoggedIn && !isPublicRoute){
-        return Response.redirect(new URL("/auth/signin",req.url))
+    if (!isLoggedIn && !isPublicRoute) {
+        return Response.redirect(new URL("/auth/sign-in", req.url))
     }
 
     return null
-    
- })
+
+})
 
 export const config = {
     //clerk regex to match all routes except for static files and api routes
-    matcher: ["/((?!.+\\.[\\w]+$|_next).*)","/","/(api|trpc)(.*)"],
-  }
+    matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/", "/(api|trpc)(.*)"],
+}

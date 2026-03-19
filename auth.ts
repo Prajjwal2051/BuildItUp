@@ -1,11 +1,15 @@
 import { getUserById } from './modules/auth/actions/index';
 import { db } from '@/lib/db';
 import NextAuth from "next-auth"
-import {prismaAdapter} from "@next-auth/prisma-adapter"
+import { PrismaAdapter } from "@auth/prisma-adapter"
 import authConfig from './auth.config';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-    callbacks:{
+    // Use JWT sessions because the Prisma schema currently has no Session model.
+    session: {
+        strategy: "jwt",
+    },
+    callbacks: {
         /**
          * signIn callback — runs every time a user tries to sign in.
          * 
@@ -117,12 +121,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
          * Here we enhance the token with custom user details (like role) from our DB
          * so the client can access them later in the session.
          */
-        async jwt({token}) { 
-            // ⚠️ If the token has no subject (user ID), we can't look up the user, so just return it as-is.
-            if(!token.sub) return token
-            
+        async jwt({ token }) {
+            // If the token has no subject (user ID), we can't look up the user, so just return it as-is.
+            if (!token.sub) return token
+
             const existingUser = await getUserById(token.sub)
-            if(!existingUser) return token
+            if (!existingUser) return token
 
             token.name = existingUser.name
             token.email = existingUser.email
@@ -135,21 +139,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
          * We copy the data we stored in the JWT (like ID and role) into the session object
          * so the frontend can easily read `session.user.role`.
          */
-        async session({session,token}) {
-            if(token.sub && session.user) {
-                session.user.id=token.sub
+        async session({ session, token }) {
+            if (token.sub && session.user) {
+                session.user.id = token.sub
             }
-
-            // ⚠️ "token.sib" looks like a typo for "token.sub" or just "token.role".
-            if(token.sib && session.user) {
-                session.user.role=token.role
+            if (token.sub && session.user) {
+                session.user.role = token.role
             }
 
             return session
-         },
+        },
     },
-    secret:process.env.NEXTAUTH_SECRET,
-    adapter:prismaAdapter(db),
+    secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+    adapter: PrismaAdapter(db),
     ...authConfig
 
 })

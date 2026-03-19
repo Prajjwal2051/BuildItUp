@@ -3,7 +3,10 @@ import Google from "next-auth/providers/google"
 import GitHub from "next-auth/providers/github"
 import type { NextAuthConfig } from "next-auth"
 
-export default{
+export default {
+    pages: {
+        signIn: "/auth/sign-in",
+    },
     providers: [
         GitHub({
             clientId: process.env.GITHUB_ID!,

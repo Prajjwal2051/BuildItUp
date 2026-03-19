@@ -1,4 +1,4 @@
-"use-server"
+"use server"
 
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
@@ -6,7 +6,7 @@ import { db } from "@/lib/db"
 // Gets a user by ID along with their linked accounts so auth flows can reuse this data.
 export const getUserById = async (id: string) => {
     try {
-        const user=await db.user.findUnique({
+        const user = await db.user.findUnique({
             where: {
                 id
             },
@@ -15,7 +15,7 @@ export const getUserById = async (id: string) => {
             }
         })
         return user
-    
+
     } catch (error) {
         console.log(error)
         return null
@@ -25,7 +25,7 @@ export const getUserById = async (id: string) => {
 // Finds the first account record for a given user so we can check provider-specific details.
 export const getAccountByUserId = async (userId: string) => {
     try {
-        const acc= await db.account.findFirst({
+        const acc = await db.account.findFirst({
             where: {
                 userId
             }

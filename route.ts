@@ -15,8 +15,8 @@ export const protectedRoutes: string[] = [
 
 // this is the auth routes which can only be accessed by unauthenticated users
 export const authRoutes: string[] = [
-    "/auth/signin",
-    "/auth/signup",
+    "/auth/sign-in",
+    "/auth/sign-up",
 ]
 
 // an array of route which is accessible to the public
