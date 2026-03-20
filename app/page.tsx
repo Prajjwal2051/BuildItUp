@@ -101,14 +101,14 @@ export default function Home() {
                   className="block text-transparent bg-clip-text"
                   style={{ backgroundImage: "linear-gradient(to bottom right, #94c4ff, #00d4aa)" }}
                 >
-                  Deploy.
+                  Merge.
                 </span>
               </h1>
             </div>
 
             {/* Callout Box */}
             <div className="lg:w-[380px] lg:pt-16 shrink-0">
-              <h3 className="text-[22px] font-medium text-white mb-4">Upgrade your progress</h3>
+              <h3 className="text-[22px] font-medium text-white mb-4">A Web-Based IDE</h3>
               <p className="text-neutral-400 text-[16px] leading-[1.6] mb-8">
                 Integrate code development processes to encourage collaboration and increase quality output
               </p>
