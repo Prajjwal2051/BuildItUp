@@ -24,9 +24,7 @@ export default auth((req) => {
     }
 
     if (isAuthRoute) {
-        if (isLoggedIn) {
-            return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT, req.url))
-        }
+        // Always allow auth routes so users can explicitly open the sign-in page.
         return null
     }
     if (!isLoggedIn && !isPublicRoute) {

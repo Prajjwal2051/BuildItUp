@@ -4,6 +4,8 @@ import GitHub from "next-auth/providers/github"
 import type { NextAuthConfig } from "next-auth"
 
 export default {
+    // Middleware also consumes this config, so trustHost must be set here.
+    trustHost: true,
     pages: {
         signIn: "/auth/sign-in",
     },

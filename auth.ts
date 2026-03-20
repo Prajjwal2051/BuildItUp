@@ -5,6 +5,8 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import authConfig from './auth.config';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+    // Avoid host validation failures in local/dev environments and reverse-proxy setups.
+    trustHost: true,
     // Use JWT sessions because the Prisma schema currently has no Session model.
     session: {
         strategy: "jwt",

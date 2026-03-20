@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import {SessionProvider} from "next-auth/react";
+import { SessionProvider } from "next-auth/react";
 import { auth } from "@/auth";
 
 export const metadata: Metadata = {
-  title: "Build It Up - AI Code Editor",
+  title: "Orbit Code - AI Code Editor",
   description: "Build, Learn, Deploy with AI-assisted code development.",
 };
 
@@ -14,15 +14,15 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
 
-  const session=await auth()
+  const session = await auth()
   return (
-      <SessionProvider session={session}>
+    <SessionProvider session={session}>
 
-    <html lang="en" className="scroll-smooth">
-      <body className="antialiased">
-        {children}
-      </body>
-    </html>
-      </SessionProvider>
+      <html lang="en" className="scroll-smooth">
+        <body className="antialiased">
+          {children}
+        </body>
+      </html>
+    </SessionProvider>
   );
 }
