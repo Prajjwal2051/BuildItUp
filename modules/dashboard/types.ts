@@ -1,21 +1,21 @@
-export interface User{
+export interface User {
     id: string
     name: string
     email: string
-    image: string
+    image?: string | null
     role: string
-    createdAt: Date
+    creratedAt: Date
     updatedAt: Date
 }
 
-export interface Project{
+export interface Project {
     id: string
-    name: string
+    title: string
     description: string
     createdAt: Date
     updatedAt: Date
     userId: string
     template: string
-    user:User
-    StarMark:{isStarMarked: boolean}[]
+    user?: User
+    StarMark?: { isStarMarked: boolean }[]
 }

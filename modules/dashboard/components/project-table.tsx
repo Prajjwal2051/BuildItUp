@@ -105,7 +105,7 @@ export default function ProjectTable({
                             <TableHead>Template</TableHead>
                             <TableHead>Created</TableHead>
                             <TableHead>User</TableHead>
-                            <TableHead className="w-[50px]">Actions</TableHead>
+                            <TableHead className="w-12.5">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -129,14 +129,14 @@ export default function ProjectTable({
                                     <div className="flex items-center gap-2">
                                         <div className="w-8 h-8 rounded-full overflow-hidden">
                                             <Image
-                                                src={project.user.image || "/placeholder.svg"}
-                                                alt={project.user.name}
+                                                src={project.user?.image || "/placeholder.svg"}
+                                                alt={project.user?.name || "Unknown User"}
                                                 width={32}
                                                 height={32}
                                                 className="object-cover"
                                             />
                                         </div>
-                                        <span className="text-sm">{project.user.name}</span>
+                                        <span className="text-sm">{project.user?.name || "Unknown User"}</span>
                                     </div>
                                 </TableCell>
                                 <TableCell>
@@ -195,7 +195,7 @@ export default function ProjectTable({
 
             {/* Edit Project Dialog */}
             <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-106.25">
                     <DialogHeader>
                         <DialogTitle>Edit Project</DialogTitle>
                         <DialogDescription>
