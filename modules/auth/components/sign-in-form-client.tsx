@@ -16,11 +16,11 @@ import { signIn } from "next-auth/react"
 const SignInFormClient = () => {
     // Uses the auth client helper so OAuth starts without relying on server actions.
     const handleGoogleSignIn = async () => {
-        await signIn("google", { callbackUrl: "/" })
+        await signIn("google", { redirectTo: "/dashboard" })
     }
 
     const handleGithubSignIn = async () => {
-        await signIn("github", { callbackUrl: "/" })
+        await signIn("github", { redirectTo: "/dashboard" })
     }
 
     return (
@@ -34,12 +34,12 @@ const SignInFormClient = () => {
                 </CardDescription>
             </CardHeader>
 
-            <CardContent className="grid gap-4">
+            <CardContent className="grid gap-4 justify-center">
                 <Button
                     type="button"
                     onClick={handleGoogleSignIn}
                     variant={"outline"}
-                    className="w-full bg-neutral-900 border-neutral-700 text-white hover:bg-neutral-800"
+                    className="center justify-center w-45 bg-neutral-900 border-neutral-700 text-white hover:bg-neutral-800"
                 >
                     <Chrome className="mr-2 h-4 w-4" />
                     <span>Sign in with Google</span>
@@ -48,7 +48,7 @@ const SignInFormClient = () => {
                     type="button"
                     onClick={handleGithubSignIn}
                     variant={"outline"}
-                    className="w-full bg-neutral-900 border-neutral-700 text-white hover:bg-neutral-800"
+                    className="center justify-center w-45 bg-neutral-900 border-neutral-700 text-white hover:bg-neutral-800"
                 >
                     <Github className="mr-2 h-4 w-4" />
                     <span>Sign in with GitHub</span>

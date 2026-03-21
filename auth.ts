@@ -5,8 +5,6 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import authConfig from './auth.config';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-    // Avoid host validation failures in local/dev environments and reverse-proxy setups.
-    trustHost: true,
     // Use JWT sessions because the Prisma schema currently has no Session model.
     session: {
         strategy: "jwt",
@@ -151,9 +149,29 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
             return session
         },
+        // Ensures successful OAuth flows land on /dashboard when no explicit callback URL is kept.
+        async redirect({ url, baseUrl }) {
+            if (url === baseUrl || url === `${baseUrl}/`) {
+                return `${baseUrl}/dashboard`
+            }
+
+            if (url.startsWith("/")) {
+                return `${baseUrl}${url}`
+            }
+
+            try {
+                const parsedUrl = new URL(url)
+                if (parsedUrl.origin === baseUrl) {
+                    return url
+                }
+            } catch {
+                return `${baseUrl}/dashboard`
+            }
+
+            return `${baseUrl}/dashboard`
+        },
     },
     secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
-    adapter: PrismaAdapter(db),
     ...authConfig
 
 })
