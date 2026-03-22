@@ -45,7 +45,7 @@ const AddNewButton = () => {
                 <span className="text-xs font-semibold">Add New Project</span>
             </Button>
             {/* Modal content can be added here in the future */}
-            <TemplateSelectionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={() => (false)} />
+            <TemplateSelectionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleSubmit}/>
         </>
     )
 }
