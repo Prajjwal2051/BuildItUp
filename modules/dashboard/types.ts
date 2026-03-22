@@ -17,5 +17,5 @@ export interface Project {
     userId: string
     template: string
     user?: User
-    StarMark?: { isStarMarked: boolean }[]
+    starMark?: { isMarked: boolean }[]
 }

@@ -9,20 +9,21 @@ export default async function DashboardLayout({
     children: React.ReactNode;
 }>) {
     const playgrundData = await getAllPlaygroundForUser();
+    // This maps template names to sidebar icons so each playground keeps a recognizable visual label.
     const technologyIconMap: Record<string, string> = {
-        REACT: "ZAP",
-        NEXTJS: "LightBulb",
-        EXPRESS: "SERVER",
+        REACT: "Zap",
+        NEXTJS: "Lightbulb",
+        EXPRESS: "Database",
         VUE: "Compass",
         ANGULAR: "Terminal",
         HONO: "FlameIcon",
     }
+    // Read isMarked from the relation returned by Prisma so Starred sidebar entries are real, not hardcoded.
     const formattedPlaygroundData = playgrundData?.map((item) => ({
         id: item.id,
         name: item.title,
         icon: technologyIconMap[item.template] || "Code2", // Default icon if template is not in the map
-        // here we will implement a star marking system, where if the user has marked a playground as favorite, we will show a filled star icon, otherwise an outlined star icon. This will be based on the isMarked property from the Starmark relation.
-        starred: false
+        starred: item.starMark?.[0]?.isMarked ?? false,
     }));
 
 

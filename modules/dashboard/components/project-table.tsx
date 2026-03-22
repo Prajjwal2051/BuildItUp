@@ -35,10 +35,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import Link from "next/link"
 import { useState } from "react"
-import { MoreHorizontal, Edit3, Trash2, ExternalLink, Copy, Download, Eye } from "lucide-react"
+import { MoreHorizontal, Edit3, Trash2, ExternalLink, Copy, Download, Eye, Star } from "lucide-react"
 import { toast } from "sonner"
-import { deletePlaygroundById, duplicatePlaygroundById, editPlaygroundById } from "@/modules/dashboard/actions"
+import { deletePlaygroundById, duplicatePlaygroundById, editPlaygroundById, togglePlaygroundStarMark } from "@/modules/dashboard/actions"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useRouter } from "next/navigation"
 
 
 interface ProjectTableProps {
@@ -57,6 +58,7 @@ export default function ProjectTable({
     currentUserName,
     currentUserImage,
 }: ProjectTableProps) {
+    const router = useRouter()
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [editDialogOpen, setEditDialogOpen] = useState(false)
     const [selectedProject, setSelectedProject] = useState<Project | null>(null)
@@ -126,6 +128,23 @@ export default function ProjectTable({
         toast.success("Project URL copied to clipboard!")
     }
 
+    const handleToggleFavorite = async (project: Project) => {
+        if (!project?.id) return
+        setIsLoading(true)
+        try {
+            const updatedMark = await togglePlaygroundStarMark(project.id)
+            toast.success(updatedMark.isMarked ? "Added to starred" : "Removed from starred")
+            router.refresh()
+        } catch (error) {
+            toast.error("Failed to update starred state. Please try again.")
+            console.error("Error toggling star mark:", error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const isProjectStarred = (project: Project) => project.starMark?.[0]?.isMarked ?? false
+
     // The dashboard list only contains projects from the signed-in user.
     // We use this fallback identity when project.user is missing.
     const displayUserName = currentUserName || "Unknown User"
@@ -185,8 +204,9 @@ export default function ProjectTable({
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="w-48">
-                                            <DropdownMenuItem asChild>
-                                                {/* <MarkedToggleButton markedForRevision={project.Starmark[0]?.isMarked} id={project.id} /> */}
+                                            <DropdownMenuItem onClick={() => handleToggleFavorite(project)} disabled={isLoading}>
+                                                <Star className={`h-4 w-4 mr-2 ${isProjectStarred(project) ? "fill-current" : ""}`} />
+                                                {isProjectStarred(project) ? "Remove from Starred" : "Add to Starred"}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem asChild>
                                                 <Link href={`/playground/${project.id}`} className="flex items-center">

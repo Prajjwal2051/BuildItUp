@@ -109,9 +109,8 @@ export function DashboardSidebar({ initialPlaygroundData }: { initialPlaygroundD
                     </SidebarGroupAction>
                     <SidebarGroupContent>
                         <SidebarMenu>
-
-                            {starredPlaygrounds.length === 0 && recentPlaygrounds.length === 0 ? (
-                                <div className="text-center text-muted-foreground py-4 w-full">Create your playground</div>
+                            {starredPlaygrounds.length === 0 ? (
+                                <div className="text-center text-muted-foreground py-4 w-full">No starred playgrounds yet</div>
                             ) : (
                                 starredPlaygrounds.map((playground) => {
                                     const IconComponent = lucideIconMap[playground.icon] || Code2;

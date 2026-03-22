@@ -159,3 +159,63 @@ export const duplicatePlaygroundById = async (playground: string) => {
         console.log(`Error duplicating playground with id ${playground}:, error)`)
     }
 }
+
+// Toggles the current user's starred state for one playground so both table and sidebar stay in sync.
+export const togglePlaygroundStarMark = async (playgroundId: string) => {
+    const user = await currentUser()
+    if (!user) {
+        throw new Error("Unauthorized")
+    }
+
+    try {
+        const playground = await db.playground.findUnique({
+            where: {
+                id: playgroundId,
+            },
+            select: {
+                id: true,
+                userId: true,
+            },
+        })
+
+        if (!playground || playground.userId !== user.id) {
+            throw new Error("Playground not found")
+        }
+
+        const existingMark = await db.starMark.findUnique({
+            where: {
+                userId_playgroundId: {
+                    userId: user.id,
+                    playgroundId,
+                },
+            },
+            select: {
+                id: true,
+                isMarked: true,
+            },
+        })
+
+        const updatedMark = existingMark
+            ? await db.starMark.update({
+                where: {
+                    id: existingMark.id,
+                },
+                data: {
+                    isMarked: !existingMark.isMarked,
+                },
+            })
+            : await db.starMark.create({
+                data: {
+                    userId: user.id,
+                    playgroundId,
+                    isMarked: true,
+                },
+            })
+
+        revalidatePath("/dashboard")
+        return updatedMark
+    } catch (error) {
+        console.log(`Error toggling star mark for playground ${playgroundId}:`, error)
+        throw error
+    }
+}
