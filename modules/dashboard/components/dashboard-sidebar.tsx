@@ -20,7 +20,6 @@ import {
     Database,
     FlameIcon,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import {
     Sidebar,
     SidebarContent,
@@ -35,7 +34,12 @@ import {
     SidebarMenuItem,
     SidebarRail,
 } from "@/components/ui/sidebar"
-import Image from "next/image"
+import { Audiowide } from "next/font/google"
+
+const audiowide = Audiowide({
+    subsets: ["latin"],
+    weight: "400",
+})
 
 // Define the interface for a single playground item, icon is now a string
 interface PlaygroundData {
@@ -43,7 +47,7 @@ interface PlaygroundData {
     name: string
     icon: string // Changed to string
     starred: boolean
-} 
+}
 
 // Map icon names (strings) to their corresponding LucideIcon components
 const lucideIconMap: Record<string, LucideIcon> = {
@@ -59,14 +63,16 @@ const lucideIconMap: Record<string, LucideIcon> = {
 
 export function DashboardSidebar({ initialPlaygroundData }: { initialPlaygroundData: PlaygroundData[] }) {
     const pathname = usePathname()
-    const [starredPlaygrounds, setStarredPlaygrounds] = useState(initialPlaygroundData.filter((p) => p.starred))
-    const [recentPlaygrounds, setRecentPlaygrounds] = useState(initialPlaygroundData)
+    const [starredPlaygrounds] = useState(initialPlaygroundData.filter((p) => p.starred))
+    const [recentPlaygrounds] = useState(initialPlaygroundData)
 
     return (
         <Sidebar variant="inset" collapsible="icon" className="border border-r">
             <SidebarHeader>
-                <div className="flex items-center gap-2 px-4 py-3 justify-center">
-                    <Image src={"/code.svg"} alt="code" height={60} width={60} />
+                <div className="flex items-center justify-center px-3 py-4">
+                    <span className={`${audiowide.className} text-lg tracking-wide text-sidebar-foreground`}>
+                        Orbit Code
+                    </span>
                 </div>
 
             </SidebarHeader>

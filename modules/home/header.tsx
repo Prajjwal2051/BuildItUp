@@ -1,12 +1,10 @@
 import LandingNavbar from "@/modules/home/components/landing-navbar";
-import NotificationBanner from "@/modules/home/components/notification-banner";
 
-// Combines top navigation and announcement banner for the landing page.
+// Renders the landing page header navigation without extra top banners.
 export default function HomeHeader() {
     return (
         <>
             <LandingNavbar />
-            <NotificationBanner />
         </>
     );
 }

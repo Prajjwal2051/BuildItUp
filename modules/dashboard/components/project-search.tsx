@@ -6,14 +6,16 @@ import { Search } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
 import type { Project } from "@/modules/dashboard/types"
+import { cn } from "@/lib/utils"
 
 interface ProjectSearchProps {
     projects: Project[]
+    className?: string
 }
 
 // This component lets users quickly find a project by typing and seeing live matches.
 // It keeps search local to improve speed and avoid extra server requests.
-export default function ProjectSearch({ projects }: ProjectSearchProps) {
+export default function ProjectSearch({ projects, className }: ProjectSearchProps) {
     const [query, setQuery] = useState("")
     const trimmedQuery = query.trim().toLowerCase()
 
@@ -41,7 +43,7 @@ export default function ProjectSearch({ projects }: ProjectSearchProps) {
     const showDropdown = trimmedQuery.length > 0
 
     return (
-        <div className="fixed top-4 left-1/2 z-50 w-[min(92vw,520px)] -translate-x-1/2">
+        <div className={cn("fixed top-4 left-1/2 z-50 w-[min(92vw,520px)] -translate-x-1/2", className)}>
             <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input

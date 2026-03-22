@@ -9,6 +9,7 @@ export default function NotificationBanner() {
   if (!visible) return null;
 
   return (
+    /*
     <div className="w-full px-6 md:px-10 max-w-[1440px] mx-auto">
       <div
         className="rounded-xl flex items-center justify-between px-4 py-3 border"
@@ -21,7 +22,7 @@ export default function NotificationBanner() {
           >
             New
           </span>
-          Introduction to metabox v.2 Vue Js can be run through the media browser
+          Ollama Models Autocomplete
         </div>
         <button
           id="close-banner"
@@ -33,5 +34,7 @@ export default function NotificationBanner() {
         </button>
       </div>
     </div>
+    */
+   null
   );
 }
