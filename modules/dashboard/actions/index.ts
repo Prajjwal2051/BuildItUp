@@ -6,6 +6,8 @@
 import { db } from "@/lib/db"
 import { currentUser } from './../../auth/actions/index';
 import { revalidatePath } from "next/cache"
+import { getTemplateAbsolutePath } from "@/lib/template"
+import { pathToJsonString } from "@/modules/playground/lib/path-to-json"
 
 // This function fetches all playgrounds associated with a given user ID. It first retrieves the user to ensure they exist and then includes their related playgrounds in the query.
 
@@ -57,6 +59,12 @@ export const createPlayground = async (data: {
         throw new Error("Title and template are required")
         return null
     }
+    // We snapshot the selected starter template as JSON so the editor can boot with a full file tree.
+    const starterTemplateJson = await pathToJsonString(getTemplateAbsolutePath(template), {
+        includeFileContent: true,
+        ignore: ["node_modules", ".git", ".next", "dist", "build", "package-lock.json", "pnpm-lock.yaml", "yarn.lock"],
+    })
+
     // If the user is authenticated and the required data is valid, we proceed to create a new playground in the database. We use the create method of the db.playground model, passing in the necessary data such as the title, template, description, and the userId of the authenticated user. This action will return the newly created playground object.
     try {
         const playground = await db.playground.create({
@@ -64,7 +72,7 @@ export const createPlayground = async (data: {
                 title: title,
                 template: template,
                 description: description ?? "",
-                code: "",
+                code: starterTemplateJson,
                 userId: user.id
             }
         })
