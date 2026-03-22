@@ -13,6 +13,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// defining the user roles for our app
 enum UserRole {
   USER
   ADMIN
@@ -34,7 +35,7 @@ model User {
   creratedAt DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
-
+// defining the schema for the accounts, which will be used for authentication and authorization in our app. It includes fields for the account type, provider, and tokens, as well as a relation to the User model.
 model Account {
   id                String  @id @default(cuid()) @map("_id")
   userId            String  @map("userId")
@@ -58,6 +59,7 @@ model Account {
   @@index([userId])
 }
 
+// defining the templates that we will be using for our playgrounds. This enum will help us to easily manage and reference the different templates in our app.
 enum Templates {
   REACT
   NEXTJS
@@ -67,6 +69,7 @@ enum Templates {
   ANGULAR
 }
 
+// defining the schema for the playgrounds, which will be the main feature of our app. It includes fields for the title, description, code, template, and relations to the User and StarMark models. The template field uses the Templates enum to specify which template is being used for each playground.
 model Playground {
   id          String     @id @default(cuid()) @map("_id")
   title       String
@@ -81,6 +84,8 @@ model Playground {
 
   templateFile TemplateFile[]
 }
+
+// defining the schema for the star marks, which will allow users to mark their favorite playgrounds. It includes fields for the user ID, playground ID, and a boolean to indicate whether the playground is marked or not. It also includes relations to the User and Playground models, and unique constraints to ensure that a user can only mark a playground once.
 
 model StarMark {
   id           String   @id @default(cuid()) @map("_id")
@@ -97,11 +102,13 @@ model StarMark {
   @@index([playgroundId])
 }
 
-model TemplateFile{
-  id String @id @default(cuid()) @map("_id")
-  content Json
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  playgroundId String @unique
-  playground Playground @relation(fields: [playgroundId], references: [id], onDelete: Cascade)
+// defining the schema for the template files, which will store the content of the templates used for the playgrounds. It includes fields for the content, created and updated timestamps, and a relation to the Playground model. The playgroundId field is unique to ensure that each playground has only one associated template file.
+
+model TemplateFile {
+  id           String     @id @default(cuid()) @map("_id")
+  content      Json
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  playgroundId String     @unique
+  playground   Playground @relation(fields: [playgroundId], references: [id], onDelete: Cascade)
 }

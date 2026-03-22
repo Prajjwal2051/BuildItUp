@@ -1,3 +1,5 @@
+// This file defines TypeScript interfaces for the User and Project entities used in the dashboard module. These interfaces represent the structure of the data that will be handled in the dashboard, including user information and project details.
+
 export interface User {
     id: string
     name: string
