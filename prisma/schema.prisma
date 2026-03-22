@@ -20,24 +20,24 @@ enum UserRole {
 }
 
 // defining here the schema for our app
-model User{
-  id String @id @default(cuid()) @map("_id")
-  name String
-  email String @unique
-  image String?
+model User {
+  id       String    @id @default(cuid()) @map("_id")
+  name     String
+  email    String    @unique
+  image    String?
   accounts Account[]
-  role UserRole @default(USER)
+  role     UserRole  @default(USER)
 
-  myplaground Playground[]
+  myplaground        Playground[]
   starMarkPlayground StarMark[]
-  
+
   creratedAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt  DateTime @updatedAt
 }
 
 model Account {
-  id                String  @id @default(cuid()) @map("_id") 
-  userId            String  @map("userId") 
+  id                String  @id @default(cuid()) @map("_id")
+  userId            String  @map("userId")
   type              String
   provider          String
   providerAccountId String
@@ -48,12 +48,12 @@ model Account {
   scope             String?
   id_token          String? @db.String
   session_state     String?
- 
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
- 
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
- 
+
   @@unique([provider, providerAccountId])
   @@index([userId])
 }
@@ -67,26 +67,27 @@ enum Templates {
   ANGULAR
 }
 
-model Playground{
-  id String @id @default(cuid()) @map("_id")
-  title String
+model Playground {
+  id          String     @id @default(cuid()) @map("_id")
+  title       String
   description String
-  code String
-  template Templates @default(REACT)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  starMark StarMark[]
-  userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code        String
+  template    Templates  @default(REACT)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  starMark    StarMark[]
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model StarMark {
-  id String @id @default(cuid()) @map("_id")
-  userId String
+  id           String   @id @default(cuid()) @map("_id")
+  userId       String
   playgroundId String
-  createdAt DateTime @default(now())
+  isMarked     Boolean  @default(false)
+  createdAt    DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   playground Playground @relation(fields: [playgroundId], references: [id], onDelete: Cascade)
 
   @@unique([userId, playgroundId])
