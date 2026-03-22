@@ -1,4 +1,4 @@
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getAllPlaygroundForUser } from "@/modules/dashboard/actions"
 import { DashboardSidebar } from "@/modules/dashboard/components/dashboard-sidebar";
 import { Toaster } from "@/components/ui/sonner";
@@ -27,21 +27,12 @@ export default async function DashboardLayout({
 
 
     return (
-
-
         <SidebarProvider>
-            <div className="flex h-screen w-full  overflow-x-hidden">
-                <main className="flex-1">
-                    <DashboardSidebar initialPlaygroundData={formattedPlaygroundData || []} />
-                    <div className="flex flex-col min-h-screen">
-                        <Toaster/>
-                        <div className="flex-1">
-                            {children}
-                        </div>
-                    </div>
-
-                </main>
-            </div>
+            <DashboardSidebar initialPlaygroundData={formattedPlaygroundData || []} />
+            <SidebarInset className="min-h-svh overflow-x-hidden">
+                <Toaster />
+                {children}
+            </SidebarInset>
         </SidebarProvider>
     );
 }

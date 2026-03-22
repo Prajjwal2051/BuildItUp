@@ -6,11 +6,13 @@ import { getAllPlaygroundForUser } from '@/modules/dashboard/actions'
 import ProjectTable from '@/modules/dashboard/components/project-table'
 import ProjectSearch from '@/modules/dashboard/components/project-search'
 import ThemeToggle from '@/components/theme-toggle'
+import { currentUser } from '@/modules/auth/actions'
 
 const Page = async () => {
     const playgrounds = await getAllPlaygroundForUser()
+    const user = await currentUser()
     return (
-        <div className='flex flex-col justify-start items-center min-h-screen mx-auto max-w-7xl px-4 py-10'>
+        <div className='flex flex-col justify-start min-h-screen w-full px-4 py-10 md:px-6 lg:px-8'>
             <ProjectSearch projects={playgrounds || []} />
             <div className='fixed bottom-4 right-4 z-50'>
                 <ThemeToggle />
@@ -23,7 +25,13 @@ const Page = async () => {
                 {
                     playgrounds && playgrounds.length === 0 ?
                         (<EmptyState />) :
-                        (<ProjectTable projects={playgrounds || []} />)
+                        (
+                            <ProjectTable
+                                projects={playgrounds || []}
+                                currentUserName={user?.name || "Unknown User"}
+                                currentUserImage={user?.image || null}
+                            />
+                        )
                 }
 
 

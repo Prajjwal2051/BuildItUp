@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import { format } from "date-fns"
 import type { Project } from "../types"
 import { Badge } from "@/components/ui/badge"
@@ -39,10 +38,13 @@ import { useState } from "react"
 import { MoreHorizontal, Edit3, Trash2, ExternalLink, Copy, Download, Eye } from "lucide-react"
 import { toast } from "sonner"
 import { deletePlaygroundById, duplicatePlaygroundById, editPlaygroundById } from "@/modules/dashboard/actions"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 
 interface ProjectTableProps {
     projects: Project[]
+    currentUserName?: string
+    currentUserImage?: string | null
 }
 
 interface EditProjectData {
@@ -52,6 +54,8 @@ interface EditProjectData {
 
 export default function ProjectTable({
     projects,
+    currentUserName,
+    currentUserImage,
 }: ProjectTableProps) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -122,9 +126,13 @@ export default function ProjectTable({
         toast.success("Project URL copied to clipboard!")
     }
 
+    // The dashboard list only contains projects from the signed-in user.
+    // We use this fallback identity when project.user is missing.
+    const displayUserName = currentUserName || "Unknown User"
+
     return (
         <>
-            <div className="border rounded-lg overflow-hidden">
+            <div className="w-full border rounded-lg overflow-hidden bg-white dark:bg-[#151516]">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -147,23 +155,20 @@ export default function ProjectTable({
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge variant="outline" className="bg-[#E93F3F15] text-[#E93F3F] border-[#E93F3F]">
+                                    <Badge variant="outline" className="border-violet-300 bg-violet-100 text-violet-700 dark:border-violet-700 dark:bg-violet-900/40 dark:text-violet-200">
                                         {project.template}
                                     </Badge>
                                 </TableCell>
                                 <TableCell>{format(new Date(project.createdAt), "MMM d, yyyy")}</TableCell>
                                 <TableCell>
                                     <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-full overflow-hidden">
-                                            <Image
-                                                src={project.user?.image || "/placeholder.svg"}
-                                                alt={project.user?.name || "Unknown User"}
-                                                width={32}
-                                                height={32}
-                                                className="object-cover"
-                                            />
-                                        </div>
-                                        <span className="text-sm">{project.user?.name || "Unknown User"}</span>
+                                        <Avatar>
+                                            <AvatarImage src={project.user?.image || currentUserImage || undefined} alt={project.user?.name || displayUserName} />
+                                            <AvatarFallback>
+                                                {(project.user?.name || displayUserName).charAt(0).toUpperCase()}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <span className="text-sm">{project.user?.name || displayUserName}</span>
                                     </div>
                                 </TableCell>
                                 <TableCell>

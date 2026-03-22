@@ -4,7 +4,6 @@
 
 // when our user comes to the dashboard page, we want to fetch their playground and display them. This action will be called from the dashboard page component to get the data needed for rendering.
 import { db } from "@/lib/db"
-import { getUserById } from "@/modules/auth/actions"
 import { currentUser } from './../../auth/actions/index';
 import { revalidatePath } from "next/cache"
 
@@ -16,17 +15,17 @@ export const getAllPlaygroundForUser = async () => {
     if (!user) {
         return null
     }
-    // If the user is authenticated, we proceed to query the database for playgrounds that belong to this user. We use the findMany method to retrieve all playgrounds where the userId matches the authenticated user's ID. Additionally, we include related data such as the user information and any starmarks associated with the playgrounds.
+    // We only fetch fields needed by the dashboard list to avoid relation hydration failures
+    // when legacy playground rows point to missing user documents in MongoDB.
     try {
         const playground = await db.playground.findMany({
             where: {
                 userId: user?.id,
             },
             include: {
-                user: true,
                 starMark: {
                     where: {
-                        userId: user?.id!
+                        userId: user.id
                     },
                     select: {
                         isMarked: true
@@ -66,7 +65,7 @@ export const createPlayground = async (data: {
                 template: template,
                 description: description ?? "",
                 code: "",
-                userId: user?.id!
+                userId: user.id
             }
         })
         return playground
@@ -75,18 +74,18 @@ export const createPlayground = async (data: {
     }
 }
 
-export const deletePlaygroundById= async(playgroundId:string)=>{
+export const deletePlaygroundById = async (playgroundId: string) => {
     // First, we check if the user is authenticated by calling the currentUser function. If there is no authenticated user, we throw an error indicating that the action is unauthorized. This ensures that only logged-in users can delete a playground.
     const user = await currentUser()
-    if(!user){
+    if (!user) {
         throw new Error("Unauthorized")
         return null
     }
     // If the user is authenticated, we proceed to delete the playground from the database. We use the delete method of the db.playground model, specifying the playgroundId in the where clause to identify which playground to delete. This action will return the deleted playground object.
     try {
-        const deletedPlayground= await db.playground.delete({
-            where:{
-                id:playgroundId
+        const deletedPlayground = await db.playground.delete({
+            where: {
+                id: playgroundId
             }
         })
         revalidatePath("/dashboard") // Revalidate the dashboard page to reflect the changes after deletion
@@ -96,25 +95,25 @@ export const deletePlaygroundById= async(playgroundId:string)=>{
     }
 }
 
-export const editPlaygroundById= async(playgroundId:string,data:{
+export const editPlaygroundById = async (playgroundId: string, data: {
     title?: string,
     description?: string
-})=>{
+}) => {
     // First, we check if the user is authenticated by calling the currentUser function. If there is no authenticated user, we throw an error indicating that the action is unauthorized. This ensures that only logged-in users can edit a playground.
     const user = await currentUser()
-    if(!user){
+    if (!user) {
         throw new Error("Unauthorized")
         return null
     }
     // If the user is authenticated, we proceed to update the playground in the database. We use the update method of the db.playground model, specifying the playgroundId in the where clause to identify which playground to update. We also pass in the data object containing the fields to be updated (title and description). This action will return the updated playground object.
     try {
-        const updatedPlayground= await db.playground.update({
-            where:{
-                id:playgroundId
+        const updatedPlayground = await db.playground.update({
+            where: {
+                id: playgroundId
             },
-            data:{
-                title:data.title,
-                description:data.description
+            data: {
+                title: data.title,
+                description: data.description
             }
         })
         revalidatePath("/dashboard") // Revalidate the dashboard page to reflect the changes after editing
@@ -124,29 +123,29 @@ export const editPlaygroundById= async(playgroundId:string,data:{
     }
 }
 
-export const duplicatePlaygroundById= async(playground:string)=>{
+export const duplicatePlaygroundById = async (playground: string) => {
     // First, we check if the user is authenticated by calling the currentUser function. If there is no authenticated user, we throw an error indicating that the action is unauthorized. This ensures that only logged-in users can duplicate a playground.
     const user = await currentUser()
-    if(!user){
+    if (!user) {
         throw new Error("Unauthorized")
         return null
     }
     // first we will fetch the original playground from the database using the provided playground ID. We use the findUnique method of the db.playground model, specifying the playgroundId in the where clause to identify which playground to fetch. This will give us the original playground object that we want to duplicate.
     try {
-        const originalPlayground= await db.playground.findUnique({
-            where:{
-                id:playground
+        const originalPlayground = await db.playground.findUnique({
+            where: {
+                id: playground
             }
             // here we will implement the template feature later
-            
+
         })
-        if(!originalPlayground){
+        if (!originalPlayground) {
             throw new Error("Playground not found")
             return null
         }
         // If the original playground is found, we proceed to create a new playground in the database using the data from the original playground. We use the create method of the db.playground model, passing in the necessary data such as the title (appending "Copy" to indicate it's a duplicate), template, description, code, and the userId of the authenticated user. This action will return the newly created playground object, which is a duplicate of the original.
-        const duplicatePlayground=await db.playground.create({
-            data:{
+        const duplicatePlayground = await db.playground.create({
+            data: {
                 title: originalPlayground.title + " (Copy)",
                 template: originalPlayground.template,
                 description: originalPlayground.description,
