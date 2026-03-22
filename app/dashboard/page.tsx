@@ -6,6 +6,7 @@ import { getAllPlaygroundForUser } from '@/modules/dashboard/actions'
 import ProjectTable from '@/modules/dashboard/components/project-table'
 import ProjectSearch from '@/modules/dashboard/components/project-search'
 import ThemeToggle from '@/components/theme-toggle'
+import { deletePlaygroundById,editPlaygroundById,duplicatePlaygroundById } from '@/modules/dashboard/actions'
 
 const Page = async () => {
     const playgrounds = await getAllPlaygroundForUser()
@@ -23,7 +24,12 @@ const Page = async () => {
                 {
                     playgrounds && playgrounds.length === 0 ?
                         (<EmptyState />) :
-                        (<ProjectTable projects={playgrounds || []} />)
+                        (<ProjectTable 
+                            projects={playgrounds || []} 
+                            onDeleteProject={deletePlaygroundById}
+                            onEditProject={editPlaygroundById}
+                            onDuplicateProject={duplicatePlaygroundById}                            
+                        />)
                 }
 
 

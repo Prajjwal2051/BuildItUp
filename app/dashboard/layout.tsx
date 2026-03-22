@@ -1,6 +1,7 @@
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { getAllPlaygroundForUser } from "@/modules/dashboard/actions"
 import { DashboardSidebar } from "@/modules/dashboard/components/dashboard-sidebar";
+import { Toaster } from "@/components/ui/sonner";
 
 export default async function DashboardLayout({
     children,
@@ -32,7 +33,12 @@ export default async function DashboardLayout({
             <div className="flex h-screen w-full  overflow-x-hidden">
                 <main className="flex-1">
                     <DashboardSidebar initialPlaygroundData={formattedPlaygroundData || []} />
-                    {children}
+                    <div className="flex flex-col min-h-screen">
+                        <Toaster/>
+                        <div className="flex-1">
+                            {children}
+                        </div>
+                    </div>
 
                 </main>
             </div>
