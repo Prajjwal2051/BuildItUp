@@ -4,9 +4,35 @@ import { Button } from "@/components/ui/button"
 import { Plus } from 'lucide-react'
 import { useState } from "react"
 import TemplateSelectionModal from "./template-selecting-model"
+import { useRouter } from "next/navigation"
+import { createPlayground } from "../actions"
+import { toast } from "sonner"
 
 const AddNewButton = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedTemplate,setSelectedTemplate] = useState<{
+        title: string,
+        template: "REACT" | "NEXTJS" | "EXPRESS" | "VUE" | "ANGULAR" | "HONO",
+        description?: string
+    } | null>(null)
+    const router = useRouter();
+    
+    const handleSubmit= async(data:{
+        title: string,
+        template: "REACT" | "NEXTJS" | "EXPRESS" | "VUE" | "ANGULAR" | "HONO",
+        description?: string
+    })=>{
+        setSelectedTemplate(data)
+        const res=await createPlayground(data)
+        if(!res){
+            // Handle error case, maybe show a toast notification
+            toast.error("Failed to create playground. Please try again.")
+            return;
+        }
+        toast.success("Playground created successfully!")
+        setIsModalOpen(false)
+        router.push(`/playground/${res?.id}`)
+    }
 
     return (
         <>
