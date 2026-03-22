@@ -38,14 +38,11 @@ import Link from "next/link"
 import { useState } from "react"
 import { MoreHorizontal, Edit3, Trash2, ExternalLink, Copy, Download, Eye } from "lucide-react"
 import { toast } from "sonner"
+import { deletePlaygroundById, duplicatePlaygroundById, editPlaygroundById } from "@/modules/dashboard/actions"
 
 
 interface ProjectTableProps {
     projects: Project[]
-    onUpdateProject?: (id: string, data: { title: string; description: string }) => Promise<void>
-    onDeleteProject?: (id: string) => Promise<void>
-    onDuplicateProject?: (id: string) => Promise<void>
-    onMarkasFavorite?: (id: string) => Promise<void>
 }
 
 interface EditProjectData {
@@ -55,21 +52,16 @@ interface EditProjectData {
 
 export default function ProjectTable({
     projects,
-    onUpdateProject,
-    onDeleteProject,
-    onDuplicateProject,
-    onMarkasFavorite,
 }: ProjectTableProps) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [editDialogOpen, setEditDialogOpen] = useState(false)
     const [selectedProject, setSelectedProject] = useState<Project | null>(null)
     const [editData, setEditData] = useState<EditProjectData>({ title: "", description: "" })
     const [isLoading, setIsLoading] = useState(false)
-    const [favoutrie, setFavourite] = useState(false)
 
     const handleEditClick = (project: Project) => {
         setSelectedProject(project)
-        setEditData({ title: project.title, description: project.description || ""})
+        setEditData({ title: project.title, description: project.description || "" })
         setEditDialogOpen(true)
     }
 
@@ -79,42 +71,26 @@ export default function ProjectTable({
     }
 
     const handleUpdateProject = async () => {
-        if (!selectedProject || !onUpdateProject) return
+        if (!selectedProject) return
         setIsLoading(true)
         try {
-            await onUpdateProject(selectedProject.id, editData)
+            await editPlaygroundById(selectedProject.id, editData)
             toast.success("Project updated successfully!")
             setEditDialogOpen(false)
         } catch (error) {
             toast.error("Failed to update project. Please try again.")
             console.error("Error updating project:", error)
         }
-        finally {            
-            setIsLoading(false)
-        }
-    }
-
-    const handleMarkasFavorite = async (project: Project) => {
-        if(!selectedProject || !onDeleteProject) return
-        setIsLoading(true)
-        try {
-            await onDeleteProject(selectedProject.id)
-            setDeleteDialogOpen(false)
-            setSelectedProject(null)
-            toast.success("Project deleted successfully!")
-        } catch (error) {
-            toast.error("Failed to delete project. Please try again.")
-            console.error("Error deleting project:", error)
-        }finally{
+        finally {
             setIsLoading(false)
         }
     }
 
     const handleDeleteProject = async () => {
-        if (!selectedProject || !onDeleteProject) return
+        if (!selectedProject) return
         setIsLoading(true)
         try {
-            await onDeleteProject(selectedProject.id)
+            await deletePlaygroundById(selectedProject.id)
             setDeleteDialogOpen(false)
             setSelectedProject(null)
             toast.success("Project deleted successfully!")
@@ -127,10 +103,10 @@ export default function ProjectTable({
     }
 
     const handleDuplicateProject = async (project: Project) => {
-        if (!selectedProject || !onDuplicateProject) return
+        if (!project?.id) return
         setIsLoading(true)
         try {
-            await onDuplicateProject(selectedProject.id)
+            await duplicatePlaygroundById(project.id)
             toast.success("Project Duplicated successfully!")
         } catch (error) {
             toast.error("Failed to duplicate project. Please try again.")
@@ -250,7 +226,7 @@ export default function ProjectTable({
                     <DialogHeader>
                         <DialogTitle>Edit Project</DialogTitle>
                         <DialogDescription>
-                            Make changes to your project details here. Click save when you're done.
+                            Make changes to your project details here. Click save when you&apos;re done.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
@@ -291,7 +267,7 @@ export default function ProjectTable({
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Project</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete "{selectedProject?.title}"? This action cannot be undone. All files and
+                            Are you sure you want to delete &quot;{selectedProject?.title}&quot;? This action cannot be undone. All files and
                             data associated with this project will be permanently removed.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
