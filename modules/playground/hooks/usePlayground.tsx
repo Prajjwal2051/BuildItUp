@@ -53,7 +53,7 @@ function usePlayground(playgroundId: string): UsePlaygroundReturn {
         }
     }, [playgroundId])
 
-    // Saves the current template tree and refreshes local state so UI stays in sync with persisted data.
+    // This function saves the updated template data for a specific playground. It takes the playground ID and the new template data as parameters, and it updates the corresponding template file in the database. If the playground does not exist, it can create a new entry. This action allows the client to persist changes made to the playground's template data.
     const saveTemplateData = useCallback(async (data: FileTreeNode) => {
         if (!playgroundId) {
             setError("No playground ID provided")

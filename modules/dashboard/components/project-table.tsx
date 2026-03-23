@@ -167,7 +167,7 @@ function ProjectTable({
                         {projects.map((project, index) => (
                             <TableRow
                                 key={project.id}
-                                className="opacity-0 [animation:reveal-up_520ms_ease-out_forwards]"
+                                className="opacity-0 animate-[reveal-up_520ms_ease-out_forwards]"
                                 style={{ animationDelay: `${Math.min(index * 70, 350)}ms` }}
                             >
                                 <TableCell className="font-medium">
