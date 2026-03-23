@@ -3,6 +3,8 @@
 import { db } from "@/lib/db"
 import type { Prisma } from "@prisma/client"
 import { NextRequest } from "next/server"
+import { getTemplateAbsolutePath, type TemplateId } from "@/lib/template"
+import { pathToJson } from "@/modules/playground/lib/path-to-json"
 
 type RouteParams = { id?: string | string[] }
 
@@ -42,14 +44,79 @@ async function GET(
             },
         })
 
-        if (!templateFile) {
-            return Response.json({ error: "Template file not found" }, { status: 404 })
+        // Existing rows may store JSON directly or as a serialized string from older writes.
+        if (templateFile) {
+            let normalizedContent = templateFile.content
+            if (typeof normalizedContent === "string") {
+                try {
+                    normalizedContent = JSON.parse(normalizedContent)
+                } catch {
+                    normalizedContent = null
+                }
+            }
+
+            if (normalizedContent) {
+                return Response.json(
+                    {
+                        content: normalizedContent,
+                        updatedAt: templateFile.updatedAt,
+                    },
+                    { status: 200 }
+                )
+            }
         }
+
+        const playground = await db.playground.findUnique({
+            where: { id },
+            select: {
+                template: true,
+                code: true,
+            },
+        })
+
+        if (!playground) {
+            return Response.json({ error: "Playground not found" }, { status: 404 })
+        }
+
+        // If a code snapshot exists, use it first so users get exactly what was previously stored.
+        if (typeof playground.code === "string" && playground.code.trim().length > 0) {
+            try {
+                const parsedCode = JSON.parse(playground.code)
+                return Response.json(
+                    {
+                        content: parsedCode,
+                        updatedAt: new Date().toISOString(),
+                    },
+                    { status: 200 }
+                )
+            } catch {
+                // If code is not valid JSON, continue with starter template fallback.
+            }
+        }
+
+        // Last-resort fallback: rebuild starter template from disk so editor can always load initial files.
+        const starterTemplate = await pathToJson(getTemplateAbsolutePath(playground.template as TemplateId), {
+            includeFileContent: true,
+            ignore: ["node_modules", ".git", ".next", "dist", "build", "package-lock.json", "pnpm-lock.yaml", "yarn.lock"],
+        })
+
+        // Persist fallback once so future reads become fast and consistent.
+        const savedTemplate = await db.templateFile.upsert({
+            where: { playgroundId: id },
+            update: { content: starterTemplate as Prisma.InputJsonValue },
+            create: {
+                playgroundId: id,
+                content: starterTemplate as Prisma.InputJsonValue,
+            },
+            select: {
+                updatedAt: true,
+            },
+        })
 
         return Response.json(
             {
-                content: templateFile.content,
-                updatedAt: templateFile.updatedAt,
+                content: starterTemplate,
+                updatedAt: savedTemplate.updatedAt,
             },
             { status: 200 }
         )
