@@ -14,6 +14,7 @@ async function getPlaygroundById(id: string) {
                 id
             },
             select: {
+                title: true,
                 templateFile: {
                     select: {
                         content: true

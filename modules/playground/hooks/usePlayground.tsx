@@ -7,7 +7,7 @@ import type { FileTreeNode } from "../lib/path-to-json"
 // Options for the pathToJson function, which converts a file or folder path into a JSON tree. These options allow you to include file content, set a maximum depth for recursion, specify the encoding for reading files, and define patterns to ignore certain files or directories.
 interface PlaygroundData {
     id: string
-    name?: string
+    title?: string
     [key: string]: any
 
 }
