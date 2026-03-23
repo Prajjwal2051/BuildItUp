@@ -274,7 +274,8 @@ function SidebarTrigger({
       }}
       {...props}
     >
-      <PanelLeftIcon />
+      {/* Browser extensions like Dark Reader can inject SVG attributes before hydration. */}
+      <PanelLeftIcon suppressHydrationWarning />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )

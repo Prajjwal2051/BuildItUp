@@ -23,6 +23,11 @@ interface RenameFileDialogProps {
   currentExtension: string;
 }
 
+// Normalizes dialog inputs so the component never stores undefined/null in local state.
+function toSafeText(value: string | null | undefined): string {
+  return typeof value === "string" ? value : "";
+}
+
 /// Renders a dialog for renaming a file with input fields for the new filename and extension. The dialog can be opened or closed based on the `isOpen` prop, and it calls the `onRename` callback with the entered filename and extension when the form is submitted. The filename input is required, while the extension defaults to the current extension if left empty.
 function RenameFileDialog({
   isOpen,
@@ -31,20 +36,23 @@ function RenameFileDialog({
   currentFilename,
   currentExtension,
 }: RenameFileDialogProps) {
-  const [filename, setFilename] = React.useState(currentFilename);
-  const [extension, setExtension] = React.useState(currentExtension);
+  const [filename, setFilename] = React.useState(() => toSafeText(currentFilename));
+  const [extension, setExtension] = React.useState(() => toSafeText(currentExtension));
 
   React.useEffect(() => {
     if (isOpen) {
-      setFilename(currentFilename);
-      setExtension(currentExtension);
+      setFilename(toSafeText(currentFilename));
+      setExtension(toSafeText(currentExtension));
     }
   }, [isOpen, currentFilename, currentExtension]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (filename.trim()) {
-      onRename(filename.trim(), extension.trim() || currentExtension);
+    const trimmedFilename = filename.trim();
+    const trimmedExtension = extension.trim();
+
+    if (trimmedFilename) {
+      onRename(trimmedFilename, trimmedExtension || toSafeText(currentExtension));
     }
   };
 
