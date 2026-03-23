@@ -4,10 +4,28 @@ import { db } from "@/lib/db"
 import type { Prisma } from "@prisma/client"
 import { NextRequest } from "next/server"
 
+type RouteParams = { id?: string | string[] }
+
+// Normalizes dynamic route params so both string and catch-all array values resolve safely.
+function getRouteId(params: RouteParams): string | null {
+    const rawId = params.id
+    if (!rawId) {
+        return null
+    }
+    if (Array.isArray(rawId)) {
+        return rawId[0] ?? null
+    }
+    return rawId
+}
+
 // Loads saved template JSON for one playground so the editor can restore file tree state.
-async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+async function GET(
+    _request: NextRequest,
+    context: { params: RouteParams | Promise<RouteParams> }
+) {
     // The GET function retrieves the saved template JSON for a specific playground based on the provided playground ID. It queries the database for the template file associated with the given playground ID and returns its content and last updated timestamp. If the playground ID is missing, if the template file is not found, or if there is an error during the database query, it returns an appropriate error response with a corresponding status code.
-    const { id } = params
+    const resolvedParams = await Promise.resolve(context.params)
+    const id = getRouteId(resolvedParams)
 
     if (!id) {
         return Response.json({ error: "Playground ID is required" }, { status: 400 })
@@ -42,9 +60,13 @@ async function GET(_request: NextRequest, { params }: { params: { id: string } }
 }
 
 // Saves updated template JSON for one playground and keeps a single row per playground.
-async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+async function PUT(
+    request: NextRequest,
+    context: { params: RouteParams | Promise<RouteParams> }
+) {
     // The PUT function saves the updated template JSON for a specific playground based on the provided playground ID. It first validates the presence of the playground ID and the template content in the request body. If the validation passes, it checks if a playground with the given ID exists in the database. If it does, it performs an upsert operation to either update the existing template file or create a new one associated with the playground. Finally, it returns a success response with the template file ID and last updated timestamp. If any validation fails or if there is an error during the database operations, it returns an appropriate error response with a corresponding status code.
-    const { id } = params
+    const resolvedParams = await Promise.resolve(context.params)
+    const id = getRouteId(resolvedParams)
 
     if (!id) {
         return Response.json({ error: "Playground ID is required" }, { status: 400 })

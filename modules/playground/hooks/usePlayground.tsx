@@ -38,15 +38,31 @@ function usePlayground(playgroundId: string): UsePlaygroundReturn {
             setError(null)
             const response = await fetch(`/api/playground/${playgroundId}`)
             if (!response.ok) {
-                throw new Error("Failed to fetch playground data")
+                const message = await response.text()
+                throw new Error(message || "Failed to fetch playground data")
             }
             const data = await response.json()
             setPlaygroundData(data)
-            setTemplateData(data.templateFile?.content || null)
+
+            // Template can come from the playground payload or from the dedicated template endpoint.
+            const templateFromPlayground = data.templateFile?.content ?? null
+            if (templateFromPlayground) {
+                setTemplateData(templateFromPlayground as FileTreeNode)
+            } else {
+                const templateResponse = await fetch(`/api/template/${playgroundId}`)
+                if (templateResponse.ok) {
+                    const templatePayload = await templateResponse.json()
+                    setTemplateData((templatePayload.content ?? null) as FileTreeNode | null)
+                } else {
+                    setTemplateData(null)
+                }
+            }
+
             toast.success("Playground loaded successfully")
         } catch (error: any) {
             toast.error("Error loading playground")
             console.error("Error loading playground:", error)
+            setPlaygroundData(null)
             setError(error.message || "An unexpected error occurred")
         } finally {
             setIsLoading(false)
