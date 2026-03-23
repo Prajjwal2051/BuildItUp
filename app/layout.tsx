@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "Build, Learn, Deploy with AI-assisted code development.",
 };
 
-export default async function RootLayout({
+async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -28,3 +28,5 @@ export default async function RootLayout({
     </html>
   );
 }
+
+export default RootLayout

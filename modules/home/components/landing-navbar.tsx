@@ -2,7 +2,7 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 // Renders the landing navigation so page routing code stays minimal.
-export default function LandingNavbar() {
+function LandingNavbar() {
     return (
         <header className="w-full flex items-center justify-between px-6 md:px-10 h-24 max-w-360 mx-auto">
             <div className="flex items-center gap-12 lg:gap-16">
@@ -55,3 +55,5 @@ export default function LandingNavbar() {
         </header>
     );
 }
+
+export default LandingNavbar

@@ -2,7 +2,7 @@ import { Chrome, Github } from "lucide-react";
 import Link from "next/link";
 
 // Displays the main landing message and callout to drive first-click actions.
-export default function HeroSection() {
+function HeroSection() {
     return (
         <div className="flex flex-col lg:flex-row justify-between gap-16 mb-28">
             <div className="flex-1">
@@ -81,3 +81,5 @@ export default function HeroSection() {
         </div>
     );
 }
+
+export default HeroSection

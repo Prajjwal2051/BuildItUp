@@ -14,7 +14,7 @@ import {
 import Link from "next/link";
 
 // Renders the IDE-style preview block that demonstrates the product experience.
-export default function EditorMockup() {
+function EditorMockup() {
     return (
         <div className="w-full max-w-6xl mx-auto">
             <div
@@ -256,3 +256,5 @@ export default function EditorMockup() {
         </div>
     );
 }
+
+export default EditorMockup

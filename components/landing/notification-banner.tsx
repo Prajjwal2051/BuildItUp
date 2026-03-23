@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 
-export default function NotificationBanner() {
+function NotificationBanner() {
   const [visible, setVisible] = useState(true);
 
   if (!visible) return null;
@@ -35,6 +35,8 @@ export default function NotificationBanner() {
       </div>
     </div>
     */
-   null
+    null
   );
 }
+
+export default NotificationBanner

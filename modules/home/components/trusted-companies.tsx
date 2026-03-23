@@ -1,7 +1,7 @@
 import { AtSign, BarChart2, Box, Shapes, Zap } from "lucide-react";
 
 // Shows social proof logos to build trust before users try the editor demo.
-export default function TrustedCompanies() {
+function TrustedCompanies() {
     return (
         <div className="mb-28">
             <div className="flex items-center justify-center gap-6 mb-12">
@@ -39,3 +39,5 @@ export default function TrustedCompanies() {
         </div>
     );
 }
+
+export default TrustedCompanies

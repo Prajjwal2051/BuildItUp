@@ -1,7 +1,7 @@
 import { Github } from "lucide-react";
 
 // Keeps landing layout extensible with a dedicated footer slot.
-export default function HomeFooter() {
+function HomeFooter() {
     return (
         <footer className="w-full max mx-auto px-6 md:px-10 pb-12 pt-4">
             <div className="mx-auto max-w-lg rounded-2xl border border-neutral-800 bg-neutral-950/70 px-5 py-4 backdrop-blur-sm">
@@ -22,3 +22,5 @@ export default function HomeFooter() {
         </footer>
     );
 }
+
+export default HomeFooter

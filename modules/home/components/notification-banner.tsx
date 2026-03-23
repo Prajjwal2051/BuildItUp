@@ -4,7 +4,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 
 // Shows a dismissible update banner so users can hide it after reading once.
-export default function NotificationBanner() {
+function NotificationBanner() {
     const [visible, setVisible] = useState(true);
 
     if (!visible) return null;
@@ -36,3 +36,5 @@ export default function NotificationBanner() {
         </div>
     );
 }
+
+export default NotificationBanner

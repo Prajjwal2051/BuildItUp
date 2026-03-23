@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 
 // This control lets users switch between light and dark modes with one click.
 // We wait for mount so the icon always matches the active client theme.
-export default function ThemeToggle() {
+function ThemeToggle() {
     const { theme, setTheme } = useTheme()
     const [mounted, setMounted] = useState(false)
 
@@ -45,3 +45,5 @@ export default function ThemeToggle() {
         </Button>
     )
 }
+
+export default ThemeToggle

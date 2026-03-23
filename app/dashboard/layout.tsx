@@ -3,7 +3,7 @@ import { getAllPlaygroundForUser } from "@/modules/dashboard/actions"
 import { DashboardSidebar } from "@/modules/dashboard/components/dashboard-sidebar";
 import { Toaster } from "@/components/ui/sonner";
 
-export default async function DashboardLayout({
+async function DashboardLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
@@ -37,3 +37,5 @@ export default async function DashboardLayout({
         </SidebarProvider>
     );
 }
+
+export default DashboardLayout

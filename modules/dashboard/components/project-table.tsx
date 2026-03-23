@@ -53,7 +53,7 @@ interface EditProjectData {
     description: string
 }
 
-export default function ProjectTable({
+function ProjectTable({
     projects,
     currentUserName,
     currentUserImage,
@@ -316,5 +316,7 @@ export default function ProjectTable({
         </>
     )
 }
+
+export default ProjectTable
 
 

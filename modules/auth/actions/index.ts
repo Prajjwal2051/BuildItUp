@@ -4,7 +4,7 @@ import { auth } from "@/auth"
 import { db } from "@/lib/db"
 
 // Gets a user by ID along with their linked accounts so auth flows can reuse this data.
-export const getUserById = async (id: string) => {
+async function getUserById(id: string) {
     try {
         const user = await db.user.findUnique({
             where: {
@@ -23,7 +23,7 @@ export const getUserById = async (id: string) => {
 }
 
 // Finds the first account record for a given user so we can check provider-specific details.
-export const getAccountByUserId = async (userId: string) => {
+async function getAccountByUserId(userId: string) {
     try {
         const acc = await db.account.findFirst({
             where: {
@@ -38,7 +38,13 @@ export const getAccountByUserId = async (userId: string) => {
 }
 
 // Returns the currently authenticated user from the session, or null when nobody is logged in.
-export const currentUser = async () => {
+async function currentUser() {
     const user = await auth()
     return user?.user || null
+}
+
+export {
+    getUserById,
+    getAccountByUserId,
+    currentUser,
 }

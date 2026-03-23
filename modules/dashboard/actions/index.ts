@@ -11,7 +11,7 @@ import { pathToJsonString } from "@/modules/playground/lib/path-to-json"
 
 // This function fetches all playgrounds associated with a given user ID. It first retrieves the user to ensure they exist and then includes their related playgrounds in the query.
 
-export const getAllPlaygroundForUser = async () => {
+async function getAllPlaygroundForUser() {
     // We start by calling the currentUser function to check if there is an authenticated user. If there is no user, we return null, indicating that the action cannot proceed without authentication.
     const user = await currentUser()
     if (!user) {
@@ -42,11 +42,11 @@ export const getAllPlaygroundForUser = async () => {
     }
 }
 
-export const createPlayground = async (data: {
+async function createPlayground(data: {
     title: string,
     template: "REACT" | "NEXTJS" | "EXPRESS" | "VUE" | "ANGULAR" | "HONO",
     description?: string
-}) => {
+}) {
     // First, we check if the user is authenticated by calling the currentUser function. If there is no authenticated user, we throw an error indicating that the action is unauthorized. This ensures that only logged-in users can create a playground.
     const user = await currentUser()
     if (!user) {
@@ -82,7 +82,7 @@ export const createPlayground = async (data: {
     }
 }
 
-export const deletePlaygroundById = async (playgroundId: string) => {
+async function deletePlaygroundById(playgroundId: string) {
     // First, we check if the user is authenticated by calling the currentUser function. If there is no authenticated user, we throw an error indicating that the action is unauthorized. This ensures that only logged-in users can delete a playground.
     const user = await currentUser()
     if (!user) {
@@ -103,10 +103,10 @@ export const deletePlaygroundById = async (playgroundId: string) => {
     }
 }
 
-export const editPlaygroundById = async (playgroundId: string, data: {
+async function editPlaygroundById(playgroundId: string, data: {
     title?: string,
     description?: string
-}) => {
+}) {
     // First, we check if the user is authenticated by calling the currentUser function. If there is no authenticated user, we throw an error indicating that the action is unauthorized. This ensures that only logged-in users can edit a playground.
     const user = await currentUser()
     if (!user) {
@@ -131,7 +131,7 @@ export const editPlaygroundById = async (playgroundId: string, data: {
     }
 }
 
-export const duplicatePlaygroundById = async (playground: string) => {
+async function duplicatePlaygroundById(playground: string) {
     // First, we check if the user is authenticated by calling the currentUser function. If there is no authenticated user, we throw an error indicating that the action is unauthorized. This ensures that only logged-in users can duplicate a playground.
     const user = await currentUser()
     if (!user) {
@@ -169,7 +169,7 @@ export const duplicatePlaygroundById = async (playground: string) => {
 }
 
 // Toggles the current user's starred state for one playground so both table and sidebar stay in sync.
-export const togglePlaygroundStarMark = async (playgroundId: string) => {
+async function togglePlaygroundStarMark(playgroundId: string) {
     const user = await currentUser()
     if (!user) {
         throw new Error("Unauthorized")
@@ -226,4 +226,13 @@ export const togglePlaygroundStarMark = async (playgroundId: string) => {
         console.log(`Error toggling star mark for playground ${playgroundId}:`, error)
         throw error
     }
+}
+
+export {
+    getAllPlaygroundForUser,
+    createPlayground,
+    deletePlaygroundById,
+    editPlaygroundById,
+    duplicatePlaygroundById,
+    togglePlaygroundStarMark,
 }

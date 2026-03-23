@@ -15,7 +15,7 @@ interface ProjectSearchProps {
 
 // This component lets users quickly find a project by typing and seeing live matches.
 // It keeps search local to improve speed and avoid extra server requests.
-export default function ProjectSearch({ projects, className }: ProjectSearchProps) {
+function ProjectSearch({ projects, className }: ProjectSearchProps) {
     const [query, setQuery] = useState("")
     const trimmedQuery = query.trim().toLowerCase()
 
@@ -81,3 +81,5 @@ export default function ProjectSearch({ projects, className }: ProjectSearchProp
         </div>
     )
 }
+
+export default ProjectSearch

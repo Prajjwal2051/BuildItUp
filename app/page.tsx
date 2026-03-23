@@ -5,7 +5,7 @@ import HeroSection from "@/modules/home/components/hero-section";
 import ProductOverview from "@/modules/home/components/product-overview";
 
 // Composes landing sections so each part can evolve independently.
-export default function Home() {
+function Home() {
     return (
         <div
             className="text-white font-sans antialiased relative overflow-x-hidden"
@@ -38,3 +38,5 @@ export default function Home() {
         </div>
     );
 }
+
+export default Home

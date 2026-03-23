@@ -1,7 +1,7 @@
 import { Bot, Clock3, Container, Database, Network, Users } from "lucide-react";
 
 // Presents project details in a scannable layout so visitors quickly understand capabilities.
-export default function ProductOverview() {
+function ProductOverview() {
     return (
         <section id="how" className="mb-28">
             <div className="mb-10">
@@ -86,3 +86,5 @@ export default function ProductOverview() {
         </section>
     );
 }
+
+export default ProductOverview
