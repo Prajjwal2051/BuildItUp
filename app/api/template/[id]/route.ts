@@ -1,3 +1,5 @@
+// This API route handles loading and saving the playground template JSON, which captures the file tree state for each playground. It uses a single database row per playground to store the latest template snapshot. The GET method retrieves the template data for a given playground ID, while the PUT method updates or creates the template data for that playground. Both methods include error handling to ensure robust responses in case of missing parameters, invalid input, or database issues.
+
 import { db } from "@/lib/db"
 import type { Prisma } from "@prisma/client"
 import { NextRequest } from "next/server"
