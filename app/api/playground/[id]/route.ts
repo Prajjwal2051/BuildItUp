@@ -35,16 +35,9 @@ async function GET(
                 title: true,
                 description: true,
                 template: true,
+                code: true,
                 createdAt: true,
                 updatedAt: true,
-                templateFile: {
-                    select: {
-                        id: true,
-                        content: true,
-                        updatedAt: true,
-                    },
-                    take: 1,
-                },
             },
         })
 
@@ -52,7 +45,16 @@ async function GET(
             return Response.json({ error: "Playground not found" }, { status: 404 })
         }
 
-        const [templateFile] = playground.templateFile
+        // TemplateFile is optional for older/new rows, so fetch it separately and normalize to null when absent.
+        const templateFile = await db.templateFile.findUnique({
+            where: { playgroundId: id },
+            select: {
+                id: true,
+                content: true,
+                updatedAt: true,
+            },
+        })
+
         return Response.json(
             {
                 ...playground,

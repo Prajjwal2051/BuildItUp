@@ -48,11 +48,28 @@ function usePlayground(playgroundId: string): UsePlaygroundReturn {
             const templateFromPlayground = data.templateFile?.content ?? null
             if (templateFromPlayground) {
                 setTemplateData(templateFromPlayground as FileTreeNode)
+            } else if (typeof data.code === "string" && data.code.trim().length > 0) {
+                // New playgrounds start from code snapshot, so parse it when templateFile is not created yet.
+                try {
+                    const parsedCodeTemplate = JSON.parse(data.code) as FileTreeNode
+                    setTemplateData(parsedCodeTemplate)
+                } catch {
+                    setTemplateData(null)
+                }
             } else {
                 const templateResponse = await fetch(`/api/template/${playgroundId}`)
                 if (templateResponse.ok) {
                     const templatePayload = await templateResponse.json()
-                    setTemplateData((templatePayload.content ?? null) as FileTreeNode | null)
+                    const templateContent = templatePayload.content ?? null
+                    if (typeof templateContent === "string") {
+                        try {
+                            setTemplateData(JSON.parse(templateContent) as FileTreeNode)
+                        } catch {
+                            setTemplateData(null)
+                        }
+                    } else {
+                        setTemplateData(templateContent as FileTreeNode | null)
+                    }
                 } else {
                     setTemplateData(null)
                 }
