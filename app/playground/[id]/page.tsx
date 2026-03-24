@@ -6,6 +6,7 @@ import { SidebarInset } from "@/components/ui/sidebar"
 import TemplateFileTree from "@/modules/playground/components/playground-explorer"
 import usePlayground from "@/modules/playground/hooks/usePlayground"
 import type { FileTreeNode } from "@/modules/playground/lib/path-to-json"
+import { cn } from "@/lib/utils"
 
 
 // Ensures names remain valid path segments for create and rename actions.
@@ -93,29 +94,119 @@ function removeNodeByPath(node: FileTreeNode, targetPath: string): boolean {
     return node.children.some((child) => removeNodeByPath(child, targetPath))
 }
 
+//
+function getFileName(filePath: string): string {
+    return filePath.includes("/") ? filePath.slice(filePath.lastIndexOf("/") + 1) : filePath
+}
+
+// Renders a tab bar of all currently open files with close buttons.
+function OpenFilesTabs({
+    openFiles,
+    activeFilePath,
+    onSelect,
+    onClose,
+}: {
+    openFiles: string[]
+    activeFilePath: string
+    onSelect: (path: string) => void
+    onClose: (path: string) => void
+}) {
+    if (openFiles.length === 0) return null
+
+    return (
+        <div className="flex items-center gap-0 overflow-x-auto border-b border-[#1c1f26] bg-[#0f1115] scrollbar-none">
+            {openFiles.map((filePath) => {
+                const isActive = filePath === activeFilePath
+                return (
+                    <div
+                        key={filePath}
+                        onClick={() => onSelect(filePath)}
+                        className={cn(
+                            "group flex items-center gap-2 px-4 py-2 text-[12px] font-mono cursor-pointer border-r border-[#1c1f26] shrink-0 select-none transition-colors",
+                            isActive
+                                ? "bg-[#141821] text-white border-t-2 border-t-[#61afef]"
+                                : "text-[#5c6370] hover:bg-[#151922] hover:text-[#aab1bf]"
+                        )}
+                    >
+                        <span>{getFileName(filePath)}</span>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                onClose(filePath)
+                            }}
+                            className={cn(
+                                "rounded flex items-center justify-center w-4 h-4 text-[11px] transition-colors",
+                                isActive
+                                    ? "text-[#5c6370] hover:text-white hover:bg-[#2a2f3a]"
+                                    : "opacity-0 group-hover:opacity-100 text-[#5c6370] hover:text-white hover:bg-[#2a2f3a]"
+                            )}
+                        >
+                            ✕
+                        </button>
+                    </div>
+                )
+            })}
+        </div>
+    )
+}
+
 // Renders a single playground workspace and keeps file-tree edits in sync with persistence.
 // This page owns immutable tree mutations so nested CRUD actions remain predictable.
 function MainPlaygroundPage() {
 
     const params = useParams<{ id?: string | string[] }>()
     // Route params can be string or string[] depending on segment shape, so normalize before use.
+    // This page is only rendered when the id param is present, but we still need to handle edge cases where it might be missing or malformed.
     const id = Array.isArray(params.id) ? (params.id[0] ?? "") : (params.id ?? "")
     const { templateData, isLoading, error, saveTemplateData } = usePlayground(id)
     const [treeData, setTreeData] = React.useState<FileTreeNode | null>(null)
     const [activeFilePath, setActiveFilePath] = React.useState("")
+    const [openFiles,setOpenFiles] = React.useState<string[]>([])  // opens tabs state
 
     // Keep local editable tree state in sync with server-loaded template data.
     React.useEffect(() => {
         if (!templateData) {
             setTreeData(null)
             setActiveFilePath("")
+            setActiveFilePath("")
+            setOpenFiles([])
             return
         }
 
         const normalizedTree = rebuildPaths(cloneTree(templateData), ".")
         setTreeData(normalizedTree)
-        setActiveFilePath((current) => current || findFirstFilePath(normalizedTree))
+        setActiveFilePath((current)=>{
+            const first = current|| findFirstFilePath(normalizedTree)
+            if(first) setOpenFiles([first]) // open the first file by default
+            return first
+        })
+        
+    
     }, [templateData])
+
+    // Handles file selection by opening a new tab if not already open and setting active file.
+    const handleFileSelect = React.useCallback((filePath: string) => {
+        setOpenFiles((prev)=>
+            prev.includes(filePath) ? prev : [...prev, filePath]
+        )
+        setActiveFilePath(filePath)
+
+    },[])
+
+    // Closes a tab and shifts focus to the nearest remaining tab.
+    const handleCloseFile = React.useCallback((filePath: string) => {
+        setOpenFiles((prev) => {
+            const next = prev.filter((f) => f !== filePath)
+            if (activeFilePath === filePath) {
+                const idx = prev.indexOf(filePath)
+                const fallback = next[idx] ?? next[idx - 1] ?? ""
+                setActiveFilePath(fallback)
+            }
+            return next
+        })
+    }, [activeFilePath])
+
+
 
     // Applies one tree mutation, then persists the updated snapshot.
     const applyTreeChange = React.useCallback(
@@ -319,6 +410,30 @@ function MainPlaygroundPage() {
                     onRenameFolder={handleRenameFolder}
                 />
             )}
+            {/* Main content area: tab bar on top, editor below */}
+            <SidebarInset className="flex flex-col flex-1 overflow-hidden">
+                <OpenFilesTabs
+                    openFiles={openFiles}
+                    activeFilePath={activeFilePath}
+                    onSelect={handleFileSelect}
+                    onClose={handleCloseFile}
+                />
+
+                {/* Editor area — wire your editor component here */}
+                <div className="flex-1 overflow-auto bg-[#0f1115]">
+                    {activeFilePath ? (
+                        <div className="p-4 text-sm text-[#aab1bf] font-mono">
+                            {/* Replace this with your actual editor component */}
+                            {/* e.g. <CodeEditor filePath={activeFilePath} /> */}
+                            Editing: {activeFilePath}
+                        </div>
+                    ) : (
+                        <div className="flex h-full items-center justify-center text-sm text-[#5c6370]">
+                            No file open
+                        </div>
+                    )}
+                </div>
+            </SidebarInset>
         </div>
     )
 }
