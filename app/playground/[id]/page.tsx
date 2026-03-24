@@ -9,7 +9,6 @@ import usePlayground from "@/modules/playground/hooks/usePlayground"
 import type { FileTreeNode } from "@/modules/playground/lib/path-to-json"
 import { cn } from "@/lib/utils"
 
-
 // Ensures names remain valid path segments for create and rename actions.
 function sanitizeNodeName(name: string): string {
     return name.trim().replace(/[\\/]+/g, "")
@@ -30,11 +29,7 @@ function cloneTree(node: FileTreeNode): FileTreeNode {
 
 // Recalculates all relative paths after mutations so add/rename/delete remain consistent.
 function rebuildPaths(node: FileTreeNode, path = "."): FileTreeNode {
-    const nextNode: FileTreeNode = {
-        ...node,
-        path,
-    }
-
+    const nextNode: FileTreeNode = { ...node, path }
     if (nextNode.type === "directory") {
         const children = nextNode.children ?? []
         nextNode.children = children.map((child) => {
@@ -42,24 +37,40 @@ function rebuildPaths(node: FileTreeNode, path = "."): FileTreeNode {
             return rebuildPaths(child, childPath)
         })
     }
-
     return nextNode
 }
 
 // Returns the first file path to auto-select something meaningful after load.
 function findFirstFilePath(node: FileTreeNode): string {
-    if (node.type === "file") {
-        return node.path
-    }
-
+    if (node.type === "file") return node.path
     for (const child of node.children ?? []) {
         const first = findFirstFilePath(child)
-        if (first) {
-            return first
-        }
+        if (first) return first
     }
-
     return ""
+}
+
+// Walks the tree and returns the content string of the node at the given path.
+function getFileContent(node: FileTreeNode, targetPath: string): string {
+    if (node.path === targetPath && node.type === "file") {
+        return node.content ?? ""
+    }
+    for (const child of node.children ?? []) {
+        const found = getFileContent(child, targetPath)
+        if (found !== null) return found
+    }
+    return ""
+}
+
+// Walks the tree and collects { path -> content } for every file node.
+function extractAllFileContents(node: FileTreeNode, acc: Record<string, string> = {}): Record<string, string> {
+    if (node.type === "file") {
+        acc[node.path] = node.content ?? ""
+    }
+    for (const child of node.children ?? []) {
+        extractAllFileContents(child, acc)
+    }
+    return acc
 }
 
 // Updates one tree node by path and returns true when a node was modified.
@@ -72,30 +83,19 @@ function updateNodeByPath(
         update(node)
         return true
     }
-
-    if (node.type !== "directory" || !node.children) {
-        return false
-    }
-
+    if (node.type !== "directory" || !node.children) return false
     return node.children.some((child) => updateNodeByPath(child, targetPath, update))
 }
 
 // Deletes one node by path and returns true when a child was removed.
 function removeNodeByPath(node: FileTreeNode, targetPath: string): boolean {
-    if (node.type !== "directory" || !node.children || targetPath === ".") {
-        return false
-    }
-
+    if (node.type !== "directory" || !node.children || targetPath === ".") return false
     const originalLength = node.children.length
     node.children = node.children.filter((child) => child.path !== targetPath)
-    if (node.children.length !== originalLength) {
-        return true
-    }
-
+    if (node.children.length !== originalLength) return true
     return node.children.some((child) => removeNodeByPath(child, targetPath))
 }
 
-//
 function getFileName(filePath: string): string {
     return filePath.includes("/") ? filePath.slice(filePath.lastIndexOf("/") + 1) : filePath
 }
@@ -110,20 +110,19 @@ function OpenFilesTabs({
     onSave,
     onSaveAll,
 }: {
-        openFiles: string[]
-        activeFilePath: string
-        unsavedFiles: Set<string>
-        onSelect: (path: string) => void
-        onClose: (path: string) => void
-        onSave: () => void
-        onSaveAll: () => void
+    openFiles: string[]
+    activeFilePath: string
+    unsavedFiles: Set<string>
+    onSelect: (path: string) => void
+    onClose: (path: string) => void
+    onSave: () => void
+    onSaveAll: () => void
 }) {
     if (openFiles.length === 0) return null
     const hasUnsaved = unsavedFiles.size > 0
 
     return (
         <div className="flex items-center border-b border-[#1c1f26] bg-[#0f1115]">
-            {/* Scrollable tab list */}
             <div className="flex items-center overflow-x-auto scrollbar-none flex-1">
                 {openFiles.map((filePath) => {
                     const isActive = filePath === activeFilePath
@@ -139,7 +138,6 @@ function OpenFilesTabs({
                                     : "text-[#5c6370] hover:bg-[#151922] hover:text-[#aab1bf]"
                             )}
                         >
-                            {/* Dirty dot indicator */}
                             {isDirty && (
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#e5c07b] shrink-0" />
                             )}
@@ -163,9 +161,7 @@ function OpenFilesTabs({
                 })}
             </div>
 
-            {/* Save actions pinned to the right */}
             <div className="flex items-center gap-1 px-2 shrink-0 border-l border-[#1c1f26]">
-                {/* Save current file — Ctrl+S */}
                 <button
                     onClick={onSave}
                     title="Save (Ctrl+S)"
@@ -177,7 +173,6 @@ function OpenFilesTabs({
                             : "text-[#3a3f4b] cursor-not-allowed"
                     )}
                 >
-                    {/* Save single icon */}
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
                         <polyline points="17 21 17 13 7 13 7 21" />
@@ -185,7 +180,6 @@ function OpenFilesTabs({
                     </svg>
                 </button>
 
-                {/* Save all files — Ctrl+Shift+S */}
                 <button
                     onClick={onSaveAll}
                     title="Save All (Ctrl+Shift+S)"
@@ -197,7 +191,6 @@ function OpenFilesTabs({
                             : "text-[#3a3f4b] cursor-not-allowed"
                     )}
                 >
-                    {/* Save all icon — stacked floppy disks */}
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
                         <polyline points="17 21 17 13 7 13 7 21" />
@@ -213,90 +206,105 @@ function OpenFilesTabs({
 }
 
 // Renders a single playground workspace and keeps file-tree edits in sync with persistence.
-// This page owns immutable tree mutations so nested CRUD actions remain predictable.
 function MainPlaygroundPage() {
-
     const params = useParams<{ id?: string | string[] }>()
-    // Route params can be string or string[] depending on segment shape, so normalize before use.
-    // This page is only rendered when the id param is present, but we still need to handle edge cases where it might be missing or malformed.
     const id = Array.isArray(params.id) ? (params.id[0] ?? "") : (params.id ?? "")
-    const { templateData, isLoading, error, saveTemplateData } = usePlayground(id)
+    const { playgroundData, templateData, isLoading, error, saveTemplateData } = usePlayground(id)
     const [treeData, setTreeData] = React.useState<FileTreeNode | null>(null)
     const [activeFilePath, setActiveFilePath] = React.useState("")
-    const [openFiles,setOpenFiles] = React.useState<string[]>([])  // opens tabs state
+    const [openFiles, setOpenFiles] = React.useState<string[]>([])
     const [unsavedFiles, setUnsavedFiles] = React.useState<Set<string>>(new Set())
-    const hasUnsaved = unsavedFiles.size > 0 
+    // Stores the live edited content per file path — seeded from tree on load, updated on edit.
+    const [fileContents, setFileContents] = React.useState<Record<string, string>>({})
+    const hasUnsaved = unsavedFiles.size > 0
 
-    // Keep local editable tree state in sync with server-loaded template data.
+    const playgroundTitle =
+        (typeof playgroundData?.title === "string" && playgroundData.title.trim()) ||
+        (typeof templateData?.name === "string" && templateData.name.trim()) ||
+        "Untitled Playground"
+
+    // Seed fileContents from the loaded tree so existing file content shows immediately.
     React.useEffect(() => {
         if (!templateData) {
             setTreeData(null)
             setActiveFilePath("")
-            setActiveFilePath("")
             setOpenFiles([])
+            setFileContents({})
             return
         }
 
         const normalizedTree = rebuildPaths(cloneTree(templateData), ".")
         setTreeData(normalizedTree)
-        setActiveFilePath((current)=>{
-            const first = current|| findFirstFilePath(normalizedTree)
-            if(first) setOpenFiles([first]) // open the first file by default
+        // Extract all file contents from the tree into the flat map.
+        setFileContents(extractAllFileContents(normalizedTree))
+        setActiveFilePath((current) => {
+            const first = current || findFirstFilePath(normalizedTree)
+            if (first) setOpenFiles([first])
             return first
         })
-        
-    
     }, [templateData])
 
-    // Saves the currently active file.
     const handleSave = React.useCallback(() => {
         if (!activeFilePath) return
+        // Write the edited content back into the tree node before persisting.
+        setTreeData((prev) => {
+            if (!prev) return prev
+            const draft = cloneTree(prev)
+            updateNodeByPath(draft, activeFilePath, (target) => {
+                target.content = fileContents[activeFilePath] ?? target.content
+            })
+            const rebuilt = rebuildPaths(draft, ".")
+            void saveTemplateData(rebuilt)
+            return rebuilt
+        })
         setUnsavedFiles((prev) => {
             const next = new Set(prev)
             next.delete(activeFilePath)
             return next
         })
-        // TODO: trigger your actual per-file save/persist logic here
-    }, [activeFilePath])
+    }, [activeFilePath, fileContents, saveTemplateData])
 
-    // Saves all open files at once.
     const handleSaveAll = React.useCallback(() => {
+        // Write all edited contents back into the tree before persisting.
+        setTreeData((prev) => {
+            if (!prev) return prev
+            const draft = cloneTree(prev)
+            for (const [filePath, content] of Object.entries(fileContents)) {
+                updateNodeByPath(draft, filePath, (target) => {
+                    target.content = content
+                })
+            }
+            const rebuilt = rebuildPaths(draft, ".")
+            void saveTemplateData(rebuilt)
+            return rebuilt
+        })
         setUnsavedFiles(new Set())
-        // TODO: trigger your actual save logic for all openFiles here
-    }, [])
+    }, [fileContents, saveTemplateData])
 
     React.useEffect(() => {
         function onKeyDown(e: KeyboardEvent) {
             if (!e.ctrlKey && !e.metaKey) return
             if (e.key === "s" || e.key === "S") {
                 e.preventDefault()
-                if (e.shiftKey) {
-                    handleSaveAll()
-                } else {
-                    handleSave()
-                }
+                if (e.shiftKey) handleSaveAll()
+                else handleSave()
             }
         }
         window.addEventListener("keydown", onKeyDown)
         return () => window.removeEventListener("keydown", onKeyDown)
     }, [handleSave, handleSaveAll])
 
-    // Call this from your editor's onChange to mark a file as unsaved.
-    const handleFileChange = React.useCallback((filePath: string) => {
+    // Updates the in-memory content for a file and marks it dirty.
+    const handleFileChange = React.useCallback((filePath: string, newContent: string) => {
+        setFileContents((prev) => ({ ...prev, [filePath]: newContent }))
         setUnsavedFiles((prev) => new Set(prev).add(filePath))
     }, [])
 
-
-    // Handles file selection by opening a new tab if not already open and setting active file.
     const handleFileSelect = React.useCallback((filePath: string) => {
-        setOpenFiles((prev)=>
-            prev.includes(filePath) ? prev : [...prev, filePath]
-        )
+        setOpenFiles((prev) => prev.includes(filePath) ? prev : [...prev, filePath])
         setActiveFilePath(filePath)
+    }, [])
 
-    },[])
-
-    // Closes a tab and shifts focus to the nearest remaining tab.
     const handleCloseFile = React.useCallback((filePath: string) => {
         setOpenFiles((prev) => {
             const next = prev.filter((f) => f !== filePath)
@@ -309,22 +317,13 @@ function MainPlaygroundPage() {
         })
     }, [activeFilePath])
 
-
-
-    // Applies one tree mutation, then persists the updated snapshot.
     const applyTreeChange = React.useCallback(
         (mutate: (draft: FileTreeNode) => boolean) => {
             setTreeData((previous) => {
-                if (!previous) {
-                    return previous
-                }
-
+                if (!previous) return previous
                 const draft = cloneTree(previous)
                 const hasChanged = mutate(draft)
-                if (!hasChanged) {
-                    return previous
-                }
-
+                if (!hasChanged) return previous
                 const normalizedTree = rebuildPaths(draft, ".")
                 void saveTemplateData(normalizedTree)
                 return normalizedTree
@@ -333,29 +332,18 @@ function MainPlaygroundPage() {
         [saveTemplateData]
     )
 
-    // Creates a new file under the selected parent folder.
     const handleAddFile = React.useCallback((parentPath: string, filename: string, extension: string) => {
         const cleanFilename = sanitizeNodeName(filename)
         const cleanExtension = sanitizeNodeName(extension).replace(/^\./, "")
-        if (!cleanFilename) {
-            return
-        }
-
+        if (!cleanFilename) return
         const newName = cleanExtension ? `${cleanFilename}.${cleanExtension}` : cleanFilename
 
         applyTreeChange((draft) => {
             let didCreate = false
             const changed = updateNodeByPath(draft, parentPath, (target) => {
-                if (target.type !== "directory") {
-                    return
-                }
-
+                if (target.type !== "directory") return
                 const children = target.children ?? []
-                const alreadyExists = children.some((child) => child.name === newName)
-                if (alreadyExists) {
-                    return
-                }
-
+                if (children.some((child) => child.name === newName)) return
                 children.push({
                     name: newName,
                     path: toChildPath(parentPath, newName),
@@ -365,35 +353,26 @@ function MainPlaygroundPage() {
                 target.children = children
                 didCreate = true
             })
-
             if (didCreate) {
-                setActiveFilePath(toChildPath(parentPath, newName))
+                const newPath = toChildPath(parentPath, newName)
+                // Seed an empty content entry for the new file.
+                setFileContents((prev) => ({ ...prev, [newPath]: "" }))
+                setOpenFiles((prev) => prev.includes(newPath) ? prev : [...prev, newPath])
+                setActiveFilePath(newPath)
             }
-
             return changed && didCreate
         })
     }, [applyTreeChange])
 
-    // Creates a new folder under the selected parent folder.
     const handleAddFolder = React.useCallback((parentPath: string, folderName: string) => {
         const cleanFolderName = sanitizeNodeName(folderName)
-        if (!cleanFolderName) {
-            return
-        }
-
+        if (!cleanFolderName) return
         applyTreeChange((draft) => {
             let didCreate = false
             const changed = updateNodeByPath(draft, parentPath, (target) => {
-                if (target.type !== "directory") {
-                    return
-                }
-
+                if (target.type !== "directory") return
                 const children = target.children ?? []
-                const alreadyExists = children.some((child) => child.name === cleanFolderName)
-                if (alreadyExists) {
-                    return
-                }
-
+                if (children.some((child) => child.name === cleanFolderName)) return
                 children.push({
                     name: cleanFolderName,
                     path: toChildPath(parentPath, cleanFolderName),
@@ -403,76 +382,106 @@ function MainPlaygroundPage() {
                 target.children = children
                 didCreate = true
             })
-
             return changed && didCreate
         })
     }, [applyTreeChange])
 
-    // Removes one file and clears selection when it was the active one.
     const handleDeleteFile = React.useCallback((filePath: string) => {
         applyTreeChange((draft) => {
             const removed = removeNodeByPath(draft, filePath)
-            if (removed && activeFilePath === filePath) {
-                setActiveFilePath(findFirstFilePath(draft))
+            if (removed) {
+                setFileContents((prev) => { const n = { ...prev }; delete n[filePath]; return n })
+                setOpenFiles((prev) => prev.filter((f) => f !== filePath))
+                if (activeFilePath === filePath) setActiveFilePath(findFirstFilePath(draft))
             }
             return removed
         })
     }, [activeFilePath, applyTreeChange])
 
-    // Removes one folder and updates selection if the current file lived inside it.
     const handleDeleteFolder = React.useCallback((folderPath: string) => {
         applyTreeChange((draft) => {
             const removed = removeNodeByPath(draft, folderPath)
-            if (removed && (activeFilePath === folderPath || activeFilePath.startsWith(`${folderPath}/`))) {
-                setActiveFilePath(findFirstFilePath(draft))
+            if (removed) {
+                setFileContents((prev) => {
+                    const n = { ...prev }
+                    for (const k of Object.keys(n)) {
+                        if (k === folderPath || k.startsWith(`${folderPath}/`)) delete n[k]
+                    }
+                    return n
+                })
+                setOpenFiles((prev) => prev.filter((f) => f !== folderPath && !f.startsWith(`${folderPath}/`)))
+                if (activeFilePath === folderPath || activeFilePath.startsWith(`${folderPath}/`)) {
+                    setActiveFilePath(findFirstFilePath(draft))
+                }
             }
             return removed
         })
     }, [activeFilePath, applyTreeChange])
 
-    // Renames a file while preserving extension handling from the dialog fields.
     const handleRenameFile = React.useCallback((filePath: string, filename: string, extension: string) => {
         const cleanFilename = sanitizeNodeName(filename)
         const cleanExtension = sanitizeNodeName(extension).replace(/^\./, "")
-        if (!cleanFilename) {
-            return
-        }
-
+        if (!cleanFilename) return
         const updatedFileName = cleanExtension ? `${cleanFilename}.${cleanExtension}` : cleanFilename
 
         applyTreeChange((draft) => {
             const updated = updateNodeByPath(draft, filePath, (target) => {
                 target.name = updatedFileName
             })
-
-            if (updated && activeFilePath === filePath) {
+            if (updated) {
                 const parentPath = filePath.includes("/") ? filePath.slice(0, filePath.lastIndexOf("/")) : "."
-                setActiveFilePath(toChildPath(parentPath || ".", updatedFileName))
+                const newPath = toChildPath(parentPath || ".", updatedFileName)
+                // Migrate content and unsaved state to the new path.
+                setFileContents((prev) => {
+                    const n = { ...prev, [newPath]: prev[filePath] ?? "" }
+                    delete n[filePath]
+                    return n
+                })
+                setUnsavedFiles((prev) => {
+                    const n = new Set(prev)
+                    if (n.has(filePath)) { n.delete(filePath); n.add(newPath) }
+                    return n
+                })
+                setOpenFiles((prev) => prev.map((f) => f === filePath ? newPath : f))
+                if (activeFilePath === filePath) setActiveFilePath(newPath)
             }
-
             return updated
         })
     }, [activeFilePath, applyTreeChange])
 
-    // Renames a folder and remaps active selection into the new folder path.
     const handleRenameFolder = React.useCallback((folderPath: string, newFolderName: string) => {
         const cleanFolderName = sanitizeNodeName(newFolderName)
-        if (!cleanFolderName) {
-            return
-        }
+        if (!cleanFolderName) return
 
         applyTreeChange((draft) => {
             const updated = updateNodeByPath(draft, folderPath, (target) => {
                 target.name = cleanFolderName
             })
-
-            if (updated && (activeFilePath === folderPath || activeFilePath.startsWith(`${folderPath}/`))) {
+            if (updated) {
                 const parentPath = folderPath.includes("/") ? folderPath.slice(0, folderPath.lastIndexOf("/")) : "."
                 const renamedFolderPath = toChildPath(parentPath || ".", cleanFolderName)
-                const suffix = activeFilePath.slice(folderPath.length)
-                setActiveFilePath(`${renamedFolderPath}${suffix}`)
+                // Remap all content keys and open tabs under the renamed folder.
+                setFileContents((prev) => {
+                    const n: Record<string, string> = {}
+                    for (const [k, v] of Object.entries(prev)) {
+                        const newKey = (k === folderPath || k.startsWith(`${folderPath}/`))
+                            ? renamedFolderPath + k.slice(folderPath.length)
+                            : k
+                        n[newKey] = v
+                    }
+                    return n
+                })
+                setOpenFiles((prev) =>
+                    prev.map((f) =>
+                        f === folderPath || f.startsWith(`${folderPath}/`)
+                            ? renamedFolderPath + f.slice(folderPath.length)
+                            : f
+                    )
+                )
+                if (activeFilePath === folderPath || activeFilePath.startsWith(`${folderPath}/`)) {
+                    setActiveFilePath(renamedFolderPath + activeFilePath.slice(folderPath.length))
+                }
             }
-
             return updated
         })
     }, [activeFilePath, applyTreeChange])
@@ -480,7 +489,7 @@ function MainPlaygroundPage() {
     if (isLoading && !treeData) {
         return (
             <SidebarInset>
-                <div className='flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground'>
+                <div className="flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground">
                     Loading playground...
                 </div>
             </SidebarInset>
@@ -490,7 +499,7 @@ function MainPlaygroundPage() {
     if (error && !treeData) {
         return (
             <SidebarInset>
-                <div className='flex min-h-[40vh] items-center justify-center text-sm text-destructive'>
+                <div className="flex min-h-[40vh] items-center justify-center text-sm text-destructive">
                     {error}
                 </div>
             </SidebarInset>
@@ -499,11 +508,10 @@ function MainPlaygroundPage() {
 
     return (
         <div className="flex h-screen w-full overflow-hidden">
-            {/* Sidebar file explorer */}
             {treeData && (
                 <TemplateFileTree
                     data={treeData}
-                    onFileSelect={handleFileSelect}          
+                    onFileSelect={handleFileSelect}
                     selectedFilePath={activeFilePath}
                     title="File Explorer"
                     onAddFile={handleAddFile}
@@ -515,8 +523,19 @@ function MainPlaygroundPage() {
                 />
             )}
 
-            {/* Main content area: tab bar on top, editor below */}
             <SidebarInset className="flex flex-col flex-1 overflow-hidden">
+                {/* Header */}
+                <div className="justify-center flex items-center px-4 py-2 border-b border-[#1c1f26] bg-[#0f1115] shrink-0">
+                    <div className="justify-center w-2xl flex items-center gap-2 px-3 py-1 rounded-md border border-[#2a2f3a] bg-[#141821]">
+                        <span className="text-[11px] tracking-widest uppercase text-[#5c6370] font-semibold select-none">
+                            Playground
+                        </span>
+                        <span className="text-[#aab1bf] text-[13px] font-mono font-medium">
+                            {playgroundTitle}
+                        </span>
+                    </div>
+                </div>
+
                 <OpenFilesTabs
                     openFiles={openFiles}
                     activeFilePath={activeFilePath}
@@ -524,16 +543,22 @@ function MainPlaygroundPage() {
                     onSelect={handleFileSelect}
                     onClose={handleCloseFile}
                     onSave={handleSave}
-                    onSaveAll={handleSaveAll}               
+                    onSaveAll={handleSaveAll}
                 />
-                
 
+                {/* Editor area */}
                 <div className="flex-1 overflow-auto bg-[#0f1115]">
-                    
                     {activeFilePath ? (
-                        <div className="p-4 text-sm text-[#aab1bf] font-mono">
-                            Editing: {activeFilePath}
-                        </div>
+                        // Replace this textarea with your real editor component.
+                        // Pass value={fileContents[activeFilePath] ?? ""}
+                        // and onChange={(e) => handleFileChange(activeFilePath, e.target.value)}
+                        <textarea
+                            key={activeFilePath}
+                            value={fileContents[activeFilePath] ?? ""}
+                            onChange={(e) => handleFileChange(activeFilePath, e.target.value)}
+                            spellCheck={false}
+                            className="w-full h-full resize-none bg-[#0f1115] text-[#aab1bf] text-[13px] font-mono p-4 outline-none border-none"
+                        />
                     ) : (
                         <div className="flex h-full items-center justify-center text-sm text-[#5c6370]">
                             No file open
@@ -542,7 +567,7 @@ function MainPlaygroundPage() {
                 </div>
             </SidebarInset>
         </div>
-    )    
+    )
 }
 
 export default MainPlaygroundPage
