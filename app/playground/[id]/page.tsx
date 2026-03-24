@@ -395,11 +395,12 @@ function MainPlaygroundPage() {
     }
 
     return (
-        <div>
+        <div className="flex h-screen w-full overflow-hidden">
+            {/* Sidebar file explorer */}
             {treeData && (
                 <TemplateFileTree
                     data={treeData}
-                    onFileSelect={(filePath: string) => setActiveFilePath(filePath)}
+                    onFileSelect={handleFileSelect}          
                     selectedFilePath={activeFilePath}
                     title="File Explorer"
                     onAddFile={handleAddFile}
@@ -410,6 +411,7 @@ function MainPlaygroundPage() {
                     onRenameFolder={handleRenameFolder}
                 />
             )}
+
             {/* Main content area: tab bar on top, editor below */}
             <SidebarInset className="flex flex-col flex-1 overflow-hidden">
                 <OpenFilesTabs
@@ -419,12 +421,9 @@ function MainPlaygroundPage() {
                     onClose={handleCloseFile}
                 />
 
-                {/* Editor area — wire your editor component here */}
                 <div className="flex-1 overflow-auto bg-[#0f1115]">
                     {activeFilePath ? (
                         <div className="p-4 text-sm text-[#aab1bf] font-mono">
-                            {/* Replace this with your actual editor component */}
-                            {/* e.g. <CodeEditor filePath={activeFilePath} /> */}
                             Editing: {activeFilePath}
                         </div>
                     ) : (
@@ -435,7 +434,7 @@ function MainPlaygroundPage() {
                 </div>
             </SidebarInset>
         </div>
-    )
+    )    
 }
 
 export default MainPlaygroundPage
