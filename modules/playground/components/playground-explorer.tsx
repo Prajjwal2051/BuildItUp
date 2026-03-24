@@ -17,7 +17,6 @@ import {
     SidebarGroupContent,
     SidebarGroupLabel,
     SidebarMenu,
-    SidebarMenuButton,
     SidebarMenuItem,
     SidebarMenuSub,
     SidebarRail,
@@ -41,6 +40,35 @@ import RenameFileDialog from "./dialogs/rename-file-dialog";
 import DeleteDialog from "./dialogs/delete-dialog";
 
 type ExplorerNode = FileTreeNode;
+
+type OnFileSelect = (filePath: string, file: ExplorerNode) => void;
+
+interface TemplateFileTreeProps {
+    data: ExplorerNode;
+    onFileSelect?: OnFileSelect;
+    selectedFilePath?: string;
+    title?: string;
+    onAddFile?: (parentPath: string, filename: string, extension: string) => void;
+    onAddFolder?: (parentPath: string, folderName: string) => void;
+    onDeleteFile?: (filePath: string) => void;
+    onDeleteFolder?: (folderPath: string) => void;
+    onRenameFile?: (filePath: string, newFilename: string, newExtension: string) => void;
+    onRenameFolder?: (folderPath: string, newFolderName: string) => void;
+}
+
+interface TemplateNodeProps {
+    node: ExplorerNode;
+    level: number;
+    selectedFilePath?: string;
+    onFileSelect?: OnFileSelect;
+    onAddFile?: (parentPath: string, filename: string, extension: string) => void;
+    onAddFolder?: (parentPath: string, folderName: string) => void;
+    onDeleteFile?: (filePath: string) => void;
+    onDeleteFolder?: (folderPath: string) => void;
+    onRenameFile?: (filePath: string, newFilename: string, newExtension: string) => void;
+    onRenameFolder?: (folderPath: string, newFolderName: string) => void;
+}
+
 // Utility component for rendering Material Icons with consistent styling.
 function MaterialIcon({ name, className }: { name: string; className?: string }) {
     return (
@@ -80,7 +108,7 @@ function TemplateFileTree({
     onDeleteFolder,
     onRenameFile,
     onRenameFolder,
-}: any) {
+}: TemplateFileTreeProps) {
     const isRootFolder = data.type === "directory";
     const rootPath = data.path || ".";
 
@@ -119,7 +147,7 @@ function TemplateFileTree({
                     )}
 
                     <SidebarGroupContent className="px-2 pb-3">
-                        <SidebarMenu className="gap-[2px]">
+                        <SidebarMenu className="gap-0.5">
                             {sortNodes(data.children).map((child) => (
                                 <TemplateNode
                                     key={child.path}
@@ -175,7 +203,7 @@ function TemplateNode({
     onDeleteFolder,
     onRenameFile,
     onRenameFolder,
-}: any) {
+}: TemplateNodeProps) {
     const nodePath = node.path || ".";
     const isFolder = node.type === "directory";
 
@@ -196,7 +224,7 @@ function TemplateNode({
                 <div
                     onClick={() => onFileSelect?.(nodePath, node)}
                     className={cn(
-                        "group flex items-center px-3 py-[5px] text-[12.5px] font-mono rounded-md transition-all",
+                        "group flex items-center px-3 py-1.25 text-[12.5px] font-mono rounded-md transition-all",
                         selected
                             ? "bg-[#1a1f29] text-white font-semibold"
                             : "text-[#aab1bf] hover:bg-[#151922]"
@@ -205,7 +233,7 @@ function TemplateNode({
                 >
                     <MaterialIcon name="description" className="mr-3 text-[15px] text-[#d19a66]" />
 
-                    <span className="flex items-center gap-[2px] truncate">
+                    <span className="flex items-center gap-0.5 truncate">
                         <span className="font-medium">{parsed.filename}</span>
                         <span className="text-[#5c6370]">.{parsed.extension}</span>
                     </span>
@@ -266,7 +294,7 @@ function TemplateNode({
         <SidebarMenuItem>
             <Collapsible open={isOpen} onOpenChange={setIsOpen}>
                 <div
-                    className="group flex items-center px-3 py-[5px] text-[12.5px] font-mono text-[#c5c9d4] hover:bg-[#151922] rounded-md"
+                    className="group flex items-center px-3 py-1.25 text-[12.5px] font-mono text-[#c5c9d4] hover:bg-[#151922] rounded-md"
                     style={{ paddingLeft }}
                 >
                     <CollapsibleTrigger className="flex items-center w-full">
@@ -319,7 +347,7 @@ function TemplateNode({
 
                 <CollapsibleContent>
                     <SidebarMenuSub className="ml-2 border-l border-[#222833] pl-2">
-                        {sortNodes(node.children).map((child: any) => (
+                        {sortNodes(node.children).map((child) => (
                             <TemplateNode
                                 key={child.path}
                                 node={child}

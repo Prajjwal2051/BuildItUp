@@ -192,9 +192,29 @@ async function saveTemplateToJson(
     await fs.writeFile(absoluteOutputPath, json, { encoding })
 }
 
+function TemplateFile(name: string, path: string, content?: string): FileTreeNode {
+    return {
+        name,
+        path,
+        type: "file",
+        content,
+    }
+}
+
+function TemplateFolder(name: string, path: string, children: FileTreeNode[] = []): FileTreeNode {
+    return {
+        name,
+        path,
+        type: "directory",
+        children,
+    }
+}
+
 export {
     pathToJson,
     pathToJsonString,
     readTemplateFromJson,
     saveTemplateToJson,
+    TemplateFile,
+    TemplateFolder,
 }

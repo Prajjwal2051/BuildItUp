@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useSyncExternalStore } from "react"
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 
@@ -10,11 +10,12 @@ import { Button } from "@/components/ui/button"
 // We wait for mount so the icon always matches the active client theme.
 function ThemeToggle() {
     const { theme, setTheme } = useTheme()
-    const [mounted, setMounted] = useState(false)
-
-    useEffect(() => {
-        setMounted(true)
-    }, [])
+    // This avoids setState in useEffect while still distinguishing server and client render.
+    const mounted = useSyncExternalStore(
+        () => () => { },
+        () => true,
+        () => false
+    )
 
     if (!mounted) {
         return (

@@ -1,11 +1,12 @@
 "use client"
-import React from 'react'
-import { useParams } from 'next/navigation'
-import usePlayground from '@/modules/playground/hooks/usePlayground'
-import { Separator } from '@base-ui/react'
-import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
-import TemplateFileTree from '@/modules/playground/components/playground-explorer'
-import type { FileTreeNode } from '@/modules/playground/lib/path-to-json'
+
+import React from "react"
+import { useParams } from "next/navigation"
+import { SidebarInset } from "@/components/ui/sidebar"
+import TemplateFileTree from "@/modules/playground/components/playground-explorer"
+import usePlayground from "@/modules/playground/hooks/usePlayground"
+import type { FileTreeNode } from "@/modules/playground/lib/path-to-json"
+
 
 // Ensures names remain valid path segments for create and rename actions.
 function sanitizeNodeName(name: string): string {
@@ -41,26 +42,6 @@ function rebuildPaths(node: FileTreeNode, path = "."): FileTreeNode {
     }
 
     return nextNode
-}
-
-// Finds one node by path so handlers can target specific files/folders.
-function findNodeByPath(node: FileTreeNode, targetPath: string): FileTreeNode | null {
-    if (node.path === targetPath) {
-        return node
-    }
-
-    if (node.type !== "directory" || !node.children) {
-        return null
-    }
-
-    for (const child of node.children) {
-        const found = findNodeByPath(child, targetPath)
-        if (found) {
-            return found
-        }
-    }
-
-    return null
 }
 
 // Returns the first file path to auto-select something meaningful after load.
@@ -112,13 +93,14 @@ function removeNodeByPath(node: FileTreeNode, targetPath: string): boolean {
     return node.children.some((child) => removeNodeByPath(child, targetPath))
 }
 
-// This page is the main entry point for a specific playground, identified by its ID in the URL. It retrieves the ID from the URL parameters and can be used to fetch and display the corresponding playground data. Currently, it simply displays the ID for demonstration purposes.
+// Renders a single playground workspace and keeps file-tree edits in sync with persistence.
+// This page owns immutable tree mutations so nested CRUD actions remain predictable.
 function MainPlaygroundPage() {
 
     const params = useParams<{ id?: string | string[] }>()
     // Route params can be string or string[] depending on segment shape, so normalize before use.
     const id = Array.isArray(params.id) ? (params.id[0] ?? "") : (params.id ?? "")
-    const { playgroundData, templateData, isLoading, error, saveTemplateData } = usePlayground(id)
+    const { templateData, isLoading, error, saveTemplateData } = usePlayground(id)
     const [treeData, setTreeData] = React.useState<FileTreeNode | null>(null)
     const [activeFilePath, setActiveFilePath] = React.useState("")
 
@@ -301,16 +283,6 @@ function MainPlaygroundPage() {
         })
     }, [activeFilePath, applyTreeChange])
 
-    // Keeps selected file label synced with path-based explorer selection.
-    const activeFileName = React.useMemo(() => {
-        if (!treeData || !activeFilePath) {
-            return "No file selected"
-        }
-
-        const activeNode = findNodeByPath(treeData, activeFilePath)
-        return activeNode?.name ?? "No file selected"
-    }, [treeData, activeFilePath])
-
     if (isLoading && !treeData) {
         return (
             <SidebarInset>
@@ -336,7 +308,7 @@ function MainPlaygroundPage() {
             {treeData && (
                 <TemplateFileTree
                     data={treeData}
-                    onFileSelect={(filePath) => setActiveFilePath(filePath)}
+                    onFileSelect={(filePath: string) => setActiveFilePath(filePath)}
                     selectedFilePath={activeFilePath}
                     title="File Explorer"
                     onAddFile={handleAddFile}

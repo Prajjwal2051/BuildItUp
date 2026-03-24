@@ -8,7 +8,7 @@ import type { FileTreeNode } from "../lib/path-to-json"
 interface PlaygroundData {
     id: string
     title?: string
-    [key: string]: any
+    [key: string]: unknown
 
 }
 // The return type of the `usePlayground` hook, which includes the playground data, template data, loading state, error message, and functions to load the playground and save template data. This interface helps to ensure that the hook's return value is consistent and type-safe.
@@ -26,6 +26,14 @@ function usePlayground(playgroundId: string): UsePlaygroundReturn {
     const [templateData, setTemplateData] = useState<FileTreeNode | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+
+    // Extracts a readable message from unknown errors without weakening type safety.
+    const getErrorMessage = (value: unknown): string => {
+        if (value instanceof Error && value.message) {
+            return value.message
+        }
+        return "An unexpected error occurred"
+    }
 
     const loadPlayground = useCallback(async () => {
         // This function loads the playground data from the server using the provided playground ID. It sets the loading state to true, clears any previous errors, and makes a fetch request to the API endpoint for the playground. If the response is successful, it updates the playground data and template data in the state. If there is an error during the fetch operation, it catches the error and updates the error state with an appropriate message. Finally, it sets the loading state back to false regardless of the outcome.
@@ -76,11 +84,11 @@ function usePlayground(playgroundId: string): UsePlaygroundReturn {
             }
 
             toast.success("Playground loaded successfully")
-        } catch (error: any) {
+        } catch (error: unknown) {
             toast.error("Error loading playground")
             console.error("Error loading playground:", error)
             setPlaygroundData(null)
-            setError(error.message || "An unexpected error occurred")
+            setError(getErrorMessage(error))
         } finally {
             setIsLoading(false)
         }
@@ -111,10 +119,10 @@ function usePlayground(playgroundId: string): UsePlaygroundReturn {
 
             setTemplateData(data)
             toast.success("Template saved successfully")
-        } catch (error: any) {
+        } catch (error: unknown) {
             toast.error("Error saving template")
             console.error("Error saving template:", error)
-            setError(error.message || "An unexpected error occurred")
+            setError(getErrorMessage(error))
         } finally {
             setIsLoading(false)
         }

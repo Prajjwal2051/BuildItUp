@@ -50,6 +50,8 @@ interface TemplateOption {
     category: "frontend" | "backend" | "fullstack";
 }
 
+type TemplateCategoryFilter = "all" | "frontend" | "backend" | "fullstack";
+
 const templates: TemplateOption[] = [
     {
         id: "react",
@@ -143,10 +145,16 @@ const TemplateSelectionModal = ({
     const [step, setStep] = useState<"select" | "configure">("select");
     const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
-    const [category, setCategory] = useState<
-        "all" | "frontend" | "backend" | "fullstack"
-    >("all");
+    const [category, setCategory] = useState<TemplateCategoryFilter>("all");
     const [projectName, setProjectName] = useState("");
+
+    // Narrow tab values from string into our known category union before state update.
+    const toTemplateCategoryFilter = (value: string): TemplateCategoryFilter => {
+        if (value === "frontend" || value === "backend" || value === "fullstack") {
+            return value
+        }
+        return "all"
+    }
 
     // This keeps search and category filters together so the UI stays easy to maintain.
     const filteredTemplates = templates.filter((template) => {
@@ -264,7 +272,7 @@ const TemplateSelectionModal = ({
                                 <Tabs
                                     defaultValue="all"
                                     className="w-full sm:w-auto"
-                                    onValueChange={(value) => setCategory(value as any)}
+                                    onValueChange={(value) => setCategory(toTemplateCategoryFilter(value))}
                                 >
                                     <TabsList className="grid grid-cols-4 w-full sm:w-100">
                                         <TabsTrigger value="all">All</TabsTrigger>

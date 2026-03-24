@@ -1,7 +1,6 @@
 import { getUserById } from './modules/auth/actions/index';
 import { db } from '@/lib/db';
 import NextAuth from "next-auth"
-import { PrismaAdapter } from "@auth/prisma-adapter"
 import authConfig from './auth.config';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -49,7 +48,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                         image: user.image!,
 
                         accounts: {
-                            // @ts-ignore — session_state type mismatch in Prisma schema
+                            // @ts-expect-error — session_state type mismatch in Prisma schema
                             create: {
                                 provider: account.provider,               // e.g. "google"
                                 providerAccountId: account.providerAccountId, // Google's user ID
@@ -106,7 +105,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                         scope: account.scope,
                         token_type: account.token_type,
                         id_token: account.id_token,
-                        // @ts-ignore — session_state type mismatch in Prisma schema
+                        // @ts-expect-error — session_state type mismatch in Prisma schema
                         session_state: account.session_state,
                     }
                 });
