@@ -1,4 +1,5 @@
 "use client"
+// This page renders the main playground interface for a given template ID. It loads the template data, manages local state for the file tree and open files, and handles all file operations (add/rename/delete) while keeping the server in sync.
 
 import React from "react"
 import { useParams } from "next/navigation"
@@ -103,49 +104,110 @@ function getFileName(filePath: string): string {
 function OpenFilesTabs({
     openFiles,
     activeFilePath,
+    unsavedFiles,
     onSelect,
     onClose,
+    onSave,
+    onSaveAll,
 }: {
-    openFiles: string[]
-    activeFilePath: string
-    onSelect: (path: string) => void
-    onClose: (path: string) => void
+        openFiles: string[]
+        activeFilePath: string
+        unsavedFiles: Set<string>
+        onSelect: (path: string) => void
+        onClose: (path: string) => void
+        onSave: () => void
+        onSaveAll: () => void
 }) {
     if (openFiles.length === 0) return null
+    const hasUnsaved = unsavedFiles.size > 0
 
     return (
-        <div className="flex items-center gap-0 overflow-x-auto border-b border-[#1c1f26] bg-[#0f1115] scrollbar-none">
-            {openFiles.map((filePath) => {
-                const isActive = filePath === activeFilePath
-                return (
-                    <div
-                        key={filePath}
-                        onClick={() => onSelect(filePath)}
-                        className={cn(
-                            "group flex items-center gap-2 px-4 py-2 text-[12px] font-mono cursor-pointer border-r border-[#1c1f26] shrink-0 select-none transition-colors",
-                            isActive
-                                ? "bg-[#141821] text-white border-t-2 border-t-[#61afef]"
-                                : "text-[#5c6370] hover:bg-[#151922] hover:text-[#aab1bf]"
-                        )}
-                    >
-                        <span>{getFileName(filePath)}</span>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation()
-                                onClose(filePath)
-                            }}
+        <div className="flex items-center border-b border-[#1c1f26] bg-[#0f1115]">
+            {/* Scrollable tab list */}
+            <div className="flex items-center overflow-x-auto scrollbar-none flex-1">
+                {openFiles.map((filePath) => {
+                    const isActive = filePath === activeFilePath
+                    const isDirty = unsavedFiles.has(filePath)
+                    return (
+                        <div
+                            key={filePath}
+                            onClick={() => onSelect(filePath)}
                             className={cn(
-                                "rounded flex items-center justify-center w-4 h-4 text-[11px] transition-colors",
+                                "group flex items-center gap-2 px-4 py-2 text-[12px] font-mono cursor-pointer border-r border-[#1c1f26] shrink-0 select-none transition-colors",
                                 isActive
-                                    ? "text-[#5c6370] hover:text-white hover:bg-[#2a2f3a]"
-                                    : "opacity-0 group-hover:opacity-100 text-[#5c6370] hover:text-white hover:bg-[#2a2f3a]"
+                                    ? "bg-[#141821] text-white border-t-2 border-t-[#61afef]"
+                                    : "text-[#5c6370] hover:bg-[#151922] hover:text-[#aab1bf]"
                             )}
                         >
-                            ✕
-                        </button>
-                    </div>
-                )
-            })}
+                            {/* Dirty dot indicator */}
+                            {isDirty && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#e5c07b] shrink-0" />
+                            )}
+                            <span>{getFileName(filePath)}</span>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    onClose(filePath)
+                                }}
+                                className={cn(
+                                    "rounded flex items-center justify-center w-4 h-4 text-[11px] transition-colors",
+                                    isActive
+                                        ? "text-[#5c6370] hover:text-white hover:bg-[#2a2f3a]"
+                                        : "opacity-0 group-hover:opacity-100 text-[#5c6370] hover:text-white hover:bg-[#2a2f3a]"
+                                )}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )
+                })}
+            </div>
+
+            {/* Save actions pinned to the right */}
+            <div className="flex items-center gap-1 px-2 shrink-0 border-l border-[#1c1f26]">
+                {/* Save current file — Ctrl+S */}
+                <button
+                    onClick={onSave}
+                    title="Save (Ctrl+S)"
+                    disabled={!activeFilePath || !unsavedFiles.has(activeFilePath)}
+                    className={cn(
+                        "flex items-center justify-center w-7 h-7 rounded transition-colors",
+                        activeFilePath && unsavedFiles.has(activeFilePath)
+                            ? "text-[#aab1bf] hover:text-white hover:bg-[#1b2130]"
+                            : "text-[#3a3f4b] cursor-not-allowed"
+                    )}
+                >
+                    {/* Save single icon */}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                        <polyline points="17 21 17 13 7 13 7 21" />
+                        <polyline points="7 3 7 8 15 8" />
+                    </svg>
+                </button>
+
+                {/* Save all files — Ctrl+Shift+S */}
+                <button
+                    onClick={onSaveAll}
+                    title="Save All (Ctrl+Shift+S)"
+                    disabled={!hasUnsaved}
+                    className={cn(
+                        "flex items-center justify-center w-7 h-7 rounded transition-colors",
+                        hasUnsaved
+                            ? "text-[#aab1bf] hover:text-white hover:bg-[#1b2130]"
+                            : "text-[#3a3f4b] cursor-not-allowed"
+                    )}
+                >
+                    {/* Save all icon — stacked floppy disks */}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                        <polyline points="17 21 17 13 7 13 7 21" />
+                        <polyline points="7 3 7 8 15 8" />
+                        <line x1="21" y1="7" x2="23" y2="7" />
+                        <line x1="21" y1="10" x2="23" y2="10" />
+                        <line x1="21" y1="13" x2="23" y2="13" />
+                    </svg>
+                </button>
+            </div>
         </div>
     )
 }
@@ -162,6 +224,8 @@ function MainPlaygroundPage() {
     const [treeData, setTreeData] = React.useState<FileTreeNode | null>(null)
     const [activeFilePath, setActiveFilePath] = React.useState("")
     const [openFiles,setOpenFiles] = React.useState<string[]>([])  // opens tabs state
+    const [unsavedFiles, setUnsavedFiles] = React.useState<Set<string>>(new Set())
+    const hasUnsaved = unsavedFiles.size > 0 
 
     // Keep local editable tree state in sync with server-loaded template data.
     React.useEffect(() => {
@@ -183,6 +247,45 @@ function MainPlaygroundPage() {
         
     
     }, [templateData])
+
+    // Saves the currently active file.
+    const handleSave = React.useCallback(() => {
+        if (!activeFilePath) return
+        setUnsavedFiles((prev) => {
+            const next = new Set(prev)
+            next.delete(activeFilePath)
+            return next
+        })
+        // TODO: trigger your actual per-file save/persist logic here
+    }, [activeFilePath])
+
+    // Saves all open files at once.
+    const handleSaveAll = React.useCallback(() => {
+        setUnsavedFiles(new Set())
+        // TODO: trigger your actual save logic for all openFiles here
+    }, [])
+
+    React.useEffect(() => {
+        function onKeyDown(e: KeyboardEvent) {
+            if (!e.ctrlKey && !e.metaKey) return
+            if (e.key === "s" || e.key === "S") {
+                e.preventDefault()
+                if (e.shiftKey) {
+                    handleSaveAll()
+                } else {
+                    handleSave()
+                }
+            }
+        }
+        window.addEventListener("keydown", onKeyDown)
+        return () => window.removeEventListener("keydown", onKeyDown)
+    }, [handleSave, handleSaveAll])
+
+    // Call this from your editor's onChange to mark a file as unsaved.
+    const handleFileChange = React.useCallback((filePath: string) => {
+        setUnsavedFiles((prev) => new Set(prev).add(filePath))
+    }, [])
+
 
     // Handles file selection by opening a new tab if not already open and setting active file.
     const handleFileSelect = React.useCallback((filePath: string) => {
@@ -417,11 +520,16 @@ function MainPlaygroundPage() {
                 <OpenFilesTabs
                     openFiles={openFiles}
                     activeFilePath={activeFilePath}
+                    unsavedFiles={unsavedFiles}
                     onSelect={handleFileSelect}
                     onClose={handleCloseFile}
+                    onSave={handleSave}
+                    onSaveAll={handleSaveAll}               
                 />
+                
 
                 <div className="flex-1 overflow-auto bg-[#0f1115]">
+                    
                     {activeFilePath ? (
                         <div className="p-4 text-sm text-[#aab1bf] font-mono">
                             Editing: {activeFilePath}
