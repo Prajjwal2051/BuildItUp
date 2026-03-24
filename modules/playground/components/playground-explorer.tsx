@@ -77,6 +77,7 @@ function MaterialIcon({ name, className }: { name: string; className?: string })
         </span>
     );
 }
+
 // Utility function to split a filename into its name and extension parts. It returns an object with `filename` and `extension` properties. If there is no extension, the `extension` property will be an empty string.
 function splitNameAndExtension(name: string) {
     const i = name.lastIndexOf(".");
@@ -96,7 +97,6 @@ function sortNodes(nodes: ExplorerNode[] = []) {
 }
 
 // This component is responsible for rendering the file explorer sidebar in the playground. It displays a tree structure of files and folders, and it provides actions for selecting, adding, renaming, and deleting files and folders. The component uses various dialogs to handle user interactions for these actions.
-
 function TemplateFileTree({
     data,
     onFileSelect,
@@ -114,6 +114,7 @@ function TemplateFileTree({
 
     const [isNewFileDialogOpen, setIsNewFileDialogOpen] = React.useState(false);
     const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = React.useState(false);
+    const [isExplorerOpen, setIsExplorerOpen] = React.useState(true);
 
     return (
         <Sidebar className="border-r border-[#1c1f26] bg-[#0f1115] text-[#aab1bf]">
@@ -121,11 +122,22 @@ function TemplateFileTree({
                 <SidebarGroup>
 
                     {/* HEADER */}
-                    <SidebarGroupLabel className="px-4 pt-4 pb-3 text-[11px] tracking-widest uppercase text-[#5c6370] font-semibold">
+                    <SidebarGroupLabel className="px-6 pr-9 pt-4 pb-3 text-[11px] tracking-widest uppercase text-[#5c6370] font-semibold flex items-center justify-between">
                         {title}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 text-[#5c6370] hover:text-white transition-colors"
+                            onClick={() => setIsExplorerOpen((prev) => !prev)}
+                        >
+                            <MaterialIcon
+                                name="chevron_right"
+                                className={cn("text-[14px] transition-transform", isExplorerOpen && "rotate-90")}
+                            />
+                        </Button>
                     </SidebarGroupLabel>
 
-                    {isRootFolder && (
+                    {isRootFolder && isExplorerOpen && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <SidebarGroupAction className="top-3 right-3 rounded-md border border-[#2a2f3a] bg-[#141821] text-[#7f8ea3] hover:bg-[#1b2130] hover:text-white transition-all">
@@ -146,25 +158,28 @@ function TemplateFileTree({
                         </DropdownMenu>
                     )}
 
-                    <SidebarGroupContent className="px-2 pb-3">
-                        <SidebarMenu className="gap-0.5">
-                            {sortNodes(data.children).map((child) => (
-                                <TemplateNode
-                                    key={child.path}
-                                    node={child}
-                                    level={0}
-                                    onFileSelect={onFileSelect}
-                                    selectedFilePath={selectedFilePath}
-                                    onAddFile={onAddFile}
-                                    onAddFolder={onAddFolder}
-                                    onDeleteFile={onDeleteFile}
-                                    onDeleteFolder={onDeleteFolder}
-                                    onRenameFile={onRenameFile}
-                                    onRenameFolder={onRenameFolder}
-                                />
-                            ))}
-                        </SidebarMenu>
-                    </SidebarGroupContent>
+                    {isExplorerOpen && (
+                        <SidebarGroupContent className="px-2 pb-3">
+                            <SidebarMenu className="gap-0.5">
+                                {sortNodes(data.children).map((child) => (
+                                    <TemplateNode
+                                        key={child.path}
+                                        node={child}
+                                        level={0}
+                                        onFileSelect={onFileSelect}
+                                        selectedFilePath={selectedFilePath}
+                                        onAddFile={onAddFile}
+                                        onAddFolder={onAddFolder}
+                                        onDeleteFile={onDeleteFile}
+                                        onDeleteFolder={onDeleteFolder}
+                                        onRenameFile={onRenameFile}
+                                        onRenameFolder={onRenameFolder}
+                                    />
+                                ))}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    )}
+
                 </SidebarGroup>
             </SidebarContent>
 
