@@ -8,6 +8,9 @@ import TemplateFileTree from "@/modules/playground/components/playground-explore
 import usePlayground from "@/modules/playground/hooks/usePlayground"
 import type { FileTreeNode } from "@/modules/playground/lib/path-to-json"
 import { cn } from "@/lib/utils"
+import Editor from "@monaco-editor/react"
+import type { editor as MonacoEditor } from "monaco-editor"
+import { configureMonaco, defaultEditorOptions, getEditorLanguage } from "@/modules/playground/lib/editor-config"
 
 // Ensures names remain valid path segments for create and rename actions.
 function sanitizeNodeName(name: string): string {
@@ -552,12 +555,14 @@ function MainPlaygroundPage() {
                         // Replace this textarea with your real editor component.
                         // Pass value={fileContents[activeFilePath] ?? ""}
                         // and onChange={(e) => handleFileChange(activeFilePath, e.target.value)}
-                        <textarea
+                        <Editor
                             key={activeFilePath}
+                            language={getEditorLanguage(activeFilePath.split(".").pop() ?? "")}
                             value={fileContents[activeFilePath] ?? ""}
-                            onChange={(e) => handleFileChange(activeFilePath, e.target.value)}
-                            spellCheck={false}
-                            className="w-full h-full resize-none bg-[#0f1115] text-[#aab1bf] text-[13px] font-mono p-4 outline-none border-none"
+                            onChange={(value) => handleFileChange(activeFilePath, value ?? "")}
+                            theme="modern-dark"
+                            options={defaultEditorOptions as unknown as MonacoEditor.IStandaloneEditorConstructionOptions}
+                            onMount={(_editor, monaco) => configureMonaco(monaco)}
                         />
                     ) : (
                         <div className="flex h-full items-center justify-center text-sm text-[#5c6370]">
