@@ -13,10 +13,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-// Renders the IDE-style preview block that demonstrates the product experience.
+// Shows a multi-view editor mockup so visitors can quickly see Orbit's editing, collaboration, and AI flow.
 function EditorMockup() {
     return (
-        <div className="w-full max-w-6xl mx-auto">
+        <div className="w-full max-w-6xl mx-auto editor-fade-in mb-24" id="docs">
             <div
                 className="border border-neutral-800 rounded-3xl overflow-hidden flex flex-col h-140"
                 style={{
@@ -40,7 +40,7 @@ function EditorMockup() {
                             className="hidden md:flex rounded-lg px-4 py-2 text-xs text-neutral-500 font-sans items-center gap-12 border border-neutral-800 w-64"
                             style={{ backgroundColor: "#1a1a1a" }}
                         >
-                            Untitled Files
+                            orbit-code
                             <MoreVertical className="w-3 h-3 ml-auto" />
                         </div>
 
@@ -54,15 +54,11 @@ function EditorMockup() {
                                 className="px-4 py-1.5 text-white text-xs rounded-md flex items-center gap-3"
                                 style={{ backgroundColor: "#222222" }}
                             >
-                                Main.html
+                                Main.tsx
                                 <X className="w-2.5 h-2.5 text-neutral-400 hover:text-white cursor-pointer" />
                             </div>
-                            <div className="px-4 py-1.5 text-neutral-500 text-xs hover:text-white cursor-pointer transition-colors hidden sm:block">
-                                Packages.json
-                            </div>
-                            <div className="px-4 py-1.5 text-neutral-500 text-xs hover:text-white cursor-pointer transition-colors hidden sm:block">
-                                Try_1.css
-                            </div>
+                            <div className="px-4 py-1.5 text-neutral-500 text-xs hidden sm:block">Queue.ts</div>
+                            <div className="px-4 py-1.5 text-neutral-500 text-xs hidden sm:block">OtEngine.ts</div>
                         </div>
                     </div>
 
@@ -92,7 +88,6 @@ function EditorMockup() {
                         <Box className="w-5 h-5 text-neutral-600 hover:text-white cursor-pointer transition-colors" />
                     </div>
 
-                    {/* Adds a realistic file tree column to make the IDE mockup feel complete. */}
                     <div
                         className="hidden md:block w-64 lg:w-72 border-r border-neutral-800 shrink-0"
                         style={{ backgroundColor: "#101014" }}
@@ -110,144 +105,54 @@ function EditorMockup() {
                                 <div className="pl-3 text-neutral-500">lib</div>
                                 <div className="pl-6 text-neutral-500">ot-engine.ts</div>
                                 <div className="pl-6 text-neutral-500">queue.ts</div>
-                                <div className="text-neutral-300">docker</div>
-                                <div className="pl-3 text-neutral-500">runner.ts</div>
-                                <div className="text-neutral-300">README.md</div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex-1 relative overflow-hidden flex flex-col font-mono text-[15px]">
-                        <div className="p-6 overflow-hidden flex-1 text-neutral-300 leading-[1.8]">
-                            <div className="flex">
-                                <div className="w-10 text-neutral-700 select-none text-right pr-5 text-xs mt-1">1</div>
-                                <div className="text-neutral-500 italic text-xs mt-1">
-                                    {"/* This Source Code Form is subject to the terms... */"}
-                                </div>
-                            </div>
-                            <div className="flex">
-                                <div className="w-10 text-neutral-700 select-none text-right pr-5 text-xs mt-1">2</div>
-                                <div>
-                                    &lt;<span style={{ color: "#00d4aa" }}>!DOCTYPE</span>{" "}
-                                    <span style={{ color: "#a8d5ff" }}>html</span>&gt;
-                                </div>
-                            </div>
-                            <div className="flex">
-                                <div className="w-10 text-neutral-700 select-none text-right pr-5 text-xs mt-1">3</div>
-                                <div>
-                                    &lt;<span style={{ color: "#a8d5ff" }}>html</span>{" "}
-                                    <span style={{ color: "#00d4aa" }}>lang</span>=
-                                    <span className="text-yellow-500">&quot;en&quot;</span>&gt;
-                                </div>
-                            </div>
-                            <div className="flex">
-                                <div className="w-10 text-neutral-700 select-none text-right pr-5 text-xs mt-1">4</div>
-                                <div className="pl-4">
-                                    &lt;<span style={{ color: "#a8d5ff" }}>head</span>&gt;
-                                </div>
-                            </div>
-                            <div className="flex">
-                                <div className="w-10 text-neutral-700 select-none text-right pr-5 text-xs mt-1">5</div>
-                                <div className="pl-8">
-                                    &lt;<span style={{ color: "#a8d5ff" }}>meta</span>{" "}
-                                    <span style={{ color: "#00d4aa" }}>charset</span>=
-                                    <span className="text-yellow-500">&quot;UTF-8&quot;</span>&gt;
-                                </div>
-                            </div>
-                            <div className="flex">
-                                <div className="w-10 text-neutral-700 select-none text-right pr-5 text-xs mt-1">6</div>
-                                <div className="pl-8">
-                                    &lt;<span style={{ color: "#a8d5ff" }}>title</span>&gt;
-                                    <span className="text-white">Orbit Code</span>
-                                    &lt;/<span style={{ color: "#a8d5ff" }}>title</span>&gt;
-                                </div>
-                            </div>
-                            <div className="flex">
-                                <div className="w-10 text-neutral-700 select-none text-right pr-5 text-xs mt-1">7</div>
-                                <div className="pl-4">
-                                    &lt;/<span style={{ color: "#a8d5ff" }}>head</span>&gt;
-                                </div>
-                            </div>
-                            <div className="flex">
-                                <div className="w-10 text-neutral-700 select-none text-right pr-5 text-xs mt-1">8</div>
-                                <div className="pl-4">
-                                    &lt;<span style={{ color: "#a8d5ff" }}>body</span>&gt;
-                                </div>
-                            </div>
+                    {/* Rotates through three editor snapshots using CSS timing so the preview feels dynamic. */}
+                    <div className="editor-views relative flex-1 overflow-hidden p-6 font-mono text-[13px] leading-7 text-neutral-300">
+                        <div className="p-6 editor-view editor-view-1 ">
+                            <div className="text-neutral-500 italic text-xs mb-3">// AI generated block</div>
+                            <div>&lt;<span className="text-[#a8d5ff]">section</span> <span className="text-[#00d4aa]">className</span>=<span className="text-yellow-500">&quot;hero py-20&quot;</span>&gt;</div>
+                            <div className="pl-5">&lt;<span className="text-[#a8d5ff]">h1</span>&gt;<span className="text-white">Code Faster.</span>&lt;/<span className="text-[#a8d5ff]">h1</span>&gt;</div>
+                            <div className="pl-5">&lt;<span className="text-[#a8d5ff]">p</span>&gt;<span className="text-white">With AI assistance.</span>&lt;/<span className="text-[#a8d5ff]">p</span>&gt;</div>
+                            <div>&lt;/<span className="text-[#a8d5ff]">section</span>&gt;</div>
 
-                            <div
-                                className="ml-14 mr-6 my-5 rounded-lg overflow-hidden relative border"
-                                style={{
-                                    backgroundColor: "#161616",
-                                    borderColor: "rgba(0,212,170,0.3)",
-                                    boxShadow: "0 0 20px rgba(0,212,170,0.1)",
-                                }}
-                            >
-                                <div
-                                    className="absolute left-0 top-0 bottom-0 w-1"
-                                    style={{ backgroundColor: "#00d4aa" }}
-                                />
-                                <div
-                                    className="px-4 py-2 border-b border-neutral-800 flex items-center justify-between"
-                                    style={{ backgroundColor: "#1a1a1a" }}
-                                >
-                                    <div
-                                        className="flex items-center gap-2 text-xs font-sans font-semibold"
-                                        style={{ color: "#00d4aa" }}
-                                    >
+                            <div className="mt-6 rounded-lg overflow-hidden relative border border-[rgba(0,212,170,0.3)] bg-[#161616]">
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#00d4aa]" />
+                                <div className="px-4 py-2 border-b border-neutral-800 flex items-center justify-between bg-[#1a1a1a]">
+                                    <div className="flex items-center gap-2 text-xs font-sans font-semibold text-[#00d4aa]">
                                         <Sparkles className="w-3.5 h-3.5" />
                                         AI Suggestion
                                     </div>
-                                    <div className="text-[10px] text-neutral-500 font-sans uppercase tracking-wider">
-                                        Press Tab to Accept
-                                    </div>
+                                    <div className="text-[10px] text-neutral-500 font-sans uppercase tracking-wider">Press Tab to Accept</div>
                                 </div>
-                                <div className="p-4">
-                                    <div className="flex items-center gap-3 mb-3 text-neutral-300 font-sans text-sm">
-                                        <div
-                                            className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                                            style={{
-                                                backgroundColor: "rgba(168,213,255,0.2)",
-                                                color: "#a8d5ff",
-                                            }}
-                                        >
-                                            U
-                                        </div>
-                                        Generate a responsive hero section
-                                    </div>
-                                    <div className="font-mono text-[13px] text-neutral-400 opacity-80 border-l-2 border-neutral-800 pl-4 py-1">
-                                        &lt;<span style={{ color: "#a8d5ff" }}>section</span>{" "}
-                                        <span style={{ color: "#00d4aa" }}>class</span>=
-                                        <span className="text-yellow-500">&quot;hero py-20&quot;</span>&gt;
-                                        <br />
-                                        &nbsp;&nbsp;&lt;<span style={{ color: "#a8d5ff" }}>h1</span>&gt;
-                                        <span className="text-white">Code Faster.</span>
-                                        &lt;/<span style={{ color: "#a8d5ff" }}>h1</span>&gt;
-                                        <br />
-                                        &nbsp;&nbsp;&lt;<span style={{ color: "#a8d5ff" }}>p</span>&gt;
-                                        <span className="text-white">With AI assistance.</span>
-                                        &lt;/<span style={{ color: "#a8d5ff" }}>p</span>&gt;
-                                        <br />
-                                        &lt;/<span style={{ color: "#a8d5ff" }}>section</span>&gt;
-                                        <span
-                                            className="inline-block w-1.5 h-4 ml-1 animate-pulse align-middle"
-                                            style={{ backgroundColor: "#00d4aa" }}
-                                        />
-                                    </div>
+                                <div className="p-4 text-neutral-400">
+                                    queue.add("execute", payload)
+                                    <span className="cursor-blink inline-block w-1.5 h-4 ml-1 align-middle bg-[#00d4aa]" />
                                 </div>
                             </div>
+                        </div>
 
-                            <div className="flex">
-                                <div className="w-10 text-neutral-700 select-none text-right pr-5 text-xs mt-1">15</div>
-                                <div className="pl-4">
-                                    &lt;/<span style={{ color: "#a8d5ff" }}>body</span>&gt;
-                                </div>
+                        <div className="p-6 editor-view editor-view-2">
+                            <div className="text-neutral-500 italic text-xs mb-3">// collaborative session snapshot</div>
+                            <div><span className="text-[#7fb7ff]">const</span> room = <span className="text-yellow-500">&quot;builditup&quot;</span></div>
+                            <div><span className="text-[#7fb7ff]">await</span> socket.<span className="text-[#00d4aa]">join</span>(room)</div>
+                            <div><span className="text-[#7fb7ff]">const</span> delta = otEngine.<span className="text-[#00d4aa]">compose</span>(changes)</div>
+                            <div><span className="text-[#7fb7ff]">queue</span>.<span className="text-[#00d4aa]">add</span>(<span className="text-yellow-500">&quot;execute&quot;</span>, payload)</div>
+                            <div className="mt-4 rounded-md border border-[#2a2b32] bg-[rgba(0,212,170,0.08)] px-3 py-2 text-[12px] text-[#9fd3c8]">
+                                3 collaborators syncing at 18ms latency
                             </div>
-                            <div className="flex">
-                                <div className="w-10 text-neutral-700 select-none text-right pr-5 text-xs mt-1">16</div>
-                                <div>
-                                    &lt;/<span style={{ color: "#a8d5ff" }}>html</span>&gt;
-                                </div>
+                        </div>
+
+                        <div className="p-6 editor-view editor-view-3">
+                            <div className="text-neutral-500 italic text-xs mb-3">// execution pipeline</div>
+                            <div><span className="text-[#7fb7ff]">jobQueue</span>.<span className="text-[#00d4aa]">process</span>(<span className="text-yellow-500">&quot;execute&quot;</span>, worker)</div>
+                            <div><span className="text-[#7fb7ff]">docker</span>.<span className="text-[#00d4aa]">run</span>(sandboxConfig)</div>
+                            <div><span className="text-[#7fb7ff]">result</span>.<span className="text-[#00d4aa]">streamToClient</span>(sessionId)</div>
+                            <div className="mt-4 text-[12px] text-neutral-400">
+                                status: <span className="text-[#00d4aa]">healthy</span>
+                                <span className="cursor-blink inline-block w-1.5 h-4 ml-1 align-middle bg-[#00d4aa]" />
                             </div>
                         </div>
                     </div>
@@ -257,4 +162,4 @@ function EditorMockup() {
     );
 }
 
-export default EditorMockup
+export default EditorMockup;

@@ -1,7 +1,8 @@
 import HomeFooter from "@/modules/home/footer";
 import HomeHeader from "@/modules/home/header";
-import EditorMockup from "@/modules/home/components/editor-mockup";
+import EditorMockup from "../modules/home/components/editor-mockup";
 import HeroSection from "@/modules/home/components/hero-section";
+import FeatureSections from "@/modules/home/components/feature-sections";
 import ProductOverview from "@/modules/home/components/product-overview";
 
 // Composes landing sections so each part can evolve independently.
@@ -21,16 +22,12 @@ function Home() {
             <div className="relative z-10 flex flex-col min-h-screen">
                 <HomeHeader />
 
-                <main className="flex-1 w-full max-w-360 mx-auto px-6 md:px-10 pt-16 md:pt-28 pb-32">
-                    <div className="reveal-up">
-                        <HeroSection />
-                    </div>
-                    <div className="reveal-up" style={{ animationDelay: "120ms" }}>
-                        <ProductOverview />
-                    </div>
-                    <div className="reveal-up" style={{ animationDelay: "220ms" }}>
-                        <EditorMockup />
-                    </div>
+                <main className="relative flex-1 w-full max-w-360 mx-auto px-6 md:px-10 pt-16 md:pt-28 pb-32">
+                    <HeroSection />
+                    <div className="hero-glow" />
+                    <EditorMockup />
+                    <ProductOverview />
+                    <FeatureSections />
                 </main>
 
                 <HomeFooter />
