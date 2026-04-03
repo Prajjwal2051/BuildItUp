@@ -3,6 +3,15 @@
 // This component is responsible for rendering the file explorer sidebar in the playground. It displays a tree structure of files and folders, and it provides actions for selecting, adding, renaming, and deleting files and folders. The component uses various dialogs to handle user interactions for these actions.
 
 import * as React from "react";
+import {
+    ChevronRight,
+    FilePlus2,
+    FileText,
+    Folder,
+    FolderOpen,
+    FolderPlus,
+    Plus,
+} from "lucide-react";
 
 import {
     Collapsible,
@@ -69,15 +78,6 @@ interface TemplateNodeProps {
     onRenameFolder?: (folderPath: string, newFolderName: string) => void;
 }
 
-// Utility component for rendering Material Icons with consistent styling.
-function MaterialIcon({ name, className }: { name: string; className?: string }) {
-    return (
-        <span className={cn("material-symbols-rounded select-none", className)}>
-            {name}
-        </span>
-    );
-}
-
 // Utility function to split a filename into its name and extension parts. It returns an object with `filename` and `extension` properties. If there is no extension, the `extension` property will be an empty string.
 function splitNameAndExtension(name: string) {
     const i = name.lastIndexOf(".");
@@ -130,9 +130,8 @@ function TemplateFileTree({
                             className="h-5 w-5 text-[#5c6370] hover:text-white transition-colors"
                             onClick={() => setIsExplorerOpen((prev) => !prev)}
                         >
-                            <MaterialIcon
-                                name="chevron_right"
-                                className={cn("text-[14px] transition-transform", isExplorerOpen && "rotate-90")}
+                            <ChevronRight
+                                className={cn("h-3.5 w-3.5 transition-transform", isExplorerOpen && "rotate-90")}
                             />
                         </Button>
                     </SidebarGroupLabel>
@@ -141,17 +140,17 @@ function TemplateFileTree({
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <SidebarGroupAction className="top-3 right-3 rounded-md border border-[#2a2f3a] bg-[#141821] text-[#7f8ea3] hover:bg-[#1b2130] hover:text-white transition-all">
-                                    <MaterialIcon name="add" className="text-[16px]" />
+                                    <Plus className="h-4 w-4" />
                                 </SidebarGroupAction>
                             </DropdownMenuTrigger>
 
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => setIsNewFileDialogOpen(true)}>
-                                    <MaterialIcon name="note_add" className="mr-2 text-[16px]" />
+                                    <FilePlus2 className="mr-2 h-4 w-4" />
                                     New File
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => setIsNewFolderDialogOpen(true)}>
-                                    <MaterialIcon name="create_new_folder" className="mr-2 text-[16px]" />
+                                    <FolderPlus className="mr-2 h-4 w-4" />
                                     New Folder
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -246,7 +245,7 @@ function TemplateNode({
                     )}
                     style={{ paddingLeft }}
                 >
-                    <MaterialIcon name="description" className="mr-3 text-[15px] text-[#d19a66]" />
+                    <FileText className="mr-3 h-4 w-4 text-[#d19a66]" />
 
                     <span className="flex items-center gap-0.5 truncate">
                         <span className="font-medium">{parsed.filename}</span>
@@ -313,15 +312,15 @@ function TemplateNode({
                     style={{ paddingLeft }}
                 >
                     <CollapsibleTrigger className="flex items-center w-full">
-                        <MaterialIcon
-                            name="chevron_right"
-                            className={cn("mr-2 text-[14px]", isOpen && "rotate-90")}
+                        <ChevronRight
+                            className={cn("mr-2 h-3.5 w-3.5 transition-transform", isOpen && "rotate-90")}
                         />
 
-                        <MaterialIcon
-                            name={isOpen ? "folder_open" : "folder"}
-                            className="mr-3 text-[#61afef]"
-                        />
+                        {isOpen ? (
+                            <FolderOpen className="mr-3 h-4 w-4 text-[#61afef]" />
+                        ) : (
+                            <Folder className="mr-3 h-4 w-4 text-[#61afef]" />
+                        )}
 
                         <span className="font-semibold">{node.name}</span>
                     </CollapsibleTrigger>
