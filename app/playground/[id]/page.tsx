@@ -17,9 +17,11 @@ import useWebContainer from "@/modules/webContainers/hooks/useWebContainer"
 import WebContainerPreview from "@/modules/webContainers/components/webContainerPreview"
 import PlaygroundTerminal from "@/modules/playground/components/playground-terminal"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { TerminalSquare, X, GripHorizontal, House, Settings, ArrowLeftRight, Search } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { TerminalSquare, X, GripHorizontal, House, Settings, ArrowLeftRight, Search, Bot } from "lucide-react"
 import useFileExplorerStore, { type OpenFile } from "@/modules/playground/hooks/useFileExplorer"
 
 // Clones the full tree so updates remain immutable.
@@ -309,6 +311,8 @@ function MainPlaygroundPage() {
     const [terminalLogs, setTerminalLogs] = React.useState<string[]>([])
     const [isSettingsDialogOpen, setIsSettingsDialogOpen] = React.useState(false)
     const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false)
+    const [isAiAutocompleteEnabled, setIsAiAutocompleteEnabled] = React.useState(true)
+    const [isAiChatOpen, setIsAiChatOpen] = React.useState(false)
     const [searchQuery, setSearchQuery] = React.useState("")
     const [isNavigatingHome, setIsNavigatingHome] = React.useState(false)
     const [editorPreferences, setEditorPreferences] = React.useState<EditorPreferences>(DEFAULT_EDITOR_PREFERENCES)
@@ -358,8 +362,13 @@ function MainPlaygroundPage() {
             automaticLayout: true,
             fontSize: editorPreferences.fontSize,
             fontFamily: editorPreferences.fontFamily,
+            quickSuggestions: isAiAutocompleteEnabled,
+            suggestOnTriggerCharacters: isAiAutocompleteEnabled,
+            inlineSuggest: {
+                enabled: isAiAutocompleteEnabled,
+            },
         }),
-        [editorPreferences.fontFamily, editorPreferences.fontSize]
+        [editorPreferences.fontFamily, editorPreferences.fontSize, isAiAutocompleteEnabled]
     )
 
     const { serverUrl, isLoading: isWebContainerLoading, error: webContainerError, instance, useWriteFileSync, destroy } = useWebContainer({
@@ -782,7 +791,7 @@ function MainPlaygroundPage() {
                 />
             ) : null}
 
-            <SidebarInset className="flex flex-1 flex-col overflow-hidden">
+            <SidebarInset className="relative flex flex-1 flex-col overflow-hidden">
                 <Dialog open={isSearchDialogOpen} onOpenChange={setIsSearchDialogOpen}>
                     <DialogContent className="max-w-3xl gap-0 overflow-hidden p-0">
                         <DialogHeader className="border-b px-4 py-3">
@@ -891,94 +900,26 @@ function MainPlaygroundPage() {
                     }}
                 />
 
-                <div className="flex min-h-0 flex-1 flex-col bg-[#0f1115]">
-                    <div className={cn("min-h-0 flex-1", runtimeTemplate ? "flex flex-row" : "flex flex-col")}>
-                        <div className={cn("min-h-0 flex flex-1 overflow-hidden", isSplitEditorOpen ? "flex-row" : "flex-col")}>
-                            <div className={cn("min-h-0 min-w-0 flex flex-1 flex-col overflow-hidden", isSplitEditorOpen ? "border-r border-[#1c1f26]" : "")}>
-                                <div className="flex h-10 min-h-10 items-center justify-between border-b border-[#1c1f26] bg-[#0b0d11] px-3">
-                                    <div className="flex items-center gap-2 text-[11px] text-[#5c6370]">
-                                        <span>Editor</span>
-                                        <span className="text-[#7d8596]">{activeOpenFile ? getFileName(activeOpenFile.id) : "No file open"}</span>
-                                    </div>
-                                    <span className="text-[10px] text-[#5c6370]">Primary</span>
-                                </div>
-
-                                <div className="flex h-8 min-h-8 items-center gap-1 overflow-hidden border-b border-[#1c1f26] bg-[#0d1016] px-3 text-[11px] text-[#6f7788]">
-                                    <span className="shrink-0 text-[#5c6370]">Path:</span>
-                                    {activePathSegments.length > 0 ? (
-                                        activePathSegments.map((segment, index) => (
-                                            <React.Fragment key={`${segment}-${index}`}>
-                                                {index > 0 ? <span className="text-[#4c5463]">/</span> : null}
-                                                <span className={cn("truncate", index === activePathSegments.length - 1 ? "text-[#aab1bf]" : "text-[#73809a]")}>{segment}</span>
-                                            </React.Fragment>
-                                        ))
-                                    ) : (
-                                        <span className="text-[#5c6370]">No file selected</span>
-                                    )}
-                                </div>
-
-                                <div className="min-h-0 flex-1 overflow-hidden">
-                                    {activeOpenFile ? (
-                                        <Editor
-                                            path={activeFilePath}
-                                            language={getEditorLanguage(activeFilePath.split(".").pop() ?? "")}
-                                            value={activeEditorContent}
-                                            onChange={(value) => handleFileChange(activeFilePath, value ?? "")}
-                                            theme={monacoTheme}
-                                            options={editorOptions}
-                                            onMount={(editor, monaco) => handleEditorMount(editor, monaco)}
-                                        />
-                                    ) : (
-                                        <div className="flex h-full items-center justify-center text-sm text-[#5c6370]">No file open</div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {isSplitEditorOpen ? (
-                                <div className="min-h-0 min-w-0 flex flex-1 flex-col overflow-hidden">
+                <div className="flex min-h-0 flex-1 overflow-hidden bg-[#0f1115]">
+                    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                        <div className={cn("min-h-0 flex-1", runtimeTemplate ? "flex flex-row" : "flex flex-col")}>
+                            <div className={cn("min-h-0 flex flex-1 overflow-hidden", isSplitEditorOpen ? "flex-row" : "flex-col")}>
+                                <div className={cn("min-h-0 min-w-0 flex flex-1 flex-col overflow-hidden", isSplitEditorOpen ? "border-r border-[#1c1f26]" : "")}>
                                     <div className="flex h-10 min-h-10 items-center justify-between border-b border-[#1c1f26] bg-[#0b0d11] px-3">
                                         <div className="flex items-center gap-2 text-[11px] text-[#5c6370]">
-                                            <span>Split Editor</span>
-                                            <span className="text-[#7d8596]">Secondary view</span>
+                                            <span>Editor</span>
+                                            <span className="text-[#7d8596]">{activeOpenFile ? getFileName(activeOpenFile.id) : "No file open"}</span>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={handleSwapSplitEditors}
-                                                className="flex h-7 w-7 items-center justify-center rounded-md border border-[#2a2f3a] text-[#aab1bf] transition-colors hover:border-[#3a4150] hover:text-white"
-                                                title="Swap split panes"
-                                                aria-label="Swap split panes"
-                                            >
-                                                <ArrowLeftRight size={13} />
-                                            </button>
-                                            <select
-                                                value={splitFilePath}
-                                                onChange={(event) => setSplitFilePath(event.target.value)}
-                                                className="h-7 max-w-52 rounded-md border border-[#2a2f3a] bg-[#141821] px-2 text-[11px] text-[#aab1bf] outline-none"
-                                            >
-                                                {openFiles.map((file) => (
-                                                    <option key={file.id} value={file.id}>
-                                                        {getFileName(file.id)}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsSplitEditorOpen(false)}
-                                                className="rounded border border-[#2a2f3a] px-2 py-1 text-[10px] text-[#8b92a3] transition-colors hover:border-[#3a4150] hover:text-white"
-                                            >
-                                                Close
-                                            </button>
-                                        </div>
+                                        <span className="text-[10px] text-[#5c6370]">Primary</span>
                                     </div>
 
                                     <div className="flex h-8 min-h-8 items-center gap-1 overflow-hidden border-b border-[#1c1f26] bg-[#0d1016] px-3 text-[11px] text-[#6f7788]">
                                         <span className="shrink-0 text-[#5c6370]">Path:</span>
-                                        {splitPathSegments.length > 0 ? (
-                                            splitPathSegments.map((segment, index) => (
+                                        {activePathSegments.length > 0 ? (
+                                            activePathSegments.map((segment, index) => (
                                                 <React.Fragment key={`${segment}-${index}`}>
                                                     {index > 0 ? <span className="text-[#4c5463]">/</span> : null}
-                                                    <span className={cn("truncate", index === splitPathSegments.length - 1 ? "text-[#aab1bf]" : "text-[#73809a]")}>{segment}</span>
+                                                    <span className={cn("truncate", index === activePathSegments.length - 1 ? "text-[#aab1bf]" : "text-[#73809a]")}>{segment}</span>
                                                 </React.Fragment>
                                             ))
                                         ) : (
@@ -987,218 +928,356 @@ function MainPlaygroundPage() {
                                     </div>
 
                                     <div className="min-h-0 flex-1 overflow-hidden">
-                                        {splitOpenFile ? (
+                                        {activeOpenFile ? (
                                             <Editor
-                                                path={splitFilePath}
-                                                language={getEditorLanguage(splitFilePath.split(".").pop() ?? "")}
-                                                value={splitEditorContent}
-                                                onChange={(value) => handleFileChange(splitFilePath, value ?? "")}
+                                                path={activeFilePath}
+                                                language={getEditorLanguage(activeFilePath.split(".").pop() ?? "")}
+                                                value={activeEditorContent}
+                                                onChange={(value) => handleFileChange(activeFilePath, value ?? "")}
                                                 theme={monacoTheme}
                                                 options={editorOptions}
-                                                onMount={(editor, monaco) => configureMonaco(monaco)}
+                                                onMount={(editor, monaco) => handleEditorMount(editor, monaco)}
                                             />
                                         ) : (
-                                            <div className="flex h-full items-center justify-center text-sm text-[#5c6370]">
-                                                Pick a file to open in the split view.
-                                            </div>
+                                            <div className="flex h-full items-center justify-center text-sm text-[#5c6370]">No file open</div>
                                         )}
                                     </div>
+                                </div>
+
+                                {isSplitEditorOpen ? (
+                                    <div className="min-h-0 min-w-0 flex flex-1 flex-col overflow-hidden">
+                                        <div className="flex h-10 min-h-10 items-center justify-between border-b border-[#1c1f26] bg-[#0b0d11] px-3">
+                                            <div className="flex items-center gap-2 text-[11px] text-[#5c6370]">
+                                                <span>Split Editor</span>
+                                                <span className="text-[#7d8596]">Secondary view</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={handleSwapSplitEditors}
+                                                    className="flex h-7 w-7 items-center justify-center rounded-md border border-[#2a2f3a] text-[#aab1bf] transition-colors hover:border-[#3a4150] hover:text-white"
+                                                    title="Swap split panes"
+                                                    aria-label="Swap split panes"
+                                                >
+                                                    <ArrowLeftRight size={13} />
+                                                </button>
+                                                <select
+                                                    value={splitFilePath}
+                                                    onChange={(event) => setSplitFilePath(event.target.value)}
+                                                    className="h-7 max-w-52 rounded-md border border-[#2a2f3a] bg-[#141821] px-2 text-[11px] text-[#aab1bf] outline-none"
+                                                >
+                                                    {openFiles.map((file) => (
+                                                        <option key={file.id} value={file.id}>
+                                                            {getFileName(file.id)}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsSplitEditorOpen(false)}
+                                                    className="rounded border border-[#2a2f3a] px-2 py-1 text-[10px] text-[#8b92a3] transition-colors hover:border-[#3a4150] hover:text-white"
+                                                >
+                                                    Close
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex h-8 min-h-8 items-center gap-1 overflow-hidden border-b border-[#1c1f26] bg-[#0d1016] px-3 text-[11px] text-[#6f7788]">
+                                            <span className="shrink-0 text-[#5c6370]">Path:</span>
+                                            {splitPathSegments.length > 0 ? (
+                                                splitPathSegments.map((segment, index) => (
+                                                    <React.Fragment key={`${segment}-${index}`}>
+                                                        {index > 0 ? <span className="text-[#4c5463]">/</span> : null}
+                                                        <span className={cn("truncate", index === splitPathSegments.length - 1 ? "text-[#aab1bf]" : "text-[#73809a]")}>{segment}</span>
+                                                    </React.Fragment>
+                                                ))
+                                            ) : (
+                                                <span className="text-[#5c6370]">No file selected</span>
+                                            )}
+                                        </div>
+
+                                        <div className="min-h-0 flex-1 overflow-hidden">
+                                            {splitOpenFile ? (
+                                                <Editor
+                                                    path={splitFilePath}
+                                                    language={getEditorLanguage(splitFilePath.split(".").pop() ?? "")}
+                                                    value={splitEditorContent}
+                                                    onChange={(value) => handleFileChange(splitFilePath, value ?? "")}
+                                                    theme={monacoTheme}
+                                                    options={editorOptions}
+                                                    onMount={(editor, monaco) => configureMonaco(monaco)}
+                                                />
+                                            ) : (
+                                                <div className="flex h-full items-center justify-center text-sm text-[#5c6370]">
+                                                    Pick a file to open in the split view.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : null}
+                            </div>
+
+                            {runtimeTemplate ? (
+                                <div
+                                    className={cn(
+                                        "min-h-0 shrink-0 overflow-hidden bg-[#0f1115] transition-[width,border-color,opacity] duration-200",
+                                        isPreviewOpen
+                                            ? "w-[45%] border-l border-[#1c1f26] opacity-100"
+                                            : "pointer-events-none w-0 border-l border-transparent opacity-0"
+                                    )}
+                                    aria-hidden={!isPreviewOpen}
+                                >
+                                    <WebContainerPreview
+                                        tempateData={runtimeTemplate as never}
+                                        sercverUrl={serverUrl}
+                                        isLoading={isWebContainerLoading}
+                                        error={webContainerError}
+                                        instance={instance}
+                                        useWriteFileSync={useWriteFileSync}
+                                        destroy={destroy}
+                                        onTerminalLog={appendTerminalLog}
+                                        showInternalTerminal={false}
+                                    />
                                 </div>
                             ) : null}
                         </div>
 
-                        {runtimeTemplate ? (
-                            <div
-                                className={cn(
-                                    "min-h-0 shrink-0 overflow-hidden bg-[#0f1115] transition-[width,border-color,opacity] duration-200",
-                                    isPreviewOpen
-                                        ? "w-[45%] border-l border-[#1c1f26] opacity-100"
-                                        : "pointer-events-none w-0 border-l border-transparent opacity-0"
-                                )}
-                                aria-hidden={!isPreviewOpen}
-                            >
-                                <WebContainerPreview
-                                    tempateData={runtimeTemplate as never}
-                                    sercverUrl={serverUrl}
-                                    isLoading={isWebContainerLoading}
-                                    error={webContainerError}
-                                    instance={instance}
-                                    useWriteFileSync={useWriteFileSync}
-                                    destroy={destroy}
-                                    onTerminalLog={appendTerminalLog}
-                                    showInternalTerminal={false}
-                                />
+                        <div className="flex items-center justify-between border-t border-[#1c1f26] bg-[#0b0d11] px-3 py-2">
+                            <div className="flex items-center gap-2 text-[11px] text-[#5c6370]">
+                                <span>Tools</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsSearchDialogOpen(true)}
+                                    className="flex h-7 items-center gap-1.5 rounded-md border border-[#2a2f3a] bg-[#141821] px-2.5 text-[11px] text-[#aab1bf] transition-colors hover:border-[#3a4150] hover:text-white"
+                                    title="Search files"
+                                >
+                                    <Search size={13} />
+                                    <span>Search</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={handleToggleSplitEditor}
+                                    className={cn(
+                                        "flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11px] transition-colors",
+                                        isSplitEditorOpen
+                                            ? "border-[#61afef] bg-[#1b2130] text-[#dbe8ff]"
+                                            : "border-[#2a2f3a] bg-[#141821] text-[#aab1bf] hover:border-[#3a4150] hover:text-white"
+                                    )}
+                                    title="Toggle split editor"
+                                >
+                                    <span>Split</span>
+                                </button>
+
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <button
+                                            type="button"
+                                            className={cn(
+                                                "flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11px] transition-colors",
+                                                isAiAutocompleteEnabled || isAiChatOpen
+                                                    ? "border-[#61afef] bg-[#1b2130] text-[#dbe8ff]"
+                                                    : "border-[#2a2f3a] bg-[#141821] text-[#aab1bf] hover:border-[#3a4150] hover:text-white"
+                                            )}
+                                            title="AI options"
+                                        >
+                                            <Bot size={13} />
+                                            <span>AI</span>
+                                        </button>
+                                    </DropdownMenuTrigger>
+
+                                    <DropdownMenuContent align="end" className="w-64">
+                                        <div className="px-2 py-1.5 text-[11px] font-medium text-muted-foreground">AI Options</div>
+
+                                        <DropdownMenuItem
+                                            onSelect={(event) => event.preventDefault()}
+                                            className="flex items-center justify-between gap-3"
+                                        >
+                                            <span>Auto Completion</span>
+                                            <Switch
+                                                checked={isAiAutocompleteEnabled}
+                                                onCheckedChange={setIsAiAutocompleteEnabled}
+                                                aria-label="Toggle AI auto completion"
+                                            />
+                                        </DropdownMenuItem>
+
+                                        <DropdownMenuItem onSelect={() => setIsAiChatOpen(true)}>
+                                            Open AI Chat Sidebar
+                                        </DropdownMenuItem>
+
+                                        {isAiChatOpen ? (
+                                            <DropdownMenuItem onSelect={() => setIsAiChatOpen(false)}>
+                                                Hide AI Chat Sidebar
+                                            </DropdownMenuItem>
+                                        ) : null}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setIsSettingsDialogOpen(true)}
+                                    className="flex h-7 w-7 items-center justify-center rounded-md border border-[#2a2f3a] bg-[#141821] text-[#aab1bf] transition-colors hover:border-[#3a4150] hover:text-white"
+                                    title="Editor settings"
+                                    aria-label="Editor settings"
+                                >
+                                    <Settings size={13} />
+                                </button>
+                            </div>
+                        </div>
+
+                        <Dialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
+                            <DialogContent className="max-w-md">
+                                <DialogHeader>
+                                    <DialogTitle>Editor Settings</DialogTitle>
+                                    <DialogDescription>
+                                        Choose your preferred editor theme, font size, and font family.
+                                    </DialogDescription>
+                                </DialogHeader>
+
+                                <div className="space-y-4 pt-1">
+                                    <div className="space-y-2">
+                                        <div className="text-sm font-medium">Theme</div>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditorPreferences((previous) => ({ ...previous, theme: "dark" }))}
+                                                className={cn(
+                                                    "h-8 rounded-md border px-3 text-xs transition-colors",
+                                                    editorPreferences.theme === "dark"
+                                                        ? "border-primary bg-primary/10 text-primary"
+                                                        : "border-border text-muted-foreground hover:text-foreground"
+                                                )}
+                                            >
+                                                Dark
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditorPreferences((previous) => ({ ...previous, theme: "light" }))}
+                                                className={cn(
+                                                    "h-8 rounded-md border px-3 text-xs transition-colors",
+                                                    editorPreferences.theme === "light"
+                                                        ? "border-primary bg-primary/10 text-primary"
+                                                        : "border-border text-muted-foreground hover:text-foreground"
+                                                )}
+                                            >
+                                                Light
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between text-sm font-medium">
+                                            <span>Font Size</span>
+                                            <span className="text-xs text-muted-foreground">{editorPreferences.fontSize}px</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min={11}
+                                            max={28}
+                                            step={1}
+                                            value={editorPreferences.fontSize}
+                                            onChange={(event) => {
+                                                const nextSize = Number(event.target.value)
+                                                setEditorPreferences((previous) => ({ ...previous, fontSize: nextSize }))
+                                            }}
+                                            className="w-full"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <div className="text-sm font-medium">Font Family</div>
+                                        <select
+                                            value={editorPreferences.fontFamily}
+                                            onChange={(event) => {
+                                                const nextFamily = event.target.value
+                                                setEditorPreferences((previous) => ({ ...previous, fontFamily: nextFamily }))
+                                            }}
+                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                        >
+                                            {EDITOR_FONT_FAMILY_OPTIONS.map((option) => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
+
+                        {isTerminalOpen ? (
+                            <div className="shrink-0 border-t border-[#1c1f26] bg-[#0b0d11]" style={{ height: `${terminalHeight}px` }}>
+                                <button
+                                    type="button"
+                                    onMouseDown={handleTerminalResizeStart}
+                                    className="flex h-3 w-full items-center justify-center text-[#5c6370] hover:text-[#aab1bf]"
+                                    aria-label="Resize terminal"
+                                    title="Drag to resize"
+                                >
+                                    <GripHorizontal size={14} />
+                                </button>
+
+                                <div className="flex items-center justify-between border-y border-[#1c1f26] px-3 py-2">
+                                    <div className="flex items-center gap-2 text-[12px] text-[#aab1bf]">
+                                        <TerminalSquare size={14} />
+                                        <span className="font-medium">Terminal</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsTerminalOpen(false)}
+                                        className="rounded p-1 text-[#71798a] hover:bg-[#151922] hover:text-white"
+                                        aria-label="Close terminal"
+                                        title="Close terminal"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center justify-end border-b border-[#1c1f26] px-3 py-1.5">
+                                    <button
+                                        type="button"
+                                        onClick={() => void handleCopyTerminalLogs()}
+                                        className="rounded border border-[#2a2f3a] px-2 py-1 text-[10px] text-[#8b92a3] transition-colors hover:border-[#3a4150] hover:text-white"
+                                    >
+                                        Copy Logs
+                                    </button>
+                                </div>
+
+                                <div className="h-[calc(100%-76px)] min-h-0 px-3 py-2 font-mono text-xs text-[#7d8596]">
+                                    <PlaygroundTerminal
+                                        logs={terminalLogs}
+                                        className="h-full min-h-0"
+                                        onCommand={handleTerminalCommand}
+                                    />
+                                </div>
                             </div>
                         ) : null}
                     </div>
 
-                    <div className="flex items-center justify-between border-t border-[#1c1f26] bg-[#0b0d11] px-3 py-2">
-                        <div className="flex items-center gap-2 text-[11px] text-[#5c6370]">
-                            <span>Tools</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setIsSearchDialogOpen(true)}
-                                className="flex h-7 items-center gap-1.5 rounded-md border border-[#2a2f3a] bg-[#141821] px-2.5 text-[11px] text-[#aab1bf] transition-colors hover:border-[#3a4150] hover:text-white"
-                                title="Search files"
-                            >
-                                <Search size={13} />
-                                <span>Search</span>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={handleToggleSplitEditor}
-                                className={cn(
-                                    "flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11px] transition-colors",
-                                    isSplitEditorOpen
-                                        ? "border-[#61afef] bg-[#1b2130] text-[#dbe8ff]"
-                                        : "border-[#2a2f3a] bg-[#141821] text-[#aab1bf] hover:border-[#3a4150] hover:text-white"
-                                )}
-                                title="Toggle split editor"
-                            >
-                                <span>Split</span>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => setIsSettingsDialogOpen(true)}
-                                className="flex h-7 w-7 items-center justify-center rounded-md border border-[#2a2f3a] bg-[#141821] text-[#aab1bf] transition-colors hover:border-[#3a4150] hover:text-white"
-                                title="Editor settings"
-                                aria-label="Editor settings"
-                            >
-                                <Settings size={13} />
-                            </button>
-                        </div>
-                    </div>
-
-                    <Dialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
-                        <DialogContent className="max-w-md">
-                            <DialogHeader>
-                                <DialogTitle>Editor Settings</DialogTitle>
-                                <DialogDescription>
-                                    Choose your preferred editor theme, font size, and font family.
-                                </DialogDescription>
-                            </DialogHeader>
-
-                            <div className="space-y-4 pt-1">
-                                <div className="space-y-2">
-                                    <div className="text-sm font-medium">Theme</div>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setEditorPreferences((previous) => ({ ...previous, theme: "dark" }))}
-                                            className={cn(
-                                                "h-8 rounded-md border px-3 text-xs transition-colors",
-                                                editorPreferences.theme === "dark"
-                                                    ? "border-primary bg-primary/10 text-primary"
-                                                    : "border-border text-muted-foreground hover:text-foreground"
-                                            )}
-                                        >
-                                            Dark
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setEditorPreferences((previous) => ({ ...previous, theme: "light" }))}
-                                            className={cn(
-                                                "h-8 rounded-md border px-3 text-xs transition-colors",
-                                                editorPreferences.theme === "light"
-                                                    ? "border-primary bg-primary/10 text-primary"
-                                                    : "border-border text-muted-foreground hover:text-foreground"
-                                            )}
-                                        >
-                                            Light
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between text-sm font-medium">
-                                        <span>Font Size</span>
-                                        <span className="text-xs text-muted-foreground">{editorPreferences.fontSize}px</span>
-                                    </div>
-                                    <input
-                                        type="range"
-                                        min={11}
-                                        max={28}
-                                        step={1}
-                                        value={editorPreferences.fontSize}
-                                        onChange={(event) => {
-                                            const nextSize = Number(event.target.value)
-                                            setEditorPreferences((previous) => ({ ...previous, fontSize: nextSize }))
-                                        }}
-                                        className="w-full"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="text-sm font-medium">Font Family</div>
-                                    <select
-                                        value={editorPreferences.fontFamily}
-                                        onChange={(event) => {
-                                            const nextFamily = event.target.value
-                                            setEditorPreferences((previous) => ({ ...previous, fontFamily: nextFamily }))
-                                        }}
-                                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                    >
-                                        {EDITOR_FONT_FAMILY_OPTIONS.map((option) => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
-
-                    {isTerminalOpen ? (
-                        <div className="shrink-0 border-t border-[#1c1f26] bg-[#0b0d11]" style={{ height: `${terminalHeight}px` }}>
-                            <button
-                                type="button"
-                                onMouseDown={handleTerminalResizeStart}
-                                className="flex h-3 w-full items-center justify-center text-[#5c6370] hover:text-[#aab1bf]"
-                                aria-label="Resize terminal"
-                                title="Drag to resize"
-                            >
-                                <GripHorizontal size={14} />
-                            </button>
-
-                            <div className="flex items-center justify-between border-y border-[#1c1f26] px-3 py-2">
+                    {isAiChatOpen ? (
+                        <aside className="flex h-full w-85 shrink-0 flex-col border-l border-[#1c1f26] bg-[#0b0d11]">
+                            <div className="flex items-center justify-between border-b border-[#1c1f26] px-3 py-2">
                                 <div className="flex items-center gap-2 text-[12px] text-[#aab1bf]">
-                                    <TerminalSquare size={14} />
-                                    <span className="font-medium">Terminal</span>
+                                    <Bot size={14} />
+                                    <span className="font-medium">AI Chat</span>
                                 </div>
                                 <button
                                     type="button"
-                                    onClick={() => setIsTerminalOpen(false)}
+                                    onClick={() => setIsAiChatOpen(false)}
                                     className="rounded p-1 text-[#71798a] hover:bg-[#151922] hover:text-white"
-                                    aria-label="Close terminal"
-                                    title="Close terminal"
+                                    aria-label="Close AI chat sidebar"
+                                    title="Close AI chat sidebar"
                                 >
                                     <X size={14} />
                                 </button>
                             </div>
 
-                            <div className="flex items-center justify-end border-b border-[#1c1f26] px-3 py-1.5">
-                                <button
-                                    type="button"
-                                    onClick={() => void handleCopyTerminalLogs()}
-                                    className="rounded border border-[#2a2f3a] px-2 py-1 text-[10px] text-[#8b92a3] transition-colors hover:border-[#3a4150] hover:text-white"
-                                >
-                                    Copy Logs
-                                </button>
+                            <div className="flex-1 px-3 py-3 text-[12px] text-[#7d8596]">
+                                AI chat sidebar is open. Connect your chat component here.
                             </div>
-
-                            <div className="h-[calc(100%-76px)] min-h-0 px-3 py-2 font-mono text-xs text-[#7d8596]">
-                                <PlaygroundTerminal
-                                    logs={terminalLogs}
-                                    className="h-full min-h-0"
-                                    onCommand={handleTerminalCommand}
-                                />
-                            </div>
-                        </div>
+                        </aside>
                     ) : null}
                 </div>
             </SidebarInset>

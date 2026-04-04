@@ -260,14 +260,14 @@ function TemplateNode({
                 <div
                     onClick={() => onFileSelect?.(nodePath, node)}
                     className={cn(
-                        "group/file-row flex min-w-0 items-center px-3 py-1.25 text-[12.5px] font-mono rounded-md transition-all",
+                        "group/file-row flex min-w-0 items-center px-2.5 py-1 text-[11px] font-mono rounded-md transition-all",
                         selected
                             ? "bg-[#1a1f29] text-white font-semibold"
                             : "text-[#aab1bf] hover:bg-[#151922]"
                     )}
                     style={{ paddingLeft }}
                 >
-                    <FileText className="mr-3 h-4 w-4 shrink-0 text-[#d19a66]" />
+                    <FileText className="mr-2 h-3.5 w-3.5 shrink-0 text-[#d19a66]" />
 
                     <span className="flex min-w-0 flex-1 items-center gap-0.5 pr-2">
                         <span className="truncate font-medium">{parsed.filename}</span>
@@ -279,10 +279,10 @@ function TemplateNode({
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="ml-auto h-6 w-6 shrink-0 opacity-0 pointer-events-none group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100 data-[state=open]:pointer-events-auto data-[state=open]:opacity-100"
+                                className="ml-auto h-5 w-5 shrink-0 opacity-0 pointer-events-none group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100 data-[state=open]:pointer-events-auto data-[state=open]:opacity-100"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <MoreHorizontal className="h-4 w-4" />
+                                <MoreHorizontal className="h-3.5 w-3.5" />
                             </Button>
                         </DropdownMenuTrigger>
 
@@ -330,18 +330,18 @@ function TemplateNode({
         <SidebarMenuItem>
             <Collapsible open={isOpen} onOpenChange={setIsOpen}>
                 <div
-                    className="group/folder-row flex min-w-0 items-center px-3 py-1.25 text-[12.5px] font-mono text-[#c5c9d4] hover:bg-[#151922] rounded-md"
+                    className="group/folder-row flex min-w-0 items-center px-2.5 py-1 text-[11px] font-mono text-[#c5c9d4] hover:bg-[#151922] rounded-md"
                     style={{ paddingLeft }}
                 >
                     <CollapsibleTrigger className="flex min-w-0 flex-1 items-center">
                         <ChevronRight
-                            className={cn("mr-2 h-3.5 w-3.5 shrink-0 transition-transform", isOpen && "rotate-90")}
+                            className={cn("mr-1.5 h-3 w-3 shrink-0 transition-transform", isOpen && "rotate-90")}
                         />
 
                         {isOpen ? (
-                            <FolderOpen className="mr-3 h-4 w-4 shrink-0 text-[#61afef]" />
+                            <FolderOpen className="mr-2 h-3.5 w-3.5 shrink-0 text-[#61afef]" />
                         ) : (
-                            <Folder className="mr-3 h-4 w-4 shrink-0 text-[#61afef]" />
+                            <Folder className="mr-2 h-3.5 w-3.5 shrink-0 text-[#61afef]" />
                         )}
 
                         <span className="truncate font-semibold">{node.name}</span>
@@ -352,10 +352,10 @@ function TemplateNode({
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="ml-auto h-6 w-6 shrink-0 opacity-0 pointer-events-none group-hover/folder-row:pointer-events-auto group-hover/folder-row:opacity-100 data-[state=open]:pointer-events-auto data-[state=open]:opacity-100"
+                                className="ml-auto h-5 w-5 shrink-0 opacity-0 pointer-events-none group-hover/folder-row:pointer-events-auto group-hover/folder-row:opacity-100 data-[state=open]:pointer-events-auto data-[state=open]:opacity-100"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <MoreHorizontal className="h-4 w-4" />
+                                <MoreHorizontal className="h-3.5 w-3.5" />
                             </Button>
                         </DropdownMenuTrigger>
 

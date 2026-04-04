@@ -1,4 +1,4 @@
-import { getUserById } from './modules/auth/actions/index';
+import { getUserByEmail, getUserById } from './modules/auth/actions/index';
 import { db } from '@/lib/db';
 import NextAuth from "next-auth"
 import authConfig from './auth.config';
@@ -29,10 +29,49 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 return false;
             }
 
+            // HOW: Provider+providerAccountId is the most stable identity across re-logins,
+            // so we check this first to avoid creating duplicate users when profile payloads vary.
+            const existingAccount = await db.account.findUnique({
+                where: {
+                    provider_providerAccountId: {
+                        provider: account.provider,
+                        providerAccountId: account.providerAccountId,
+                    },
+                },
+                include: {
+                    user: true,
+                },
+            });
+
+            if (existingAccount) {
+                // Keep OAuth tokens fresh while preserving the same DB user link.
+                await db.account.update({
+                    where: {
+                        id: existingAccount.id,
+                    },
+                    data: {
+                        type: account.type,
+                        access_token: account.access_token,
+                        refresh_token: account.refresh_token,
+                        expires_at: account.expires_at,
+                        scope: account.scope,
+                        token_type: account.token_type,
+                        id_token: account.id_token,
+                        session_state: account.session_state as string | null,
+                    },
+                });
+
+                return true;
+            }
+
+            if (!user.email) {
+                return false;
+            }
+
             // Step 1: Check if a user with this email already exists in our database
             const isExistingUser = await db.user.findUnique({
                 where: {
-                    email: user.email!
+                    email: user.email
                 }
             });
 
@@ -43,12 +82,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
                 const newUser = await db.user.create({
                     data: {
-                        name: user.name!,
-                        email: user.email!,
-                        image: user.image!,
+                        name: user.name ?? user.email.split("@")[0],
+                        email: user.email,
+                        image: user.image,
 
                         accounts: {
-                            // @ts-expect-error — session_state type mismatch in Prisma schema
                             create: {
                                 provider: account.provider,               // e.g. "google"
                                 providerAccountId: account.providerAccountId, // Google's user ID
@@ -59,7 +97,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                                 scope: account.scope,
                                 token_type: account.token_type,           // "Bearer"
                                 id_token: account.id_token,               // JWT from provider
-                                session_state: account.session_state,
+                                session_state: account.session_state as string | null,
                             }
                         }
                     }
@@ -75,41 +113,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
 
             // ── EXISTING USER ─────────────────────────────────────────────────
-            // User with this email already exists. Now check if THIS specific
-            // OAuth provider account (e.g. their Google account) is already linked.
-
-            // FIX: existingAccount declared HERE (outside else) so it's accessible below
-            const existingAccount = await db.account.findUnique({
-                where: {
-                    provider_providerAccountId: {
-                        provider: account.provider,
-                        providerAccountId: account.providerAccountId,
-                    }
+            // User with this email already exists. Link this provider account once.
+            await db.account.create({
+                data: {
+                    userId: isExistingUser.id,
+                    provider: account.provider,
+                    providerAccountId: account.providerAccountId,
+                    type: account.type,
+                    access_token: account.access_token,
+                    refresh_token: account.refresh_token,
+                    expires_at: account.expires_at,
+                    scope: account.scope,
+                    token_type: account.token_type,
+                    id_token: account.id_token,
+                    session_state: account.session_state as string | null,
                 }
             });
-
-            if (!existingAccount) {
-                // The user exists but this OAuth provider isn't linked yet.
-                // Example: user signed up with GitHub, now signing in with Google.
-                // → Create a new Account row and link it to the existing User.
-
-                await db.account.create({
-                    data: {
-                        userId: isExistingUser.id,        // link to the existing user
-                        provider: account.provider,
-                        providerAccountId: account.providerAccountId,
-                        type: account.type,
-                        access_token: account.access_token,
-                        refresh_token: account.refresh_token,
-                        expires_at: account.expires_at,
-                        scope: account.scope,
-                        token_type: account.token_type,
-                        id_token: account.id_token,
-                        // @ts-expect-error — session_state type mismatch in Prisma schema
-                        session_state: account.session_state,
-                    }
-                });
-            }
 
             // Existing user (with or without newly linked account) → allow sign-in
             return true;
@@ -121,16 +140,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
          * so the client can access them later in the session.
          */
         async jwt({ token }) {
-            // If the token has no subject (user ID), we can't look up the user, so just return it as-is.
-            if (!token.sub) return token
+            // Resolve the DB user using id first, then fallback to email.
+            const dbUserById = token.sub ? await getUserById(token.sub) : null
+            const dbUser = dbUserById ?? (token.email ? await getUserByEmail(token.email) : null)
+            if (!dbUser) return token
 
-            const existingUser = await getUserById(token.sub)
-            if (!existingUser) return token
-
-            token.name = existingUser.name
-            token.email = existingUser.email
-            // token.picture = existingUser.image
-            token.role = existingUser.role
+            token.sub = dbUser.id
+            token.id = dbUser.id
+            token.name = dbUser.name
+            token.email = dbUser.email
+            token.role = dbUser.role
             return token
         },
         /**
@@ -139,8 +158,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
          * so the frontend can easily read `session.user.role`.
          */
         async session({ session, token }) {
-            if (token.sub && session.user) {
-                session.user.id = token.sub
+            if ((token.id || token.sub) && session.user) {
+                session.user.id = (token.id as string) || token.sub!
             }
             if (token.sub && session.user) {
                 session.user.role = token.role
