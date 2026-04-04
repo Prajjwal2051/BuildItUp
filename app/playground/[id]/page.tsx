@@ -1,8 +1,9 @@
 "use client"
-// This page renders the main playground interface for a given template ID. It loads the template data, manages local state for the file tree and open files, and handles all file operations (add/rename/delete) while keeping the server in sync.
+// This page renders one playground workspace with explorer, editor, preview, and terminal.
 
 import React from "react"
 import { useParams, useRouter } from "next/navigation"
+import { useTheme } from "next-themes"
 import { SidebarInset } from "@/components/ui/sidebar"
 import TemplateFileTree from "@/modules/playground/components/playground-explorer"
 import usePlayground from "@/modules/playground/hooks/usePlayground"
@@ -15,19 +16,11 @@ import { configureMonaco, defaultEditorOptions, getEditorLanguage } from "@/modu
 import useWebContainer from "@/modules/webContainers/hooks/useWebContainer"
 import WebContainerPreview from "@/modules/webContainers/components/webContainerPreview"
 import PlaygroundTerminal from "@/modules/playground/components/playground-terminal"
-import { TerminalSquare, X, GripHorizontal } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { TerminalSquare, X, GripHorizontal, House, Settings } from "lucide-react"
+import useFileExplorerStore, { type OpenFile } from "@/modules/playground/hooks/useFileExplorer"
 
-// Ensures names remain valid path segments for create and rename actions.
-function sanitizeNodeName(name: string): string {
-    return name.trim().replace(/[\\/]+/g, "")
-}
-
-// Builds child paths using the same dotted-root format returned by the template API.
-function toChildPath(parentPath: string, childName: string): string {
-    return parentPath === "." ? childName : `${parentPath}/${childName}`
-}
-
-// Clones the full tree so mutations stay immutable for React state updates.
+// Clones the full tree so updates remain immutable.
 function cloneTree(node: FileTreeNode): FileTreeNode {
     return {
         ...node,
@@ -35,7 +28,12 @@ function cloneTree(node: FileTreeNode): FileTreeNode {
     }
 }
 
-// Recalculates all relative paths after mutations so add/rename/delete remain consistent.
+// Builds child paths using the root-dot format used by template payloads.
+function toChildPath(parentPath: string, childName: string): string {
+    return parentPath === "." ? childName : `${parentPath}/${childName}`
+}
+
+// Recomputes tree paths after edits so all nodes stay addressable.
 function rebuildPaths(node: FileTreeNode, path = "."): FileTreeNode {
     const nextNode: FileTreeNode = { ...node, path }
     if (nextNode.type === "directory") {
@@ -48,7 +46,7 @@ function rebuildPaths(node: FileTreeNode, path = "."): FileTreeNode {
     return nextNode
 }
 
-// Finds the node at a given path so the first file can be opened after load.
+// Finds a node by path so we can open specific files after load or click.
 function findNodeByPath(node: FileTreeNode, targetPath: string): FileTreeNode | null {
     if (node.path === targetPath) {
         return node
@@ -67,49 +65,17 @@ function findNodeByPath(node: FileTreeNode, targetPath: string): FileTreeNode | 
     return null
 }
 
-// Finds the node at a given path so the first file can be opened after load.
-function findNodeByPath(node: FileTreeNode, targetPath: string): FileTreeNode | null {
-    if (node.path === targetPath) {
-        return node
-    }
-    if (node.type !== "directory") {
-        return null
-    }
-
+// Returns the first file path in the tree so the editor starts with visible content.
+function findFirstFilePath(node: FileTreeNode): string {
+    if (node.type === "file") return node.path
     for (const child of node.children ?? []) {
-        const found = findNodeByPath(child, targetPath)
-        if (found) {
-            return found
-        }
-    }
-
-    return null
-}
-
-// Walks the tree and returns the content string of the node at the given path.
-function getFileContent(node: FileTreeNode, targetPath: string): string {
-    if (node.path === targetPath && node.type === "file") {
-        return node.content ?? ""
-    }
-    for (const child of node.children ?? []) {
-        const found = getFileContent(child, targetPath)
-        if (found !== null) return found
+        const first = findFirstFilePath(child)
+        if (first) return first
     }
     return ""
 }
 
-// Walks the tree and collects { path -> content } for every file node.
-function extractAllFileContents(node: FileTreeNode, acc: Record<string, string> = {}): Record<string, string> {
-    if (node.type === "file") {
-        acc[node.path] = node.content ?? ""
-    }
-    for (const child of node.children ?? []) {
-        extractAllFileContents(child, acc)
-    }
-    return acc
-}
-
-// Updates one tree node by path and returns true when a node was modified.
+// Updates a node in place by path and reports whether a match was found.
 function updateNodeByPath(
     node: FileTreeNode,
     targetPath: string,
@@ -121,15 +87,6 @@ function updateNodeByPath(
     }
     if (node.type !== "directory" || !node.children) return false
     return node.children.some((child) => updateNodeByPath(child, targetPath, update))
-}
-
-// Deletes one node by path and returns true when a child was removed.
-function removeNodeByPath(node: FileTreeNode, targetPath: string): boolean {
-    if (node.type !== "directory" || !node.children || targetPath === ".") return false
-    const originalLength = node.children.length
-    node.children = node.children.filter((child) => child.path !== targetPath)
-    if (node.children.length !== originalLength) return true
-    return node.children.some((child) => removeNodeByPath(child, targetPath))
 }
 
 function getFileName(filePath: string): string {
@@ -149,7 +106,7 @@ type RuntimeTemplate = {
     items: RuntimeTemplateItem[]
 }
 
-// Converts the explorer tree into the runtime template shape expected by the WebContainer transformer.
+// Converts the explorer tree into the shape expected by WebContainer preview.
 function toRuntimeTemplate(tree: FileTreeNode | null): RuntimeTemplate | null {
     if (!tree || tree.type !== "directory") return null
 
@@ -182,7 +139,47 @@ function toRuntimeTemplate(tree: FileTreeNode | null): RuntimeTemplate | null {
     }
 }
 
-// Renders a tab bar of all currently open files with close buttons.
+type EditorPreferences = {
+    theme: "dark" | "light"
+    fontSize: number
+    fontFamily: string
+}
+
+const EDITOR_PREFERENCES_STORAGE_KEY = "playground-editor-preferences"
+const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = {
+    theme: "dark",
+    fontSize: 14,
+    fontFamily: "JetBrains Mono, Fira Code, Menlo, Monaco, monospace",
+}
+
+const EDITOR_FONT_FAMILY_OPTIONS = [
+    { label: "JetBrains Mono", value: "JetBrains Mono, Fira Code, Menlo, Monaco, monospace" },
+    { label: "Fira Code", value: "Fira Code, JetBrains Mono, Menlo, Monaco, monospace" },
+    { label: "Source Code Pro", value: "Source Code Pro, Menlo, Monaco, monospace" },
+    { label: "Menlo", value: "Menlo, Monaco, Consolas, monospace" },
+]
+
+// Reads persisted preferences and guards against malformed storage values.
+function parseEditorPreferences(raw: string | null): EditorPreferences {
+    if (!raw) return DEFAULT_EDITOR_PREFERENCES
+
+    try {
+        const parsed = JSON.parse(raw) as Partial<EditorPreferences>
+        const theme = parsed.theme === "light" ? "light" : "dark"
+        const fontSize = typeof parsed.fontSize === "number"
+            ? Math.min(28, Math.max(11, Math.round(parsed.fontSize)))
+            : DEFAULT_EDITOR_PREFERENCES.fontSize
+        const fontFamily = typeof parsed.fontFamily === "string" && parsed.fontFamily.trim().length > 0
+            ? parsed.fontFamily
+            : DEFAULT_EDITOR_PREFERENCES.fontFamily
+
+        return { theme, fontSize, fontFamily }
+    } catch {
+        return DEFAULT_EDITOR_PREFERENCES
+    }
+}
+
+// Renders open tabs and save actions for the current editor state.
 function OpenFilesTabs({
     openFiles,
     activeFilePath,
@@ -203,7 +200,7 @@ function OpenFilesTabs({
 
     return (
         <div className="flex items-center border-b border-[#1c1f26] bg-[#0f1115]">
-            <div className="flex items-center overflow-x-auto scrollbar-none flex-1">
+            <div className="flex flex-1 items-center overflow-x-auto scrollbar-none">
                 {openFiles.map((file) => {
                     const isActive = file.id === activeFilePath
                     const isDirty = file.hasUnsavedChanges
@@ -212,52 +209,46 @@ function OpenFilesTabs({
                             key={file.id}
                             onClick={() => onSelect(file)}
                             className={cn(
-                                "group flex items-center gap-2 px-4 py-2 text-[12px] font-mono cursor-pointer border-r border-[#1c1f26] shrink-0 select-none transition-colors",
+                                "group flex shrink-0 cursor-pointer select-none items-center gap-2 border-r border-[#1c1f26] px-4 py-2 font-mono text-[12px] transition-colors",
                                 isActive
-                                    ? "bg-[#141821] text-white border-t-2 border-t-[#61afef]"
+                                    ? "border-t-2 border-t-[#61afef] bg-[#141821] text-white"
                                     : "text-[#5c6370] hover:bg-[#151922] hover:text-[#aab1bf]"
                             )}
                         >
-                            {isDirty && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#e5c07b] shrink-0" />
-                            )}
+                            {isDirty ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#e5c07b]" /> : null}
                             <span>{getFileName(file.id)}</span>
                             <button
-                                onClick={(e) => {
-                                    e.stopPropagation()
+                                onClick={(event) => {
+                                    event.stopPropagation()
                                     onClose(file.id)
                                 }}
                                 className={cn(
-                                    "rounded flex items-center justify-center w-4 h-4 text-[11px] transition-colors",
+                                    "flex h-4 w-4 items-center justify-center rounded text-[11px] transition-colors",
                                     isActive
-                                        ? "text-[#5c6370] hover:text-white hover:bg-[#2a2f3a]"
-                                        : "opacity-0 group-hover:opacity-100 text-[#5c6370] hover:text-white hover:bg-[#2a2f3a]"
+                                        ? "text-[#5c6370] hover:bg-[#2a2f3a] hover:text-white"
+                                        : "text-[#5c6370] opacity-0 hover:bg-[#2a2f3a] hover:text-white group-hover:opacity-100"
                                 )}
                             >
-                                ✕
+                                x
                             </button>
                         </div>
                     )
                 })}
             </div>
 
-            <div className="flex items-center gap-1 px-2 shrink-0 border-l border-[#1c1f26]">
+            <div className="flex shrink-0 items-center gap-1 border-l border-[#1c1f26] px-2">
                 <button
                     onClick={onSave}
                     title="Save (Ctrl+S)"
                     disabled={!activeFilePath || !hasUnsaved}
                     className={cn(
-                        "flex items-center justify-center w-7 h-7 rounded transition-colors",
+                        "flex h-7 w-7 items-center justify-center rounded transition-colors",
                         activeFilePath && hasUnsaved
-                            ? "text-[#aab1bf] hover:text-white hover:bg-[#1b2130]"
-                            : "text-[#3a3f4b] cursor-not-allowed"
+                            ? "text-[#aab1bf] hover:bg-[#1b2130] hover:text-white"
+                            : "cursor-not-allowed text-[#3a3f4b]"
                     )}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                        <polyline points="17 21 17 13 7 13 7 21" />
-                        <polyline points="7 3 7 8 15 8" />
-                    </svg>
+                    S
                 </button>
 
                 <button
@@ -265,43 +256,68 @@ function OpenFilesTabs({
                     title="Save All (Ctrl+Shift+S)"
                     disabled={!hasUnsaved}
                     className={cn(
-                        "flex items-center justify-center w-7 h-7 rounded transition-colors",
+                        "flex h-7 w-7 items-center justify-center rounded transition-colors",
                         hasUnsaved
-                            ? "text-[#aab1bf] hover:text-white hover:bg-[#1b2130]"
-                            : "text-[#3a3f4b] cursor-not-allowed"
+                            ? "text-[#aab1bf] hover:bg-[#1b2130] hover:text-white"
+                            : "cursor-not-allowed text-[#3a3f4b]"
                     )}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                        <polyline points="17 21 17 13 7 13 7 21" />
-                        <polyline points="7 3 7 8 15 8" />
-                        <line x1="21" y1="7" x2="23" y2="7" />
-                        <line x1="21" y1="10" x2="23" y2="10" />
-                        <line x1="21" y1="13" x2="23" y2="13" />
-                    </svg>
+                    A
                 </button>
             </div>
         </div>
     )
 }
 
-// Renders a single playground workspace and keeps file-tree edits in sync with persistence.
+// Renders the full playground shell and keeps editor state in sync with persistence and preview.
 function MainPlaygroundPage() {
     const params = useParams<{ id?: string | string[] }>()
     const router = useRouter()
     const { setTheme } = useTheme()
     const id = Array.isArray(params.id) ? (params.id[0] ?? "") : (params.id ?? "")
     const { playgroundData, templateData, isLoading, error, saveTemplateData } = usePlayground(id)
+
     const [isTerminalOpen, setIsTerminalOpen] = React.useState(false)
     const [terminalHeight, setTerminalHeight] = React.useState(220)
     const [isPreviewOpen, setIsPreviewOpen] = React.useState(true)
     const [terminalLogs, setTerminalLogs] = React.useState<string[]>([])
-    const hasLoggedTerminalAttach = React.useRef(false)
-    // Stores the live edited content per file path — seeded from tree on load, updated on edit.
-    const [fileContents, setFileContents] = React.useState<Record<string, string>>({})
+    const [isSettingsDialogOpen, setIsSettingsDialogOpen] = React.useState(false)
+    const [isNavigatingHome, setIsNavigatingHome] = React.useState(false)
+    const [editorPreferences, setEditorPreferences] = React.useState<EditorPreferences>(DEFAULT_EDITOR_PREFERENCES)
     const editorInstanceRef = React.useRef<MonacoEditor.IStandaloneCodeEditor | null>(null)
-    const hasUnsaved = unsavedFiles.size > 0
-    const runtimeTemplate = React.useMemo(() => toRuntimeTemplate(treeData), [treeData])
+    const liveSyncTimersRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+
+    const fileTree = useFileExplorerStore((state) => state.fileTree)
+    const openFiles = useFileExplorerStore((state) => state.openFiles)
+    const activeFilePath = useFileExplorerStore((state) => state.activeFileId ?? "")
+    const setPlaygroundId = useFileExplorerStore((state) => state.setPlaygroundId)
+    const setTemplateFileTree = useFileExplorerStore((state) => state.setTemplateFileTree)
+    const openFile = useFileExplorerStore((state) => state.openFile)
+    const closeFile = useFileExplorerStore((state) => state.closeFile)
+    const closeAllFiles = useFileExplorerStore((state) => state.closeAllFiles)
+    const markFileAsUnsaved = useFileExplorerStore((state) => state.markFileAsUnsaved)
+    const saveFileChanges = useFileExplorerStore((state) => state.saveFileChanges)
+    const addFile = useFileExplorerStore((state) => state.addFile)
+    const addFolder = useFileExplorerStore((state) => state.addFolder)
+    const deleteFile = useFileExplorerStore((state) => state.deleteFile)
+    const deleteFolder = useFileExplorerStore((state) => state.deleteFolder)
+    const renameFile = useFileExplorerStore((state) => state.renameFile)
+    const renameFolder = useFileExplorerStore((state) => state.renameFolder)
+
+    const runtimeTemplate = React.useMemo(() => toRuntimeTemplate(fileTree), [fileTree])
+    const activeOpenFile = React.useMemo(() => openFiles.find((file) => file.id === activeFilePath) ?? null, [activeFilePath, openFiles])
+    const activeEditorContent = activeOpenFile?.content ?? ""
+    const monacoTheme = editorPreferences.theme === "light" ? "vs" : "modern-dark"
+    const editorOptions = React.useMemo(
+        () => ({
+            ...(defaultEditorOptions as unknown as MonacoEditor.IStandaloneEditorConstructionOptions),
+            automaticLayout: true,
+            fontSize: editorPreferences.fontSize,
+            fontFamily: editorPreferences.fontFamily,
+        }),
+        [editorPreferences.fontFamily, editorPreferences.fontSize]
+    )
+
     const { serverUrl, isLoading: isWebContainerLoading, error: webContainerError, instance, useWriteFileSync, destroy } = useWebContainer({
         templateData: templateData as never,
     })
@@ -311,6 +327,7 @@ function MainPlaygroundPage() {
         (typeof templateData?.name === "string" && templateData.name.trim()) ||
         "Untitled Playground"
 
+    // Loads the current template tree into the file explorer store and opens the first file.
     React.useEffect(() => {
         setPlaygroundId(id)
         if (!templateData) {
@@ -320,19 +337,42 @@ function MainPlaygroundPage() {
         }
 
         const normalizedTree = rebuildPaths(cloneTree(templateData), ".")
-        setTreeData(normalizedTree)
-        // Extract all file contents from the tree into the flat map.
-        setFileContents(extractAllFileContents(normalizedTree))
-        setActiveFilePath((current) => {
-            const first = current || findFirstFilePath(normalizedTree)
-            if (first) setOpenFiles([first])
-            return first
-        })
-    }, [templateData])
+        setTemplateFileTree(normalizedTree)
+        closeAllFiles()
 
+        const firstFilePath = findFirstFilePath(normalizedTree)
+        const firstFile = firstFilePath ? findNodeByPath(normalizedTree, firstFilePath) : null
+        if (firstFile && firstFile.type === "file") {
+            openFile(firstFile)
+        }
+    }, [closeAllFiles, id, openFile, setPlaygroundId, setTemplateFileTree, templateData])
+
+    // Restores persisted editor preferences on first client render.
+    React.useEffect(() => {
+        const stored = window.localStorage.getItem(EDITOR_PREFERENCES_STORAGE_KEY)
+        setEditorPreferences(parseEditorPreferences(stored))
+    }, [])
+
+    // Persists preferences and applies app theme whenever settings change.
+    React.useEffect(() => {
+        window.localStorage.setItem(EDITOR_PREFERENCES_STORAGE_KEY, JSON.stringify(editorPreferences))
+        setTheme(editorPreferences.theme)
+        editorInstanceRef.current?.layout()
+    }, [editorPreferences, setTheme])
+
+    // Clears pending live-sync timers when the component unmounts.
+    React.useEffect(() => {
+        return () => {
+            for (const timer of liveSyncTimersRef.current.values()) {
+                clearTimeout(timer)
+            }
+            liveSyncTimersRef.current.clear()
+        }
+    }, [])
+
+    // Saves the active file content back into the tree and clears dirty state for that file.
     const handleSave = React.useCallback(() => {
         if (!activeFilePath || !fileTree) return
-
         const activeFile = openFiles.find((file) => file.id === activeFilePath)
         if (!activeFile) return
 
@@ -347,144 +387,98 @@ function MainPlaygroundPage() {
         saveFileChanges(activeFilePath)
     }, [activeFilePath, fileTree, openFiles, saveFileChanges, saveTemplateData, setTemplateFileTree])
 
-    const handleSaveAll = React.useCallback(() => {
-        // Write all edited contents back into the tree before persisting.
-        setTreeData((prev) => {
-            if (!prev) return prev
-            const draft = cloneTree(prev)
-            for (const [filePath, content] of Object.entries(fileContents)) {
-                updateNodeByPath(draft, filePath, (target) => {
-                    target.content = content
-                })
-            }
-            const rebuilt = rebuildPaths(draft, ".")
-            void saveTemplateData(rebuilt)
-            return rebuilt
-        })
-        setUnsavedFiles(new Set())
-    }, [fileContents, saveTemplateData])
+    // Saves all dirty tabs into the tree and persists the latest template snapshot.
+    const handleSaveAll = React.useCallback(async () => {
+        if (!fileTree) return
+
+        const dirtyFiles = openFiles.filter((file) => file.hasUnsavedChanges)
+        const draft = cloneTree(fileTree)
+        for (const file of dirtyFiles) {
+            updateNodeByPath(draft, file.id, (target) => {
+                target.content = file.content
+            })
+        }
+
+        const rebuilt = rebuildPaths(draft, ".")
+        setTemplateFileTree(rebuilt)
+        await saveTemplateData(rebuilt)
+        dirtyFiles.forEach((file) => saveFileChanges(file.id))
+    }, [fileTree, openFiles, saveFileChanges, saveTemplateData, setTemplateFileTree])
+
+    // Saves current changes and then returns the user to dashboard.
+    const handleNavigateDashboard = React.useCallback(async () => {
+        if (isNavigatingHome) return
+        setIsNavigatingHome(true)
+        try {
+            await handleSaveAll()
+            router.push("/dashboard")
+        } finally {
+            setIsNavigatingHome(false)
+        }
+    }, [handleSaveAll, isNavigatingHome, router])
 
     React.useEffect(() => {
-        function onKeyDown(e: KeyboardEvent) {
-            if (!e.ctrlKey && !e.metaKey) return
-            if (e.key === "s" || e.key === "S") {
-                e.preventDefault()
-                if (e.shiftKey) handleSaveAll()
-                else handleSave()
+        function onKeyDown(event: KeyboardEvent) {
+            if (!event.ctrlKey && !event.metaKey) return
+            if (event.key === "s" || event.key === "S") {
+                event.preventDefault()
+                if (event.shiftKey) {
+                    void handleSaveAll()
+                } else {
+                    handleSave()
+                }
             }
         }
         window.addEventListener("keydown", onKeyDown)
         return () => window.removeEventListener("keydown", onKeyDown)
     }, [handleSave, handleSaveAll])
 
-    // Appends WebContainer output to the terminal panel and keeps the list bounded.
+    // Adds terminal logs and keeps the log buffer bounded.
     const appendTerminalLog = React.useCallback((message: string) => {
         if (!message) return
-        setTerminalLogs((prev) => {
-            const next = [...prev, message]
+        setTerminalLogs((previous) => {
+            const next = [...previous, message]
             return next.length > 400 ? next.slice(-400) : next
         })
     }, [])
 
-    React.useEffect(() => {
-        if (hasLoggedTerminalAttach.current) return
-        hasLoggedTerminalAttach.current = true
-        appendTerminalLog("[info] Playground terminal attached.\n")
-    }, [appendTerminalLog])
+    // Syncs editor changes to store state and mirrors edits to WebContainer after debounce.
+    const handleFileChange = React.useCallback((filePath: string, newContent: string) => {
+        markFileAsUnsaved(filePath, newContent)
 
-    // Keeps the split editor pointed at an open file that still exists.
-    React.useEffect(() => {
-        if (!isSplitEditorOpen) return
-        if (openFiles.length === 0) {
-            setSplitFilePath("")
-            return
+        const previousTimer = liveSyncTimersRef.current.get(filePath)
+        if (previousTimer) {
+            clearTimeout(previousTimer)
         }
 
-        const splitStillOpen = openFiles.some((file) => file.id === splitFilePath)
-        if (splitStillOpen) return
+        const timer = setTimeout(() => {
+            void useWriteFileSync(filePath, newContent)
+                .then(() => {
+                    appendTerminalLog(`[info] Synced ${getFileName(filePath)} to the live preview.\n`)
+                })
+                .catch((syncError) => {
+                    const message = syncError instanceof Error ? syncError.message : "Unknown sync error"
+                    appendTerminalLog(`[error] Failed to sync ${filePath}: ${message}\n`)
+                })
+        }, 150)
 
-        const nextSplitFile = openFiles.find((file) => file.id !== activeFilePath) ?? openFiles[0]
-        if (nextSplitFile) {
-            setSplitFilePath(nextSplitFile.id)
-        }
-    }, [activeFilePath, isSplitEditorOpen, openFiles, splitFilePath])
+        liveSyncTimersRef.current.set(filePath, timer)
+    }, [appendTerminalLog, markFileAsUnsaved, useWriteFileSync])
 
-    // Reveals a requested line after Monaco has the right file mounted.
-    React.useEffect(() => {
-        const pending = pendingRevealRef.current
-        if (!pending) return
-        if (pending.path !== activeFilePath) return
+    const handleFileSelect = React.useCallback((filePath: string, file: FileTreeNode) => {
+        if (file.type !== "file") return
+        openFile(file)
+    }, [openFile])
 
-        const frame = window.requestAnimationFrame(() => {
-            const editor = editorInstancesRef.current[0]
-            if (!editor) return
-            if (pending.line) {
-                editor.revealLineInCenter(pending.line)
-                editor.setPosition({ lineNumber: pending.line, column: pending.column ?? 1 })
-            }
-            editor.focus()
-            pendingRevealRef.current = null
-        })
-
-        return () => window.cancelAnimationFrame(frame)
-    }, [activeFilePath])
-
-    // Clears any pending live-sync writes when the page unloads or the component remounts.
-    React.useEffect(() => {
-        return () => {
-            for (const timer of liveSyncTimersRef.current.values()) {
-                clearTimeout(timer)
-            }
-            liveSyncTimersRef.current.clear()
-        }
+    const handleTogglePreview = React.useCallback(() => {
+        setIsPreviewOpen((previous) => !previous)
     }, [])
 
-    // Drops stale problem entries when files close or rename so the panel stays relevant.
-    React.useEffect(() => {
-        const validPaths = new Set(openFiles.map((file) => file.id))
-        setEditorProblemsByPath((previous) => {
-            const next: Record<string, ProblemEntry[]> = {}
-            for (const [path, entries] of Object.entries(previous)) {
-                if (validPaths.has(path)) {
-                    next[path] = entries
-                }
-            }
-            return next
-        })
-    }, [openFiles])
-
-    // Opens the command palette with the same shortcut users expect in an IDE.
-    React.useEffect(() => {
-        function onKeyDown(event: KeyboardEvent) {
-            const isProjectSearch = (event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "f"
-            if (isProjectSearch) {
-                event.preventDefault()
-                setIsSearchDialogOpen(true)
-                return
-            }
-            const isQuickOpen = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "p"
-            if (!isQuickOpen) return
-            event.preventDefault()
-            setIsCommandPaletteOpen(true)
-        }
-
-        window.addEventListener("keydown", onKeyDown)
-        return () => window.removeEventListener("keydown", onKeyDown)
+    const handleToggleTerminal = React.useCallback(() => {
+        setIsTerminalOpen((previous) => !previous)
     }, [])
 
-    // Re-layouts Monaco when workspace panels change size so minimap and viewport stay aligned.
-    React.useEffect(() => {
-        const frame = window.requestAnimationFrame(() => {
-            for (const editor of editorInstancesRef.current) {
-                editor?.layout()
-            }
-        })
-        return () => {
-            window.cancelAnimationFrame(frame)
-        }
-    }, [isPreviewOpen, isSplitEditorOpen, isTerminalOpen, terminalHeight])
-
-    // Allows users to drag the terminal divider to resize the panel height.
+    // Handles dragging to resize the terminal panel height.
     const handleTerminalResizeStart = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
         event.preventDefault()
         const startY = event.clientY
@@ -505,81 +499,14 @@ function MainPlaygroundPage() {
         window.addEventListener("mouseup", onMouseUp)
     }, [terminalHeight])
 
-    // Captures each editor instance so the page can keep every split pane aligned.
-    const handleEditorMount = React.useCallback((slot: number, editor: MonacoEditor.IStandaloneCodeEditor, monaco: Monaco) => {
-        editorInstancesRef.current[slot] = editor
+    const handleEditorMount = React.useCallback((editor: MonacoEditor.IStandaloneCodeEditor, monaco: Monaco) => {
+        editorInstanceRef.current = editor
         configureMonaco(monaco)
     }, [])
 
-    // Updates the in-memory content for a file and marks it dirty.
-    const handleFileChange = React.useCallback((filePath: string, newContent: string) => {
-        setFileContents((prev) => ({ ...prev, [filePath]: newContent }))
-        setUnsavedFiles((prev) => new Set(prev).add(filePath))
-    }, [])
-
-    const handleFileSelect = React.useCallback((filePath: string) => {
-        setOpenFiles((prev) => prev.includes(filePath) ? prev : [...prev, filePath])
-        setActiveFilePath(filePath)
-    }, [])
-
-    const handleCloseFile = React.useCallback((filePath: string) => {
-        setOpenFiles((prev) => {
-            const next = prev.filter((f) => f !== filePath)
-            if (activeFilePath === filePath) {
-                const idx = prev.indexOf(filePath)
-                const fallback = next[idx] ?? next[idx - 1] ?? ""
-                setActiveFilePath(fallback)
-            }
-            return next
-        })
-    }, [activeFilePath])
-
-    const applyTreeChange = React.useCallback(
-        (mutate: (draft: FileTreeNode) => boolean) => {
-            setTreeData((previous) => {
-                if (!previous) return previous
-                const draft = cloneTree(previous)
-                const hasChanged = mutate(draft)
-                if (!hasChanged) return previous
-                const normalizedTree = rebuildPaths(draft, ".")
-                void saveTemplateData(normalizedTree)
-                return normalizedTree
-            })
-        },
-        [saveTemplateData]
-    )
-
     const handleAddFile = React.useCallback((parentPath: string, filename: string, extension: string) => {
-        const cleanFilename = sanitizeNodeName(filename)
-        const cleanExtension = sanitizeNodeName(extension).replace(/^\./, "")
-        if (!cleanFilename) return
-        const newName = cleanExtension ? `${cleanFilename}.${cleanExtension}` : cleanFilename
-
-        applyTreeChange((draft) => {
-            let didCreate = false
-            const changed = updateNodeByPath(draft, parentPath, (target) => {
-                if (target.type !== "directory") return
-                const children = target.children ?? []
-                if (children.some((child) => child.name === newName)) return
-                children.push({
-                    name: newName,
-                    path: toChildPath(parentPath, newName),
-                    type: "file",
-                    content: "",
-                })
-                target.children = children
-                didCreate = true
-            })
-            if (didCreate) {
-                const newPath = toChildPath(parentPath, newName)
-                // Seed an empty content entry for the new file.
-                setFileContents((prev) => ({ ...prev, [newPath]: "" }))
-                setOpenFiles((prev) => prev.includes(newPath) ? prev : [...prev, newPath])
-                setActiveFilePath(newPath)
-            }
-            return changed && didCreate
-        })
-    }, [applyTreeChange])
+        addFile(parentPath, filename, extension)
+    }, [addFile])
 
     const handleAddFolder = React.useCallback((parentPath: string, folderName: string) => {
         addFolder(parentPath, folderName)
@@ -590,92 +517,16 @@ function MainPlaygroundPage() {
     }, [deleteFile])
 
     const handleDeleteFolder = React.useCallback((folderPath: string) => {
-        applyTreeChange((draft) => {
-            const removed = removeNodeByPath(draft, folderPath)
-            if (removed) {
-                setFileContents((prev) => {
-                    const n = { ...prev }
-                    for (const k of Object.keys(n)) {
-                        if (k === folderPath || k.startsWith(`${folderPath}/`)) delete n[k]
-                    }
-                    return n
-                })
-                setOpenFiles((prev) => prev.filter((f) => f !== folderPath && !f.startsWith(`${folderPath}/`)))
-                if (activeFilePath === folderPath || activeFilePath.startsWith(`${folderPath}/`)) {
-                    setActiveFilePath(findFirstFilePath(draft))
-                }
-            }
-            return removed
-        })
-    }, [activeFilePath, applyTreeChange])
+        deleteFolder(folderPath)
+    }, [deleteFolder])
 
     const handleRenameFile = React.useCallback((filePath: string, filename: string, extension: string) => {
-        const cleanFilename = sanitizeNodeName(filename)
-        const cleanExtension = sanitizeNodeName(extension).replace(/^\./, "")
-        if (!cleanFilename) return
-        const updatedFileName = cleanExtension ? `${cleanFilename}.${cleanExtension}` : cleanFilename
-
-        applyTreeChange((draft) => {
-            const updated = updateNodeByPath(draft, filePath, (target) => {
-                target.name = updatedFileName
-            })
-            if (updated) {
-                const parentPath = filePath.includes("/") ? filePath.slice(0, filePath.lastIndexOf("/")) : "."
-                const newPath = toChildPath(parentPath || ".", updatedFileName)
-                // Migrate content and unsaved state to the new path.
-                setFileContents((prev) => {
-                    const n = { ...prev, [newPath]: prev[filePath] ?? "" }
-                    delete n[filePath]
-                    return n
-                })
-                setUnsavedFiles((prev) => {
-                    const n = new Set(prev)
-                    if (n.has(filePath)) { n.delete(filePath); n.add(newPath) }
-                    return n
-                })
-                setOpenFiles((prev) => prev.map((f) => f === filePath ? newPath : f))
-                if (activeFilePath === filePath) setActiveFilePath(newPath)
-            }
-            return updated
-        })
-    }, [activeFilePath, applyTreeChange])
+        renameFile(filePath, filename, extension)
+    }, [renameFile])
 
     const handleRenameFolder = React.useCallback((folderPath: string, newFolderName: string) => {
-        const cleanFolderName = sanitizeNodeName(newFolderName)
-        if (!cleanFolderName) return
-
-        applyTreeChange((draft) => {
-            const updated = updateNodeByPath(draft, folderPath, (target) => {
-                target.name = cleanFolderName
-            })
-            if (updated) {
-                const parentPath = folderPath.includes("/") ? folderPath.slice(0, folderPath.lastIndexOf("/")) : "."
-                const renamedFolderPath = toChildPath(parentPath || ".", cleanFolderName)
-                // Remap all content keys and open tabs under the renamed folder.
-                setFileContents((prev) => {
-                    const n: Record<string, string> = {}
-                    for (const [k, v] of Object.entries(prev)) {
-                        const newKey = (k === folderPath || k.startsWith(`${folderPath}/`))
-                            ? renamedFolderPath + k.slice(folderPath.length)
-                            : k
-                        n[newKey] = v
-                    }
-                    return n
-                })
-                setOpenFiles((prev) =>
-                    prev.map((f) =>
-                        f === folderPath || f.startsWith(`${folderPath}/`)
-                            ? renamedFolderPath + f.slice(folderPath.length)
-                            : f
-                    )
-                )
-                if (activeFilePath === folderPath || activeFilePath.startsWith(`${folderPath}/`)) {
-                    setActiveFilePath(renamedFolderPath + activeFilePath.slice(folderPath.length))
-                }
-            }
-            return updated
-        })
-    }, [activeFilePath, applyTreeChange])
+        renameFolder(folderPath, newFolderName)
+    }, [renameFolder])
 
     if (isLoading && !fileTree) {
         return (
@@ -699,7 +550,7 @@ function MainPlaygroundPage() {
 
     return (
         <div className="flex h-screen w-full overflow-hidden">
-            {fileTree && (
+            {fileTree ? (
                 <TemplateFileTree
                     data={fileTree}
                     onFileSelect={handleFileSelect}
@@ -712,20 +563,16 @@ function MainPlaygroundPage() {
                     onRenameFile={handleRenameFile}
                     onRenameFolder={handleRenameFolder}
                 />
-            )}
+            ) : null}
 
-            <SidebarInset className="flex flex-col flex-1 overflow-hidden">
-                {/* Header */}
-                <div className="justify-between flex items-center px-4 py-2 border-b border-[#1c1f26] bg-[#0f1115] shrink-0">
+            <SidebarInset className="flex flex-1 flex-col overflow-hidden">
+                <div className="flex shrink-0 items-center justify-between border-b border-[#1c1f26] bg-[#0f1115] px-4 py-2">
                     <div className="w-24" />
-                    <div className="justify-center w-2xl flex items-center gap-2 px-3 py-1 rounded-md border border-[#2a2f3a] bg-[#141821]">
-                        <span className="text-[11px] tracking-widest uppercase text-[#5c6370] font-semibold select-none">
-                            Playground
-                        </span>
-                        <span className="text-[#aab1bf] text-[13px] font-mono font-medium">
-                            {playgroundTitle}
-                        </span>
+                    <div className="flex w-2xl items-center justify-center gap-2 rounded-md border border-[#2a2f3a] bg-[#141821] px-3 py-1">
+                        <span className="select-none text-[11px] font-semibold uppercase tracking-widest text-[#5c6370]">Playground</span>
+                        <span className="font-mono text-[13px] font-medium text-[#aab1bf]">{playgroundTitle}</span>
                     </div>
+
                     <div className="flex items-center gap-2">
                         <button
                             type="button"
@@ -738,7 +585,7 @@ function MainPlaygroundPage() {
                                 "flex h-9 w-9 items-center justify-center rounded-md border transition-colors",
                                 isNavigatingHome
                                     ? "cursor-not-allowed border-[#2a2f3a] bg-[#141821] text-[#5c6370]"
-                                    : "border-[#2a2f3a] bg-[#141821] text-[#8b92a3] hover:text-white hover:border-[#3a4150]"
+                                    : "border-[#2a2f3a] bg-[#141821] text-[#8b92a3] hover:border-[#3a4150] hover:text-white"
                             )}
                         >
                             <House size={16} />
@@ -752,7 +599,7 @@ function MainPlaygroundPage() {
                                 "rounded-md border px-2 py-1 text-[11px] font-medium transition-colors",
                                 isPreviewOpen
                                     ? "border-[#61afef] bg-[#1b2130] text-[#dbe8ff]"
-                                    : "border-[#2a2f3a] bg-[#141821] text-[#8b92a3] hover:text-white hover:border-[#3a4150]"
+                                    : "border-[#2a2f3a] bg-[#141821] text-[#8b92a3] hover:border-[#3a4150] hover:text-white"
                             )}
                         >
                             Preview
@@ -766,7 +613,7 @@ function MainPlaygroundPage() {
                                 "flex h-9 w-9 items-center justify-center rounded-md border transition-colors",
                                 isTerminalOpen
                                     ? "border-[#61afef] bg-[#1b2130] text-[#dbe8ff]"
-                                    : "border-[#2a2f3a] bg-[#141821] text-[#8b92a3] hover:text-white hover:border-[#3a4150]"
+                                    : "border-[#2a2f3a] bg-[#141821] text-[#8b92a3] hover:border-[#3a4150] hover:text-white"
                             )}
                         >
                             <TerminalSquare size={16} />
@@ -774,205 +621,52 @@ function MainPlaygroundPage() {
                     </div>
                 </div>
 
-                <Dialog open={isSearchDialogOpen} onOpenChange={setIsSearchDialogOpen}>
-                    <DialogContent className="max-w-3xl gap-0 overflow-hidden p-0">
-                        <DialogHeader className="border-b px-4 py-3">
-                            <DialogTitle>Search in files</DialogTitle>
-                            <DialogDescription>
-                                Search file names, paths, and file contents in the current playground.
-                            </DialogDescription>
-                        </DialogHeader>
-
-                        <div className="border-b px-4 py-3">
-                            <Input
-                                autoFocus
-                                value={searchQuery}
-                                onChange={(event) => setSearchQuery(event.target.value)}
-                                placeholder="Type to search across the project..."
-                            />
-                        </div>
-
-                        <ScrollArea className="max-h-[60vh]">
-                            <div className="space-y-2 p-3">
-                                {searchQuery.trim() ? (
-                                    searchResults.length > 0 ? (
-                                        searchResults.map((result) => (
-                                            <button
-                                                key={`${result.path}-${result.lineNumber ?? "path"}`}
-                                                type="button"
-                                                onClick={() => handleOpenSearchResult(result.path)}
-                                                className="w-full rounded-lg border border-transparent px-3 py-2 text-left transition-colors hover:border-border hover:bg-muted/50"
-                                            >
-                                                <div className="flex items-center justify-between gap-3">
-                                                    <div className="min-w-0">
-                                                        <div className="truncate text-sm font-medium text-foreground">
-                                                            {result.path}
-                                                        </div>
-                                                        <div className="truncate text-xs text-muted-foreground">
-                                                            {result.snippet}
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex shrink-0 items-center gap-2">
-                                                        <Badge variant="outline">{result.matchKind}</Badge>
-                                                        {result.lineNumber ? (
-                                                            <Badge variant="secondary">Line {result.lineNumber}</Badge>
-                                                        ) : null}
-                                                    </div>
-                                                </div>
-                                            </button>
-                                        ))
-                                    ) : (
-                                        <div className="py-10 text-center text-sm text-muted-foreground">
-                                            No matches found.
-                                        </div>
-                                    )
-                                ) : (
-                                    <div className="py-10 text-center text-sm text-muted-foreground">
-                                        Start typing to search across file names and file contents.
-                                    </div>
-                                )}
-                            </div>
-                        </ScrollArea>
-                    </DialogContent>
-                </Dialog>
-
-                <CommandDialog
-                    open={isCommandPaletteOpen}
-                    onOpenChange={setIsCommandPaletteOpen}
-                    title="Quick Open"
-                    description="Search files and run playground actions"
-                    className="max-w-2xl"
-                >
-                    <Command className="rounded-xl! border border-border/60 bg-background shadow-2xl">
-                        <CommandInput placeholder="Search files, actions, or commands..." />
-                        <CommandList>
-                            <CommandEmpty>No results found.</CommandEmpty>
-
-                            <CommandGroup heading="Files">
-                                {commandGroups.files.map((file) => (
-                                    <CommandItem
-                                        key={file.path}
-                                        value={`${file.name} ${file.path}`}
-                                        onSelect={() => handleOpenFileFromPalette(file)}
-                                    >
-                                        <span className="truncate">{file.path}</span>
-                                        <CommandShortcut>Open</CommandShortcut>
-                                    </CommandItem>
-                                ))}
-                            </CommandGroup>
-
-                            <CommandSeparator />
-
-                            <CommandGroup heading="Actions">
-                                <CommandItem
-                                    value="save current file"
-                                    onSelect={() => {
-                                        handleSave()
-                                        setIsCommandPaletteOpen(false)
-                                    }}
-                                >
-                                    Save file
-                                    <CommandShortcut>Ctrl+S</CommandShortcut>
-                                </CommandItem>
-                                <CommandItem
-                                    value="save all files"
-                                    onSelect={() => {
-                                        handleSaveAll()
-                                        setIsCommandPaletteOpen(false)
-                                    }}
-                                >
-                                    Save all
-                                    <CommandShortcut>Ctrl+Shift+S</CommandShortcut>
-                                </CommandItem>
-                                <CommandItem value="toggle preview" onSelect={handleTogglePreview}>
-                                    {isPreviewOpen ? "Hide preview" : "Show preview"}
-                                    <CommandShortcut>Preview</CommandShortcut>
-                                </CommandItem>
-                                <CommandItem value="toggle terminal" onSelect={handleToggleTerminal}>
-                                    {isTerminalOpen ? "Hide terminal" : "Show terminal"}
-                                    <CommandShortcut>Terminal</CommandShortcut>
-                                </CommandItem>
-                                <CommandItem value="toggle split editor" onSelect={handleToggleSplitEditor}>
-                                    {isSplitEditorOpen ? "Hide split editor" : "Show split editor"}
-                                    <CommandShortcut>Split</CommandShortcut>
-                                </CommandItem>
-                                <CommandItem value="toggle problems panel" onSelect={handleToggleProblemsPanel}>
-                                    {isProblemsPanelOpen ? "Hide problems panel" : "Show problems panel"}
-                                    <CommandShortcut>Problems</CommandShortcut>
-                                </CommandItem>
-                                <CommandItem
-                                    value="search in files"
-                                    onSelect={() => {
-                                        handleOpenSearchDialog()
-                                        setIsCommandPaletteOpen(false)
-                                    }}
-                                >
-                                    Search in files
-                                    <CommandShortcut>Ctrl+Shift+F</CommandShortcut>
-                                </CommandItem>
-                                <CommandItem
-                                    value="reset webcontainer"
-                                    onSelect={() => {
-                                        destroy()
-                                        setIsCommandPaletteOpen(false)
-                                    }}
-                                >
-                                    Reset web container
-                                    <CommandShortcut>Danger</CommandShortcut>
-                                </CommandItem>
-                            </CommandGroup>
-                        </CommandList>
-                    </Command>
-                </CommandDialog>
-
                 <OpenFilesTabs
                     openFiles={openFiles}
                     activeFilePath={activeFilePath}
                     onSelect={openFile}
-                    onClose={handleCloseFile}
+                    onClose={closeFile}
                     onSave={handleSave}
-                    onSaveAll={handleSaveAll}
+                    onSaveAll={() => {
+                        void handleSaveAll()
+                    }}
                 />
 
-                {/* Keeps code editor and terminal stacked in one workspace column. */}
                 <div className="flex min-h-0 flex-1 flex-col bg-[#0f1115]">
-                    {/* Switches preview layout so users can dock it to the right or bottom. */}
-                    <div
-                        className={cn(
-                            "min-h-0 flex-1",
-                            runtimeTemplate
-                                ? "flex flex-row"
-                                : "flex flex-col"
-                        )}
-                    >
-                        <div className="min-h-0 flex-1 overflow-auto">
-                            {activeFilePath ? (
-                                <Editor
-                                    key={activeFilePath}
-                                    language={getEditorLanguage(activeFilePath.split(".").pop() ?? "")}
-                                    value={fileContents[activeFilePath] ?? ""}
-                                    onChange={(value) => handleFileChange(activeFilePath, value ?? "")}
-                                    theme="modern-dark"
-                                    options={{
-                                        ...(defaultEditorOptions as unknown as MonacoEditor.IStandaloneEditorConstructionOptions),
-                                        automaticLayout: true,
-                                    }}
-                                    onMount={(editor, monaco) => handleEditorMount(editor, monaco)}
-                                />
-                            ) : (
-                                <div className="flex h-full items-center justify-center text-sm text-[#5c6370]">
-                                    No file open
+                    <div className={cn("min-h-0 flex-1", runtimeTemplate ? "flex flex-row" : "flex flex-col")}>
+                        <div className="min-h-0 flex flex-1 flex-col overflow-hidden">
+                            <div className="flex h-10 min-h-10 items-center justify-between border-b border-[#1c1f26] bg-[#0b0d11] px-3">
+                                <div className="flex items-center gap-2 text-[11px] text-[#5c6370]">
+                                    <span>Editor</span>
+                                    <span className="text-[#7d8596]">{activeOpenFile ? getFileName(activeOpenFile.id) : "No file open"}</span>
                                 </div>
-                            )}
+                                <span className="text-[10px] text-[#5c6370]">Primary</span>
+                            </div>
+
+                            <div className="min-h-0 flex-1 overflow-hidden">
+                                {activeOpenFile ? (
+                                    <Editor
+                                        path={activeFilePath}
+                                        language={getEditorLanguage(activeFilePath.split(".").pop() ?? "")}
+                                        value={activeEditorContent}
+                                        onChange={(value) => handleFileChange(activeFilePath, value ?? "")}
+                                        theme={monacoTheme}
+                                        options={editorOptions}
+                                        onMount={(editor, monaco) => handleEditorMount(editor, monaco)}
+                                    />
+                                ) : (
+                                    <div className="flex h-full items-center justify-center text-sm text-[#5c6370]">No file open</div>
+                                )}
+                            </div>
                         </div>
 
-                        {isPreviewOpen && runtimeTemplate ? (
+                        {runtimeTemplate ? (
                             <div
                                 className={cn(
                                     "min-h-0 shrink-0 overflow-hidden bg-[#0f1115] transition-[width,border-color,opacity] duration-200",
                                     isPreviewOpen
                                         ? "w-[45%] border-l border-[#1c1f26] opacity-100"
-                                        : "w-0 border-l border-transparent opacity-0 pointer-events-none"
+                                        : "pointer-events-none w-0 border-l border-transparent opacity-0"
                                 )}
                                 aria-hidden={!isPreviewOpen}
                             >
@@ -996,54 +690,6 @@ function MainPlaygroundPage() {
                             <span>Tools</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button
-                                type="button"
-                                onClick={handleOpenSearchDialog}
-                                className="flex h-7 items-center gap-1.5 rounded-md border border-[#2a2f3a] bg-[#141821] px-2.5 text-[11px] text-[#aab1bf] transition-colors hover:border-[#3a4150] hover:text-white"
-                                title="Search in files"
-                            >
-                                <Search size={13} />
-                                <span>Search</span>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={handleOpenCommandPalette}
-                                className="flex h-7 items-center gap-1.5 rounded-md border border-[#2a2f3a] bg-[#141821] px-2.5 text-[11px] text-[#aab1bf] transition-colors hover:border-[#3a4150] hover:text-white"
-                                title="Quick Open"
-                            >
-                                <CommandIcon size={13} />
-                                <span>Quick Open</span>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={handleToggleSplitEditor}
-                                className={cn(
-                                    "flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11px] transition-colors",
-                                    isSplitEditorOpen
-                                        ? "border-[#61afef] bg-[#1b2130] text-[#dbe8ff]"
-                                        : "border-[#2a2f3a] bg-[#141821] text-[#aab1bf] hover:border-[#3a4150] hover:text-white"
-                                )}
-                                title="Toggle split editor"
-                            >
-                                <span>Split</span>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={handleToggleProblemsPanel}
-                                className={cn(
-                                    "flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11px] transition-colors",
-                                    isProblemsPanelOpen
-                                        ? "border-[#61afef] bg-[#1b2130] text-[#dbe8ff]"
-                                        : "border-[#2a2f3a] bg-[#141821] text-[#aab1bf] hover:border-[#3a4150] hover:text-white"
-                                )}
-                                title="Toggle problems panel"
-                            >
-                                <span>Problems</span>
-                            </button>
-
                             <button
                                 type="button"
                                 onClick={() => setIsSettingsDialogOpen(true)}
@@ -1071,7 +717,7 @@ function MainPlaygroundPage() {
                                     <div className="flex items-center gap-2">
                                         <button
                                             type="button"
-                                            onClick={() => setEditorPreferences((prev) => ({ ...prev, theme: "dark" }))}
+                                            onClick={() => setEditorPreferences((previous) => ({ ...previous, theme: "dark" }))}
                                             className={cn(
                                                 "h-8 rounded-md border px-3 text-xs transition-colors",
                                                 editorPreferences.theme === "dark"
@@ -1083,7 +729,7 @@ function MainPlaygroundPage() {
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => setEditorPreferences((prev) => ({ ...prev, theme: "light" }))}
+                                            onClick={() => setEditorPreferences((previous) => ({ ...previous, theme: "light" }))}
                                             className={cn(
                                                 "h-8 rounded-md border px-3 text-xs transition-colors",
                                                 editorPreferences.theme === "light"
@@ -1109,7 +755,7 @@ function MainPlaygroundPage() {
                                         value={editorPreferences.fontSize}
                                         onChange={(event) => {
                                             const nextSize = Number(event.target.value)
-                                            setEditorPreferences((prev) => ({ ...prev, fontSize: nextSize }))
+                                            setEditorPreferences((previous) => ({ ...previous, fontSize: nextSize }))
                                         }}
                                         className="w-full"
                                     />
@@ -1121,7 +767,7 @@ function MainPlaygroundPage() {
                                         value={editorPreferences.fontFamily}
                                         onChange={(event) => {
                                             const nextFamily = event.target.value
-                                            setEditorPreferences((prev) => ({ ...prev, fontFamily: nextFamily }))
+                                            setEditorPreferences((previous) => ({ ...previous, fontFamily: nextFamily }))
                                         }}
                                         className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                                     >
@@ -1135,66 +781,6 @@ function MainPlaygroundPage() {
                             </div>
                         </DialogContent>
                     </Dialog>
-
-                    {isProblemsPanelOpen ? (
-                        <div className="shrink-0 border-t border-[#1c1f26] bg-[#0b0d11]">
-                            <div className="flex items-center justify-between border-b border-[#1c1f26] px-3 py-2">
-                                <div className="flex items-center gap-2 text-[12px] text-[#aab1bf]">
-                                    <span className="font-medium">Problems</span>
-                                    <span className="text-[#5c6370]">{problems.length}</span>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsProblemsPanelOpen(false)}
-                                    className="rounded p-1 text-[#71798a] hover:bg-[#151922] hover:text-white"
-                                    aria-label="Close problems panel"
-                                    title="Close problems panel"
-                                >
-                                    <X size={14} />
-                                </button>
-                            </div>
-
-                            <ScrollArea className="max-h-56">
-                                <div className="space-y-2 p-3">
-                                    {problems.length > 0 ? (
-                                        problems.map((problem) => (
-                                            <button
-                                                key={problem.id}
-                                                type="button"
-                                                onClick={() => handleOpenProblem(problem)}
-                                                className="w-full rounded-lg border border-[#1c1f26] bg-[#11141a] px-3 py-2 text-left transition-colors hover:border-[#2a2f3a] hover:bg-[#141821]"
-                                            >
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <Badge variant="outline" className={getProblemSeverityClass(problem.severity)}>
-                                                                {getProblemSeverityLabel(problem.severity)}
-                                                            </Badge>
-                                                            <span className="truncate text-sm font-medium text-[#dbe8ff]">
-                                                                {problem.path}
-                                                            </span>
-                                                        </div>
-                                                        <div className="mt-1 text-xs text-[#aab1bf]">
-                                                            {problem.message}
-                                                        </div>
-                                                        <div className="mt-1 text-[11px] text-[#5c6370]">
-                                                            {problem.detail}
-                                                            {problem.line ? ` · Line ${problem.line}` : ""}
-                                                            {problem.column ? `:${problem.column}` : ""}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </button>
-                                        ))
-                                    ) : (
-                                        <div className="py-10 text-center text-sm text-muted-foreground">
-                                            No problems found.
-                                        </div>
-                                    )}
-                                </div>
-                            </ScrollArea>
-                        </div>
-                    ) : null}
 
                     {isTerminalOpen ? (
                         <div className="shrink-0 border-t border-[#1c1f26] bg-[#0b0d11]" style={{ height: `${terminalHeight}px` }}>
@@ -1224,11 +810,8 @@ function MainPlaygroundPage() {
                                 </button>
                             </div>
 
-                            <div className="min-h-0 h-[calc(100%-44px)] px-3 py-2 font-mono text-xs text-[#7d8596]">
-                                <PlaygroundTerminal
-                                    logs={terminalLogs}
-                                    className="h-full min-h-0"
-                                />
+                            <div className="h-[calc(100%-44px)] min-h-0 px-3 py-2 font-mono text-xs text-[#7d8596]">
+                                <PlaygroundTerminal logs={terminalLogs} className="h-full min-h-0" />
                             </div>
                         </div>
                     ) : null}
