@@ -15,30 +15,7 @@ import { configureMonaco, defaultEditorOptions, getEditorLanguage } from "@/modu
 import useWebContainer from "@/modules/webContainers/hooks/useWebContainer"
 import WebContainerPreview from "@/modules/webContainers/components/webContainerPreview"
 import PlaygroundTerminal from "@/modules/playground/components/playground-terminal"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-    Command,
-    CommandDialog,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-    CommandSeparator,
-    CommandShortcut,
-} from "@/components/ui/command"
-import { TerminalSquare, X, GripHorizontal, Search, Command as CommandIcon, ArrowLeftRight, House, Settings } from "lucide-react"
-import useFileExplorerStore, { type OpenFile } from "@/modules/playground/hooks/useFileExplorer"
-import { useTheme } from "next-themes"
+import { TerminalSquare, X, GripHorizontal } from "lucide-react"
 
 // Ensures names remain valid path segments for create and rename actions.
 function sanitizeNodeName(name: string): string {
@@ -90,244 +67,46 @@ function findNodeByPath(node: FileTreeNode, targetPath: string): FileTreeNode | 
     return null
 }
 
-// Collects all file nodes so the quick open palette can search across the project.
-function collectFileNodes(node: FileTreeNode | null, acc: FileTreeNode[] = []): FileTreeNode[] {
-    if (!node) return acc
-    if (node.type === "file") {
-        acc.push(node)
-        return acc
+// Finds the node at a given path so the first file can be opened after load.
+function findNodeByPath(node: FileTreeNode, targetPath: string): FileTreeNode | null {
+    if (node.path === targetPath) {
+        return node
+    }
+    if (node.type !== "directory") {
+        return null
     }
 
     for (const child of node.children ?? []) {
-        collectFileNodes(child, acc)
-    }
-
-    return acc
-}
-
-type SearchResult = {
-    path: string
-    name: string
-    snippet: string
-    lineNumber: number | null
-    matchKind: "path" | "content"
-}
-
-type EditorMarkerInput = {
-    message: string
-    severity: number
-    startLineNumber: number
-    startColumn: number
-    endLineNumber: number
-    endColumn: number
-    source?: string
-    code?: string | number | { value: string }
-}
-
-type ProblemSeverity = "error" | "warning" | "info"
-
-type ProblemEntry = {
-    id: string
-    path: string
-    message: string
-    detail: string
-    severity: ProblemSeverity
-    line: number | null
-    column: number | null
-    origin: "editor" | "terminal"
-}
-
-type EditorPreferences = {
-    theme: "dark" | "light"
-    fontSize: number
-    fontFamily: string
-}
-
-const EDITOR_PREFERENCES_STORAGE_KEY = "playground-editor-preferences"
-const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = {
-    theme: "dark",
-    fontSize: 14,
-    fontFamily: "JetBrains Mono, Fira Code, Menlo, Monaco, monospace",
-}
-
-const EDITOR_FONT_FAMILY_OPTIONS = [
-    { label: "JetBrains Mono", value: "JetBrains Mono, Fira Code, Menlo, Monaco, monospace" },
-    { label: "Fira Code", value: "Fira Code, JetBrains Mono, Menlo, Monaco, monospace" },
-    { label: "Source Code Pro", value: "Source Code Pro, Menlo, Monaco, monospace" },
-    { label: "Menlo", value: "Menlo, Monaco, Consolas, monospace" },
-]
-
-// Loads persisted preferences and falls back to safe defaults when storage is missing or invalid.
-function parseEditorPreferences(raw: string | null): EditorPreferences {
-    if (!raw) return DEFAULT_EDITOR_PREFERENCES
-
-    try {
-        const parsed = JSON.parse(raw) as Partial<EditorPreferences>
-        const theme = parsed.theme === "light" ? "light" : "dark"
-        const fontSize = typeof parsed.fontSize === "number"
-            ? Math.min(28, Math.max(11, Math.round(parsed.fontSize)))
-            : DEFAULT_EDITOR_PREFERENCES.fontSize
-        const fontFamily = typeof parsed.fontFamily === "string" && parsed.fontFamily.trim().length > 0
-            ? parsed.fontFamily
-            : DEFAULT_EDITOR_PREFERENCES.fontFamily
-
-        return { theme, fontSize, fontFamily }
-    } catch {
-        return DEFAULT_EDITOR_PREFERENCES
-    }
-}
-
-// Builds the current content map so search includes unsaved tab edits.
-function buildCurrentFileContentMap(
-    fileTree: FileTreeNode | null,
-    openFiles: OpenFile[]
-): Map<string, string> {
-    const contentMap = new Map<string, string>()
-
-    function walk(node: FileTreeNode | null) {
-        if (!node) return
-        if (node.type === "file") {
-            contentMap.set(node.path, node.content ?? "")
-            return
-        }
-
-        for (const child of node.children ?? []) {
-            walk(child)
+        const found = findNodeByPath(child, targetPath)
+        if (found) {
+            return found
         }
     }
 
-    walk(fileTree)
+    return null
+}
 
-    for (const file of openFiles) {
-        contentMap.set(file.id, file.content)
+// Walks the tree and returns the content string of the node at the given path.
+function getFileContent(node: FileTreeNode, targetPath: string): string {
+    if (node.path === targetPath && node.type === "file") {
+        return node.content ?? ""
     }
-
-    return contentMap
-}
-
-// Searches file names and file contents, then returns a small ranked result set.
-function searchProjectFiles(
-    query: string,
-    fileTree: FileTreeNode | null,
-    openFiles: OpenFile[]
-): SearchResult[] {
-    const normalizedQuery = query.trim().toLowerCase()
-    if (!normalizedQuery) return []
-
-    const fileNodes = collectFileNodes(fileTree)
-    const currentContentMap = buildCurrentFileContentMap(fileTree, openFiles)
-    const results: SearchResult[] = []
-
-    for (const file of fileNodes) {
-        const content = currentContentMap.get(file.path) ?? file.content ?? ""
-        const pathText = `${file.name} ${file.path}`.toLowerCase()
-        const contentText = content.toLowerCase()
-        const pathMatch = pathText.includes(normalizedQuery)
-        const contentMatch = contentText.includes(normalizedQuery)
-
-        if (!pathMatch && !contentMatch) {
-            continue
-        }
-
-        let snippet = pathMatch ? "Filename or path match" : "Content match"
-        let lineNumber: number | null = null
-
-        if (contentMatch) {
-            const lines = content.split(/\r?\n/)
-            const lineIndex = lines.findIndex((line) => line.toLowerCase().includes(normalizedQuery))
-            if (lineIndex >= 0) {
-                lineNumber = lineIndex + 1
-                const lineText = lines[lineIndex].trim()
-                snippet = lineText.length > 160 ? `${lineText.slice(0, 157)}...` : lineText
-            }
-        }
-
-        results.push({
-            path: file.path,
-            name: file.name,
-            snippet,
-            lineNumber,
-            matchKind: pathMatch && !contentMatch ? "path" : "content",
-        })
-    }
-
-    return results.slice(0, 50)
-}
-
-// Converts Monaco marker severities into the labels used by the problems panel.
-function getProblemSeverity(severity: number): ProblemSeverity {
-    if (severity >= 8) return "error"
-    if (severity >= 4) return "warning"
-    return "info"
-}
-
-// Turns editor markers into a normalized list that can be shown in the problems panel.
-function normalizeEditorProblems(filePath: string, markers: EditorMarkerInput[]): ProblemEntry[] {
-    return markers.map((marker, index) => ({
-        id: `${filePath}-${marker.startLineNumber}-${marker.startColumn}-${index}`,
-        path: filePath,
-        message: marker.message,
-        detail: marker.code ? String(typeof marker.code === "object" ? marker.code.value : marker.code) : marker.source ?? "Editor",
-        severity: getProblemSeverity(marker.severity),
-        line: marker.startLineNumber,
-        column: marker.startColumn,
-        origin: "editor",
-    }))
-}
-
-// Extracts warning and error lines from the terminal output so runtime issues show up in the panel.
-function collectTerminalProblems(terminalLogs: string[]): ProblemEntry[] {
-    const problems: ProblemEntry[] = []
-
-    terminalLogs.forEach((chunk, chunkIndex) => {
-        chunk.split("\n").forEach((line, lineIndex) => {
-            const normalized = line.trim()
-            if (!normalized) return
-
-            const severity = normalized.includes("[error]") || normalized.toLowerCase().includes("error")
-                ? "error"
-                : normalized.includes("[warn]") || normalized.toLowerCase().includes("warn")
-                    ? "warning"
-                    : null
-
-            if (!severity) return
-
-            problems.push({
-                id: `terminal-${chunkIndex}-${lineIndex}-${normalized.slice(0, 24)}`,
-                path: "Terminal",
-                message: normalized,
-                detail: "Runtime",
-                severity,
-                line: null,
-                column: null,
-                origin: "terminal",
-            })
-        })
-    })
-
-    return problems
-}
-
-function getProblemSeverityLabel(severity: ProblemSeverity): string {
-    if (severity === "error") return "Error"
-    if (severity === "warning") return "Warning"
-    return "Info"
-}
-
-function getProblemSeverityClass(severity: ProblemSeverity): string {
-    if (severity === "error") return "border-red-500/40 bg-red-500/10 text-red-300"
-    if (severity === "warning") return "border-amber-500/40 bg-amber-500/10 text-amber-300"
-    return "border-sky-500/40 bg-sky-500/10 text-sky-300"
-}
-
-// Returns the first file path to auto-select something meaningful after load.
-function findFirstFilePath(node: FileTreeNode): string {
-    if (node.type === "file") return node.path
     for (const child of node.children ?? []) {
-        const first = findFirstFilePath(child)
-        if (first) return first
+        const found = getFileContent(child, targetPath)
+        if (found !== null) return found
     }
     return ""
+}
+
+// Walks the tree and collects { path -> content } for every file node.
+function extractAllFileContents(node: FileTreeNode, acc: Record<string, string> = {}): Record<string, string> {
+    if (node.type === "file") {
+        acc[node.path] = node.content ?? ""
+    }
+    for (const child of node.children ?? []) {
+        extractAllFileContents(child, acc)
+    }
+    return acc
 }
 
 // Updates one tree node by path and returns true when a node was modified.
@@ -518,58 +297,11 @@ function MainPlaygroundPage() {
     const [isPreviewOpen, setIsPreviewOpen] = React.useState(true)
     const [terminalLogs, setTerminalLogs] = React.useState<string[]>([])
     const hasLoggedTerminalAttach = React.useRef(false)
-    const editorInstancesRef = React.useRef<Array<MonacoEditor.IStandaloneCodeEditor | null>>([])
-    const fileTree = useFileExplorerStore((state) => state.fileTree)
-    const openFiles = useFileExplorerStore((state) => state.openFiles)
-    const activeFilePath = useFileExplorerStore((state) => state.activeFileId ?? "")
-    const editorContent = useFileExplorerStore((state) => state.editorContent)
-    const setPlaygroundId = useFileExplorerStore((state) => state.setPlaygroundId)
-    const setTemplateFileTree = useFileExplorerStore((state) => state.setTemplateFileTree)
-    const setActiveFileId = useFileExplorerStore((state) => state.setActiveFileId)
-    const openFile = useFileExplorerStore((state) => state.openFile)
-    const closeFile = useFileExplorerStore((state) => state.closeFile)
-    const closeAllFiles = useFileExplorerStore((state) => state.closeAllFiles)
-    const markFileAsUnsaved = useFileExplorerStore((state) => state.markFileAsUnsaved)
-    const saveFileChanges = useFileExplorerStore((state) => state.saveFileChanges)
-    const addFile = useFileExplorerStore((state) => state.addFile)
-    const addFolder = useFileExplorerStore((state) => state.addFolder)
-    const deleteFile = useFileExplorerStore((state) => state.deleteFile)
-    const deleteFolder = useFileExplorerStore((state) => state.deleteFolder)
-    const renameFile = useFileExplorerStore((state) => state.renameFile)
-    const renameFolder = useFileExplorerStore((state) => state.renameFolder)
-    const hasUnsaved = openFiles.some((file) => file.hasUnsavedChanges)
-    const [isCommandPaletteOpen, setIsCommandPaletteOpen] = React.useState(false)
-    const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false)
-    const [isSettingsDialogOpen, setIsSettingsDialogOpen] = React.useState(false)
-    const [isNavigatingHome, setIsNavigatingHome] = React.useState(false)
-    const [editorPreferences, setEditorPreferences] = React.useState<EditorPreferences>(DEFAULT_EDITOR_PREFERENCES)
-    const [searchQuery, setSearchQuery] = React.useState("")
-    const [isSplitEditorOpen, setIsSplitEditorOpen] = React.useState(false)
-    const [splitFilePath, setSplitFilePath] = React.useState("")
-    const [isProblemsPanelOpen, setIsProblemsPanelOpen] = React.useState(false)
-    const [editorProblemsByPath, setEditorProblemsByPath] = React.useState<Record<string, ProblemEntry[]>>({})
-    const liveSyncTimersRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
-    const pendingRevealRef = React.useRef<{ path: string; line: number | null; column: number | null } | null>(null)
-    const fileSearchItems = React.useMemo(() => collectFileNodes(fileTree), [fileTree])
-    const searchResults = React.useMemo(() => searchProjectFiles(searchQuery, fileTree, openFiles), [searchQuery, fileTree, openFiles])
-    const terminalProblems = React.useMemo(() => collectTerminalProblems(terminalLogs), [terminalLogs])
-    const editorProblems = React.useMemo(() => Object.values(editorProblemsByPath).flat(), [editorProblemsByPath])
-    const problems = React.useMemo(() => [...editorProblems, ...terminalProblems], [editorProblems, terminalProblems])
-    const activeOpenFile = React.useMemo(() => openFiles.find((file) => file.id === activeFilePath) ?? null, [activeFilePath, openFiles])
-    const splitOpenFile = React.useMemo(() => openFiles.find((file) => file.id === splitFilePath) ?? null, [openFiles, splitFilePath])
-    const activeEditorContent = activeOpenFile?.content ?? editorContent
-    const splitEditorContent = splitOpenFile?.content ?? ""
-    const monacoTheme = editorPreferences.theme === "light" ? "vs" : "modern-dark"
-    const editorOptions = React.useMemo(
-        () => ({
-            ...(defaultEditorOptions as unknown as MonacoEditor.IStandaloneEditorConstructionOptions),
-            automaticLayout: true,
-            fontSize: editorPreferences.fontSize,
-            fontFamily: editorPreferences.fontFamily,
-        }),
-        [editorPreferences.fontFamily, editorPreferences.fontSize]
-    )
-    const runtimeTemplate = React.useMemo(() => toRuntimeTemplate(fileTree), [fileTree])
+    // Stores the live edited content per file path — seeded from tree on load, updated on edit.
+    const [fileContents, setFileContents] = React.useState<Record<string, string>>({})
+    const editorInstanceRef = React.useRef<MonacoEditor.IStandaloneCodeEditor | null>(null)
+    const hasUnsaved = unsavedFiles.size > 0
+    const runtimeTemplate = React.useMemo(() => toRuntimeTemplate(treeData), [treeData])
     const { serverUrl, isLoading: isWebContainerLoading, error: webContainerError, instance, useWriteFileSync, destroy } = useWebContainer({
         templateData: templateData as never,
     })
@@ -588,35 +320,15 @@ function MainPlaygroundPage() {
         }
 
         const normalizedTree = rebuildPaths(cloneTree(templateData), ".")
-        setTemplateFileTree(normalizedTree)
-        closeAllFiles()
-
-        const firstFilePath = findFirstFilePath(normalizedTree)
-        const firstFile = firstFilePath ? findNodeByPath(normalizedTree, firstFilePath) : null
-        if (firstFile && firstFile.type === "file") {
-            openFile(firstFile)
-        }
-    }, [closeAllFiles, id, openFile, setPlaygroundId, setTemplateFileTree, templateData])
-
-    // Restores editor settings so the workspace always starts in the user's preferred style.
-    React.useEffect(() => {
-        const stored = window.localStorage.getItem(EDITOR_PREFERENCES_STORAGE_KEY)
-        setEditorPreferences(parseEditorPreferences(stored))
-    }, [])
-
-    // Persists user settings and applies app theme mode whenever preferences change.
-    React.useEffect(() => {
-        window.localStorage.setItem(EDITOR_PREFERENCES_STORAGE_KEY, JSON.stringify(editorPreferences))
-        setTheme(editorPreferences.theme)
-
-        const frame = window.requestAnimationFrame(() => {
-            for (const editor of editorInstancesRef.current) {
-                editor?.layout()
-            }
+        setTreeData(normalizedTree)
+        // Extract all file contents from the tree into the flat map.
+        setFileContents(extractAllFileContents(normalizedTree))
+        setActiveFilePath((current) => {
+            const first = current || findFirstFilePath(normalizedTree)
+            if (first) setOpenFiles([first])
+            return first
         })
-
-        return () => window.cancelAnimationFrame(frame)
-    }, [editorPreferences, setTheme])
+    }, [templateData])
 
     const handleSave = React.useCallback(() => {
         if (!activeFilePath || !fileTree) return
@@ -635,34 +347,22 @@ function MainPlaygroundPage() {
         saveFileChanges(activeFilePath)
     }, [activeFilePath, fileTree, openFiles, saveFileChanges, saveTemplateData, setTemplateFileTree])
 
-    const handleSaveAll = React.useCallback(async () => {
-        if (!fileTree) return
-
-        const dirtyFiles = openFiles.filter((file) => file.hasUnsavedChanges)
-        const draft = cloneTree(fileTree)
-        for (const file of dirtyFiles) {
-            updateNodeByPath(draft, file.id, (target) => {
-                target.content = file.content
-            })
-        }
-
-        const rebuilt = rebuildPaths(draft, ".")
-        setTemplateFileTree(rebuilt)
-        await saveTemplateData(rebuilt)
-        dirtyFiles.forEach((file) => saveFileChanges(file.id))
-    }, [fileTree, openFiles, saveFileChanges, saveTemplateData, setTemplateFileTree])
-
-    // Saves pending edits, then routes back to dashboard from the header home action.
-    const handleNavigateDashboard = React.useCallback(async () => {
-        if (isNavigatingHome) return
-        setIsNavigatingHome(true)
-        try {
-            await handleSaveAll()
-            router.push("/dashboard")
-        } finally {
-            setIsNavigatingHome(false)
-        }
-    }, [handleSaveAll, isNavigatingHome, router])
+    const handleSaveAll = React.useCallback(() => {
+        // Write all edited contents back into the tree before persisting.
+        setTreeData((prev) => {
+            if (!prev) return prev
+            const draft = cloneTree(prev)
+            for (const [filePath, content] of Object.entries(fileContents)) {
+                updateNodeByPath(draft, filePath, (target) => {
+                    target.content = content
+                })
+            }
+            const rebuilt = rebuildPaths(draft, ".")
+            void saveTemplateData(rebuilt)
+            return rebuilt
+        })
+        setUnsavedFiles(new Set())
+    }, [fileContents, saveTemplateData])
 
     React.useEffect(() => {
         function onKeyDown(e: KeyboardEvent) {
@@ -811,53 +511,75 @@ function MainPlaygroundPage() {
         configureMonaco(monaco)
     }, [])
 
-    // Stores diagnostics from Monaco so the problems panel can show syntax and type issues.
-    const handleEditorValidate = React.useCallback((filePath: string, markers: EditorMarkerInput[]) => {
-        setEditorProblemsByPath((previous) => {
-            const next = { ...previous }
-            const normalized = normalizeEditorProblems(filePath, markers)
-            if (normalized.length === 0) {
-                delete next[filePath]
-            } else {
-                next[filePath] = normalized
+    // Updates the in-memory content for a file and marks it dirty.
+    const handleFileChange = React.useCallback((filePath: string, newContent: string) => {
+        setFileContents((prev) => ({ ...prev, [filePath]: newContent }))
+        setUnsavedFiles((prev) => new Set(prev).add(filePath))
+    }, [])
+
+    const handleFileSelect = React.useCallback((filePath: string) => {
+        setOpenFiles((prev) => prev.includes(filePath) ? prev : [...prev, filePath])
+        setActiveFilePath(filePath)
+    }, [])
+
+    const handleCloseFile = React.useCallback((filePath: string) => {
+        setOpenFiles((prev) => {
+            const next = prev.filter((f) => f !== filePath)
+            if (activeFilePath === filePath) {
+                const idx = prev.indexOf(filePath)
+                const fallback = next[idx] ?? next[idx - 1] ?? ""
+                setActiveFilePath(fallback)
             }
             return next
         })
-    }, [])
+    }, [activeFilePath])
 
-    const handleFileChange = React.useCallback((filePath: string, newContent: string) => {
-        markFileAsUnsaved(filePath, newContent)
-        const previousTimer = liveSyncTimersRef.current.get(filePath)
-        if (previousTimer) {
-            clearTimeout(previousTimer)
-        }
-
-        const timer = setTimeout(() => {
-            void useWriteFileSync(filePath, newContent)
-                .then(() => {
-                    appendTerminalLog(`[info] Synced ${getFileName(filePath)} to the live preview.\n`)
-                })
-                .catch((syncError) => {
-                    const message = syncError instanceof Error ? syncError.message : "Unknown sync error"
-                    appendTerminalLog(`[error] Failed to sync ${filePath}: ${message}\n`)
-                })
-        }, 150)
-
-        liveSyncTimersRef.current.set(filePath, timer)
-    }, [appendTerminalLog, markFileAsUnsaved, useWriteFileSync])
-
-    const handleFileSelect = React.useCallback((filePath: string, file: FileTreeNode) => {
-        if (file.type !== "file") return
-        openFile(file)
-    }, [openFile])
-
-    const handleCloseFile = React.useCallback((filePath: string) => {
-        closeFile(filePath)
-    }, [closeFile])
+    const applyTreeChange = React.useCallback(
+        (mutate: (draft: FileTreeNode) => boolean) => {
+            setTreeData((previous) => {
+                if (!previous) return previous
+                const draft = cloneTree(previous)
+                const hasChanged = mutate(draft)
+                if (!hasChanged) return previous
+                const normalizedTree = rebuildPaths(draft, ".")
+                void saveTemplateData(normalizedTree)
+                return normalizedTree
+            })
+        },
+        [saveTemplateData]
+    )
 
     const handleAddFile = React.useCallback((parentPath: string, filename: string, extension: string) => {
-        addFile(parentPath, filename, extension)
-    }, [addFile])
+        const cleanFilename = sanitizeNodeName(filename)
+        const cleanExtension = sanitizeNodeName(extension).replace(/^\./, "")
+        if (!cleanFilename) return
+        const newName = cleanExtension ? `${cleanFilename}.${cleanExtension}` : cleanFilename
+
+        applyTreeChange((draft) => {
+            let didCreate = false
+            const changed = updateNodeByPath(draft, parentPath, (target) => {
+                if (target.type !== "directory") return
+                const children = target.children ?? []
+                if (children.some((child) => child.name === newName)) return
+                children.push({
+                    name: newName,
+                    path: toChildPath(parentPath, newName),
+                    type: "file",
+                    content: "",
+                })
+                target.children = children
+                didCreate = true
+            })
+            if (didCreate) {
+                const newPath = toChildPath(parentPath, newName)
+                // Seed an empty content entry for the new file.
+                setFileContents((prev) => ({ ...prev, [newPath]: "" }))
+                setOpenFiles((prev) => prev.includes(newPath) ? prev : [...prev, newPath])
+                setActiveFilePath(newPath)
+            }
+            return changed && didCreate
+        })
+    }, [applyTreeChange])
 
     const handleAddFolder = React.useCallback((parentPath: string, folderName: string) => {
         addFolder(parentPath, folderName)
@@ -868,111 +590,92 @@ function MainPlaygroundPage() {
     }, [deleteFile])
 
     const handleDeleteFolder = React.useCallback((folderPath: string) => {
-        deleteFolder(folderPath)
-    }, [deleteFolder])
+        applyTreeChange((draft) => {
+            const removed = removeNodeByPath(draft, folderPath)
+            if (removed) {
+                setFileContents((prev) => {
+                    const n = { ...prev }
+                    for (const k of Object.keys(n)) {
+                        if (k === folderPath || k.startsWith(`${folderPath}/`)) delete n[k]
+                    }
+                    return n
+                })
+                setOpenFiles((prev) => prev.filter((f) => f !== folderPath && !f.startsWith(`${folderPath}/`)))
+                if (activeFilePath === folderPath || activeFilePath.startsWith(`${folderPath}/`)) {
+                    setActiveFilePath(findFirstFilePath(draft))
+                }
+            }
+            return removed
+        })
+    }, [activeFilePath, applyTreeChange])
 
     const handleRenameFile = React.useCallback((filePath: string, filename: string, extension: string) => {
-        renameFile(filePath, filename, extension)
-    }, [renameFile])
+        const cleanFilename = sanitizeNodeName(filename)
+        const cleanExtension = sanitizeNodeName(extension).replace(/^\./, "")
+        if (!cleanFilename) return
+        const updatedFileName = cleanExtension ? `${cleanFilename}.${cleanExtension}` : cleanFilename
+
+        applyTreeChange((draft) => {
+            const updated = updateNodeByPath(draft, filePath, (target) => {
+                target.name = updatedFileName
+            })
+            if (updated) {
+                const parentPath = filePath.includes("/") ? filePath.slice(0, filePath.lastIndexOf("/")) : "."
+                const newPath = toChildPath(parentPath || ".", updatedFileName)
+                // Migrate content and unsaved state to the new path.
+                setFileContents((prev) => {
+                    const n = { ...prev, [newPath]: prev[filePath] ?? "" }
+                    delete n[filePath]
+                    return n
+                })
+                setUnsavedFiles((prev) => {
+                    const n = new Set(prev)
+                    if (n.has(filePath)) { n.delete(filePath); n.add(newPath) }
+                    return n
+                })
+                setOpenFiles((prev) => prev.map((f) => f === filePath ? newPath : f))
+                if (activeFilePath === filePath) setActiveFilePath(newPath)
+            }
+            return updated
+        })
+    }, [activeFilePath, applyTreeChange])
 
     const handleRenameFolder = React.useCallback((folderPath: string, newFolderName: string) => {
-        renameFolder(folderPath, newFolderName)
-    }, [renameFolder])
+        const cleanFolderName = sanitizeNodeName(newFolderName)
+        if (!cleanFolderName) return
 
-    const handleOpenFileFromPalette = React.useCallback((file: FileTreeNode) => {
-        if (file.type !== "file") return
-        openFile(file)
-        setIsCommandPaletteOpen(false)
-    }, [openFile])
-
-    const handleTogglePreview = React.useCallback(() => {
-        setIsPreviewOpen((prev) => !prev)
-        setIsCommandPaletteOpen(false)
-    }, [])
-
-    const handleToggleTerminal = React.useCallback(() => {
-        setIsTerminalOpen((prev) => !prev)
-        setIsCommandPaletteOpen(false)
-    }, [])
-
-    const handleToggleSplitEditor = React.useCallback(() => {
-        setIsSplitEditorOpen((prev) => {
-            const next = !prev
-            if (next) {
-                const fallbackSplitFile = openFiles.find((file) => file.id !== activeFilePath) ?? openFiles[0]
-                if (fallbackSplitFile && !splitFilePath) {
-                    setSplitFilePath(fallbackSplitFile.id)
+        applyTreeChange((draft) => {
+            const updated = updateNodeByPath(draft, folderPath, (target) => {
+                target.name = cleanFolderName
+            })
+            if (updated) {
+                const parentPath = folderPath.includes("/") ? folderPath.slice(0, folderPath.lastIndexOf("/")) : "."
+                const renamedFolderPath = toChildPath(parentPath || ".", cleanFolderName)
+                // Remap all content keys and open tabs under the renamed folder.
+                setFileContents((prev) => {
+                    const n: Record<string, string> = {}
+                    for (const [k, v] of Object.entries(prev)) {
+                        const newKey = (k === folderPath || k.startsWith(`${folderPath}/`))
+                            ? renamedFolderPath + k.slice(folderPath.length)
+                            : k
+                        n[newKey] = v
+                    }
+                    return n
+                })
+                setOpenFiles((prev) =>
+                    prev.map((f) =>
+                        f === folderPath || f.startsWith(`${folderPath}/`)
+                            ? renamedFolderPath + f.slice(folderPath.length)
+                            : f
+                    )
+                )
+                if (activeFilePath === folderPath || activeFilePath.startsWith(`${folderPath}/`)) {
+                    setActiveFilePath(renamedFolderPath + activeFilePath.slice(folderPath.length))
                 }
             }
-            return next
+            return updated
         })
-        setIsCommandPaletteOpen(false)
-    }, [activeFilePath, openFiles, splitFilePath])
-
-    const handleToggleProblemsPanel = React.useCallback(() => {
-        setIsProblemsPanelOpen((prev) => !prev)
-        setIsCommandPaletteOpen(false)
-    }, [])
-
-    const handleSwapSplitEditors = React.useCallback(() => {
-        if (!isSplitEditorOpen || !splitFilePath || !activeFilePath || splitFilePath === activeFilePath) {
-            return
-        }
-
-        const previousActive = activeFilePath
-        setActiveFileId(splitFilePath)
-        setSplitFilePath(previousActive)
-    }, [activeFilePath, isSplitEditorOpen, setActiveFileId, splitFilePath])
-
-    const handleOpenProblem = React.useCallback((problem: ProblemEntry) => {
-        if (problem.origin === "editor" && fileTree) {
-            const file = findNodeByPath(fileTree, problem.path)
-            if (file && file.type === "file") {
-                pendingRevealRef.current = { path: file.path, line: problem.line, column: problem.column }
-                if (file.path === activeFilePath) {
-                    window.requestAnimationFrame(() => {
-                        const editor = editorInstancesRef.current[0]
-                        const pending = pendingRevealRef.current
-                        if (!editor || !pending || pending.path !== file.path) return
-                        if (pending.line) {
-                            editor.revealLineInCenter(pending.line)
-                            editor.setPosition({ lineNumber: pending.line, column: pending.column ?? 1 })
-                        }
-                        editor.focus()
-                        pendingRevealRef.current = null
-                    })
-                } else {
-                    openFile(file)
-                }
-            }
-        }
-        setIsProblemsPanelOpen(true)
-    }, [activeFilePath, fileTree, openFile])
-
-    const handleOpenCommandPalette = React.useCallback(() => {
-        setIsCommandPaletteOpen(true)
-    }, [])
-
-    const handleOpenSearchDialog = React.useCallback(() => {
-        setIsSearchDialogOpen(true)
-    }, [])
-
-    const handleOpenSearchResult = React.useCallback((path: string) => {
-        const file = fileTree ? findNodeByPath(fileTree, path) : null
-        if (!file || file.type !== "file") return
-        openFile(file)
-        setIsSearchDialogOpen(false)
-    }, [fileTree, openFile])
-
-    const commandGroups = React.useMemo(() => {
-        const openableFiles = fileSearchItems
-            .slice()
-            .sort((a, b) => a.path.localeCompare(b.path))
-
-        return {
-            files: openableFiles,
-        }
-    }, [fileSearchItems])
+    }, [activeFilePath, applyTreeChange])
 
     if (isLoading && !fileTree) {
         return (
@@ -1242,100 +945,28 @@ function MainPlaygroundPage() {
                                 : "flex flex-col"
                         )}
                     >
-                        <div className={cn("min-h-0 flex flex-1 overflow-hidden", isSplitEditorOpen ? "flex-row" : "flex-col")}>
-                            <div className={cn("min-w-0 min-h-0 flex flex-1 flex-col overflow-hidden", isSplitEditorOpen ? "border-r border-[#1c1f26]" : "")}>
-                                <div className="flex h-10 min-h-10 items-center justify-between border-b border-[#1c1f26] bg-[#0b0d11] px-3">
-                                    <div className=" flex items-center gap-2 text-[11px] text-[#5c6370]">
-                                        <span>Editor</span>
-                                        <span className=" text-[#7d8596]">{activeOpenFile ? getFileName(activeOpenFile.id) : "No file open"}</span>
-                                    </div>
-                                    <span className="text-[10px] text-[#5c6370]">Primary</span>
+                        <div className="min-h-0 flex-1 overflow-auto">
+                            {activeFilePath ? (
+                                <Editor
+                                    key={activeFilePath}
+                                    language={getEditorLanguage(activeFilePath.split(".").pop() ?? "")}
+                                    value={fileContents[activeFilePath] ?? ""}
+                                    onChange={(value) => handleFileChange(activeFilePath, value ?? "")}
+                                    theme="modern-dark"
+                                    options={{
+                                        ...(defaultEditorOptions as unknown as MonacoEditor.IStandaloneEditorConstructionOptions),
+                                        automaticLayout: true,
+                                    }}
+                                    onMount={(editor, monaco) => handleEditorMount(editor, monaco)}
+                                />
+                            ) : (
+                                <div className="flex h-full items-center justify-center text-sm text-[#5c6370]">
+                                    No file open
                                 </div>
-                                <div className="min-h-0 flex-1 overflow-hidden">
-                                    {activeOpenFile ? (
-                                        <Editor
-                                            path={activeFilePath}
-                                            language={getEditorLanguage(activeFilePath.split(".").pop() ?? "")}
-                                            value={activeEditorContent}
-                                            onChange={(value) => handleFileChange(activeFilePath, value ?? "")}
-                                            theme={monacoTheme}
-                                            options={editorOptions}
-                                            onMount={(editor, monaco) => handleEditorMount(0, editor, monaco)}
-                                            onValidate={(markers) => handleEditorValidate(activeFilePath, markers as EditorMarkerInput[])}
-                                        />
-                                    ) : (
-                                        <div className="flex h-full items-center justify-center text-sm text-[#5c6370]">
-                                            No file open
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {isSplitEditorOpen ? (
-                                <>
-                                    <div className="flex w-10 min-w-10 items-center justify-center border-r border-[#1c1f26] bg-[#0b0d11]">
-                                        <button
-                                            type="button"
-                                            onClick={handleSwapSplitEditors}
-                                            className="flex h-7 w-7 items-center justify-center rounded-md border border-[#2a2f3a] text-[#aab1bf] transition-colors hover:border-[#3a4150] hover:text-white"
-                                            title="Swap split panes"
-                                            aria-label="Swap split panes"
-                                        >
-                                            <ArrowLeftRight size={13} />
-                                        </button>
-                                    </div>
-                                    <div className="min-w-0 flex flex-1 flex-col overflow-hidden">
-                                        <div className="flex h-10 min-h-10 items-center justify-between border-b border-[#1c1f26] bg-[#0b0d11] px-3">
-                                            <div className="flex items-center gap-2 text-[11px] text-[#5c6370]">
-                                                <span>Split Editor</span>
-                                                <span className="text-[#7d8596]">Secondary view</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <select
-                                                    value={splitFilePath}
-                                                    onChange={(event) => setSplitFilePath(event.target.value)}
-                                                    className="h-7 max-w-52 rounded-md border border-[#2a2f3a] bg-[#141821] px-2 text-[11px] text-[#aab1bf] outline-none"
-                                                >
-                                                    {openFiles.map((file) => (
-                                                        <option key={file.id} value={file.id}>
-                                                            {getFileName(file.id)}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsSplitEditorOpen(false)}
-                                                    className="rounded border border-[#2a2f3a] px-2 py-1 text-[10px] text-[#8b92a3] transition-colors hover:border-[#3a4150] hover:text-white"
-                                                >
-                                                    Close
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div className="min-h-0 flex-1 overflow-hidden">
-                                            {splitOpenFile ? (
-                                                <Editor
-                                                    path={splitFilePath}
-                                                    language={getEditorLanguage(splitFilePath.split(".").pop() ?? "")}
-                                                    value={splitEditorContent}
-                                                    onChange={(value) => handleFileChange(splitFilePath, value ?? "")}
-                                                    theme={monacoTheme}
-                                                    options={editorOptions}
-                                                    onMount={(editor, monaco) => handleEditorMount(1, editor, monaco)}
-                                                    onValidate={(markers) => handleEditorValidate(splitFilePath, markers as EditorMarkerInput[])}
-                                                />
-                                            ) : (
-                                                <div className="flex h-full items-center justify-center text-sm text-[#5c6370]">
-                                                    Pick a file to open in the split view.
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </>
-                            ) : null}
+                            )}
                         </div>
 
-                        {/* Keeps preview mounted so toggling visibility does not restart container setup. */}
-                        {runtimeTemplate ? (
+                        {isPreviewOpen && runtimeTemplate ? (
                             <div
                                 className={cn(
                                     "min-h-0 shrink-0 overflow-hidden bg-[#0f1115] transition-[width,border-color,opacity] duration-200",
