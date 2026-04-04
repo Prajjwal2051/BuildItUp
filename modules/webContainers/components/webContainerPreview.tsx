@@ -452,26 +452,6 @@ function WebContainerPreview({
     if (previewUrl) {
         return (
             <div className="flex h-full flex-col gap-3 p-3">
-                <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
-                    <div className="flex items-center gap-2 text-sm">
-                        <CheckCircle size={16} className="text-green-500" />
-                        <span>WebContainer is ready</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {showInternalTerminal ? <TerminalToggleButton /> : null}
-                        <button
-                            type="button"
-                            onClick={() => {
-                                if (!normalizedPreviewUrl) return
-                                openPreviewInNewTab(normalizedPreviewUrl)
-                            }}
-                            className="text-sm font-medium text-blue-500 underline"
-                        >
-                            Open in new tab
-                        </button>
-                    </div>
-                </div>
-
                 <div className="h-full min-h-100 overflow-hidden rounded-md border bg-background">
                     <iframe
                         src={normalizedPreviewUrl ?? undefined}
