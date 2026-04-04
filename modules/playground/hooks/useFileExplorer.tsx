@@ -12,6 +12,77 @@ export interface OpenFile extends FileTreeNode {
     originalContent: string
 }
 
+// Keeps user-provided names safe for path operations in the file tree.
+function sanitizeNodeName(name: string): string {
+    return name.trim().replace(/[\\/]+/g, "")
+}
+
+// Builds a child path using the same dotted-root format used across the playground.
+function toChildPath(parentPath: string, childName: string): string {
+    return parentPath === "." ? childName : `${parentPath}/${childName}`
+}
+
+// Clones the full tree so mutations remain immutable for Zustand updates.
+function cloneTree(node: FileTreeNode): FileTreeNode {
+    return {
+        ...node,
+        children: node.children?.map(cloneTree),
+    }
+}
+
+// Rebuilds paths after add/rename/delete so node paths stay consistent.
+function rebuildPaths(node: FileTreeNode, path = "."): FileTreeNode {
+    const nextNode: FileTreeNode = { ...node, path }
+    if (nextNode.type === "directory") {
+        const children = nextNode.children ?? []
+        nextNode.children = children.map((child) => {
+            const childPath = toChildPath(path, child.name)
+            return rebuildPaths(child, childPath)
+        })
+    }
+    return nextNode
+}
+
+// Finds and updates one node in the tree by path.
+function updateNodeByPath(
+    node: FileTreeNode,
+    targetPath: string,
+    update: (target: FileTreeNode) => void
+): boolean {
+    if (node.path === targetPath) {
+        update(node)
+        return true
+    }
+    if (node.type !== "directory" || !node.children) return false
+    return node.children.some((child) => updateNodeByPath(child, targetPath, update))
+}
+
+// Removes one node by path and returns true when the tree was changed.
+function removeNodeByPath(node: FileTreeNode, targetPath: string): boolean {
+    if (node.type !== "directory" || !node.children || targetPath === ".") return false
+    const originalLength = node.children.length
+    node.children = node.children.filter((child) => child.path !== targetPath)
+    if (node.children.length !== originalLength) return true
+    return node.children.some((child) => removeNodeByPath(child, targetPath))
+}
+
+// Looks up a node by path so callers can safely open/select it.
+function findNodeByPath(node: FileTreeNode, targetPath: string): FileTreeNode | null {
+    if (node.path === targetPath) {
+        return node
+    }
+    if (node.type !== "directory") {
+        return null
+    }
+    for (const child of node.children ?? []) {
+        const found = findNodeByPath(child, targetPath)
+        if (found) {
+            return found
+        }
+    }
+    return null
+}
+
 interface FileExplorerState {
     playgroundId: string
     fileTree: FileTreeNode | null
@@ -29,6 +100,15 @@ interface FileExplorerState {
     closeFile: (fileId: string) => void
     closeAllFiles: () => void
     saveFile: (fileId: string) => void
+    addFile: (parentPath: string, filename: string, extension: string) => void
+    addFolder: (parentPath: string, folderName: string) => void
+    deleteFile: (filePath: string) => void
+    deleteFolder: (folderPath: string) => void
+    renameFile: (filePath: string, filename: string, extension: string) => void
+    renameFolder: (folderPath: string, newFolderName: string) => void
+
+    // file explorer methoods:
+
 }
 
 const useFileExplorerStore = create<FileExplorerState>((set, get) => ({
@@ -134,6 +214,239 @@ const useFileExplorerStore = create<FileExplorerState>((set, get) => ({
 
     saveFile: (fileId) => {
         get().saveFileChanges(fileId)
+    },
+
+    // Creates a new file under a directory, opens it, and focuses the editor on it.
+    addFile: (parentPath, filename, extension) => {
+        const cleanFilename = sanitizeNodeName(filename)
+        const cleanExtension = sanitizeNodeName(extension).replace(/^\./, "")
+        if (!cleanFilename) return
+        const newName = cleanExtension ? `${cleanFilename}.${cleanExtension}` : cleanFilename
+
+        set((state) => {
+            if (!state.fileTree) return state
+
+            const draft = cloneTree(state.fileTree)
+            let created = false
+            const changed = updateNodeByPath(draft, parentPath, (target) => {
+                if (target.type !== "directory") return
+                const children = target.children ?? []
+                if (children.some((child) => child.name === newName)) return
+                children.push({
+                    name: newName,
+                    path: toChildPath(parentPath, newName),
+                    type: "file",
+                    content: "",
+                })
+                target.children = children
+                created = true
+            })
+
+            if (!changed || !created) return state
+
+            const nextTree = rebuildPaths(draft, ".")
+            const newPath = toChildPath(parentPath, newName)
+            const newFileNode = findNodeByPath(nextTree, newPath)
+            if (!newFileNode || newFileNode.type !== "file") return { fileTree: nextTree }
+
+            const newFile: OpenFile = {
+                ...newFileNode,
+                id: newFileNode.path,
+                hasUnsavedChanges: false,
+                content: newFileNode.content ?? "",
+                originalContent: newFileNode.content ?? "",
+            }
+
+            const existing = state.openFiles.find((file) => file.id === newFile.id)
+            const nextOpenFiles = existing ? state.openFiles : [...state.openFiles, newFile]
+
+            return {
+                fileTree: nextTree,
+                openFiles: nextOpenFiles,
+                activeFileId: newFile.id,
+                editorContent: newFile.content,
+            }
+        })
+    },
+
+    // Creates a new folder under a directory path when no sibling has the same name.
+    addFolder: (parentPath, folderName) => {
+        const cleanFolderName = sanitizeNodeName(folderName)
+        if (!cleanFolderName) return
+
+        set((state) => {
+            if (!state.fileTree) return state
+
+            const draft = cloneTree(state.fileTree)
+            let created = false
+            const changed = updateNodeByPath(draft, parentPath, (target) => {
+                if (target.type !== "directory") return
+                const children = target.children ?? []
+                if (children.some((child) => child.name === cleanFolderName)) return
+                children.push({
+                    name: cleanFolderName,
+                    path: toChildPath(parentPath, cleanFolderName),
+                    type: "directory",
+                    children: [],
+                })
+                target.children = children
+                created = true
+            })
+
+            if (!changed || !created) return state
+            return { fileTree: rebuildPaths(draft, ".") }
+        })
+    },
+
+    // Deletes one file and updates open tabs/editor selection if needed.
+    deleteFile: (filePath) => {
+        set((state) => {
+            if (!state.fileTree) return state
+
+            const draft = cloneTree(state.fileTree)
+            const removed = removeNodeByPath(draft, filePath)
+            if (!removed) return state
+
+            const nextTree = rebuildPaths(draft, ".")
+            const nextOpenFiles = state.openFiles.filter((file) => file.id !== filePath)
+            const activeFileWasDeleted = state.activeFileId === filePath
+            const fallbackActive = activeFileWasDeleted ? (nextOpenFiles[0]?.id ?? null) : state.activeFileId
+            const fallbackEditorContent = fallbackActive
+                ? (nextOpenFiles.find((file) => file.id === fallbackActive)?.content ?? "")
+                : ""
+
+            return {
+                fileTree: nextTree,
+                openFiles: nextOpenFiles,
+                activeFileId: fallbackActive,
+                editorContent: activeFileWasDeleted ? fallbackEditorContent : state.editorContent,
+            }
+        })
+    },
+
+    // Deletes a folder and closes every tab that belongs to that folder subtree.
+    deleteFolder: (folderPath) => {
+        set((state) => {
+            if (!state.fileTree) return state
+
+            const draft = cloneTree(state.fileTree)
+            const removed = removeNodeByPath(draft, folderPath)
+            if (!removed) return state
+
+            const nextTree = rebuildPaths(draft, ".")
+            const nextOpenFiles = state.openFiles.filter(
+                (file) => file.id !== folderPath && !file.id.startsWith(`${folderPath}/`)
+            )
+            const activeWasDeleted = Boolean(
+                state.activeFileId && (state.activeFileId === folderPath || state.activeFileId.startsWith(`${folderPath}/`))
+            )
+            const fallbackActive = activeWasDeleted ? (nextOpenFiles[0]?.id ?? null) : state.activeFileId
+            const fallbackEditorContent = fallbackActive
+                ? (nextOpenFiles.find((file) => file.id === fallbackActive)?.content ?? "")
+                : ""
+
+            return {
+                fileTree: nextTree,
+                openFiles: nextOpenFiles,
+                activeFileId: fallbackActive,
+                editorContent: activeWasDeleted ? fallbackEditorContent : state.editorContent,
+            }
+        })
+    },
+
+    // Renames a file and remaps open tab ids so the active editor stays stable.
+    renameFile: (filePath, filename, extension) => {
+        const cleanFilename = sanitizeNodeName(filename)
+        const cleanExtension = sanitizeNodeName(extension).replace(/^\./, "")
+        if (!cleanFilename) return
+        const updatedFileName = cleanExtension ? `${cleanFilename}.${cleanExtension}` : cleanFilename
+
+        set((state) => {
+            if (!state.fileTree) return state
+
+            const parentPath = filePath.includes("/") ? filePath.slice(0, filePath.lastIndexOf("/")) : "."
+            const renamedPath = toChildPath(parentPath || ".", updatedFileName)
+
+            const draft = cloneTree(state.fileTree)
+            const updated = updateNodeByPath(draft, filePath, (target) => {
+                target.name = updatedFileName
+            })
+            if (!updated) return state
+
+            const nextTree = rebuildPaths(draft, ".")
+            const renamedNode = findNodeByPath(nextTree, renamedPath)
+            if (!renamedNode || renamedNode.type !== "file") return { fileTree: nextTree }
+
+            const nextOpenFiles = state.openFiles.map((file) => {
+                if (file.id !== filePath) return file
+                return {
+                    ...file,
+                    ...renamedNode,
+                    id: renamedNode.path,
+                }
+            })
+
+            const nextActiveFileId = state.activeFileId === filePath ? renamedNode.path : state.activeFileId
+
+            return {
+                fileTree: nextTree,
+                openFiles: nextOpenFiles,
+                activeFileId: nextActiveFileId,
+            }
+        })
+    },
+
+    // Renames a folder and remaps all open file ids under that folder subtree.
+    renameFolder: (folderPath, newFolderName) => {
+        const cleanFolderName = sanitizeNodeName(newFolderName)
+        if (!cleanFolderName) return
+
+        set((state) => {
+            if (!state.fileTree) return state
+
+            const parentPath = folderPath.includes("/") ? folderPath.slice(0, folderPath.lastIndexOf("/")) : "."
+            const renamedFolderPath = toChildPath(parentPath || ".", cleanFolderName)
+
+            const draft = cloneTree(state.fileTree)
+            const updated = updateNodeByPath(draft, folderPath, (target) => {
+                target.name = cleanFolderName
+            })
+            if (!updated) return state
+
+            const nextTree = rebuildPaths(draft, ".")
+            const remapPath = (currentPath: string): string => {
+                if (currentPath === folderPath || currentPath.startsWith(`${folderPath}/`)) {
+                    return renamedFolderPath + currentPath.slice(folderPath.length)
+                }
+                return currentPath
+            }
+
+            const nextOpenFiles = state.openFiles.map((file) => {
+                const nextId = remapPath(file.id)
+                if (nextId === file.id) return file
+                const node = findNodeByPath(nextTree, nextId)
+                if (!node || node.type !== "file") {
+                    return {
+                        ...file,
+                        id: nextId,
+                        path: nextId,
+                    }
+                }
+                return {
+                    ...file,
+                    ...node,
+                    id: node.path,
+                }
+            })
+
+            const nextActiveFileId = state.activeFileId ? remapPath(state.activeFileId) : null
+
+            return {
+                fileTree: nextTree,
+                openFiles: nextOpenFiles,
+                activeFileId: nextActiveFileId,
+            }
+        })
     },
 }))
 
