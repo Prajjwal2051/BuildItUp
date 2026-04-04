@@ -178,7 +178,7 @@ const useFileExplorerStore = create<FileExplorerState>((set, get) => ({
 
     // Marks the active tab dirty and mirrors latest text into store state.
     markFileAsUnsaved: (fileId, content) => {
-        const { openFiles } = get()
+        const { openFiles, activeFileId } = get()
         const updatedOpenFiles = openFiles.map((file) => {
             if (file.id !== fileId) {
                 return file
@@ -191,7 +191,10 @@ const useFileExplorerStore = create<FileExplorerState>((set, get) => ({
             }
         })
 
-        set({ openFiles: updatedOpenFiles, editorContent: content })
+        set({
+            openFiles: updatedOpenFiles,
+            editorContent: activeFileId === fileId ? content : get().editorContent,
+        })
     },
 
     // Persists in-memory tab state by resetting dirty tracking baseline.
