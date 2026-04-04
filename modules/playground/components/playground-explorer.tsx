@@ -10,6 +10,7 @@ import {
     Folder,
     FolderOpen,
     FolderPlus,
+    MoreHorizontal,
     Plus,
 } from "lucide-react";
 
@@ -57,6 +58,8 @@ interface TemplateFileTreeProps {
     onFileSelect?: OnFileSelect;
     selectedFilePath?: string;
     title?: string;
+    sidebarWidth?: number;
+    onResizeStart?: (event: React.MouseEvent<HTMLButtonElement>) => void;
     onAddFile?: (parentPath: string, filename: string, extension: string) => void;
     onAddFolder?: (parentPath: string, folderName: string) => void;
     onDeleteFile?: (filePath: string) => void;
@@ -102,6 +105,8 @@ function TemplateFileTree({
     onFileSelect,
     selectedFilePath,
     title = "Explorer",
+    sidebarWidth,
+    onResizeStart,
     onAddFile,
     onAddFolder,
     onDeleteFile,
@@ -117,91 +122,108 @@ function TemplateFileTree({
     const [isExplorerOpen, setIsExplorerOpen] = React.useState(true);
 
     return (
-        <Sidebar className="border-r border-[#1c1f26] bg-[#0f1115] text-[#aab1bf]">
-            <SidebarContent className="bg-[#0f1115]">
-                <SidebarGroup>
+        <div
+            style={
+                sidebarWidth
+                    ? ({ "--sidebar-width": `${sidebarWidth}px` } as React.CSSProperties)
+                    : undefined
+            }
+            className="relative"
+        >
+            <Sidebar className="border-r border-[#1c1f26] bg-[#0f1115] text-[#aab1bf]">
+                <SidebarContent className="bg-[#0f1115]">
+                    <SidebarGroup>
 
-                    {/* HEADER */}
-                    <SidebarGroupLabel className="px-6 pr-9 pt-4 pb-3 text-[11px] tracking-widest uppercase text-[#5c6370] font-semibold flex items-center justify-between">
-                        {title}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5 text-[#5c6370] hover:text-white transition-colors"
-                            onClick={() => setIsExplorerOpen((prev) => !prev)}
-                        >
-                            <ChevronRight
-                                className={cn("h-3.5 w-3.5 transition-transform", isExplorerOpen && "rotate-90")}
-                            />
-                        </Button>
-                    </SidebarGroupLabel>
+                        {/* HEADER */}
+                        <SidebarGroupLabel className="px-6 pr-9 pt-4 pb-3 text-[11px] tracking-widest uppercase text-[#5c6370] font-semibold flex items-center justify-between">
+                            {title}
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 text-[#5c6370] hover:text-white transition-colors"
+                                onClick={() => setIsExplorerOpen((prev) => !prev)}
+                            >
+                                <ChevronRight
+                                    className={cn("h-3.5 w-3.5 transition-transform", isExplorerOpen && "rotate-90")}
+                                />
+                            </Button>
+                        </SidebarGroupLabel>
 
-                    {isRootFolder && isExplorerOpen && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <SidebarGroupAction className="top-3 right-3 rounded-md border border-[#2a2f3a] bg-[#141821] text-[#7f8ea3] hover:bg-[#1b2130] hover:text-white transition-all">
-                                    <Plus className="h-4 w-4" />
-                                </SidebarGroupAction>
-                            </DropdownMenuTrigger>
+                        {isRootFolder && isExplorerOpen && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <SidebarGroupAction className="top-3 right-3 rounded-md border border-[#2a2f3a] bg-[#141821] text-[#7f8ea3] hover:bg-[#1b2130] hover:text-white transition-all">
+                                        <Plus className="h-4 w-4" />
+                                    </SidebarGroupAction>
+                                </DropdownMenuTrigger>
 
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => setIsNewFileDialogOpen(true)}>
-                                    <FilePlus2 className="mr-2 h-4 w-4" />
-                                    New File
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setIsNewFolderDialogOpen(true)}>
-                                    <FolderPlus className="mr-2 h-4 w-4" />
-                                    New Folder
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => setIsNewFileDialogOpen(true)}>
+                                        <FilePlus2 className="mr-2 h-4 w-4" />
+                                        New File
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setIsNewFolderDialogOpen(true)}>
+                                        <FolderPlus className="mr-2 h-4 w-4" />
+                                        New Folder
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
 
-                    {isExplorerOpen && (
-                        <SidebarGroupContent className="px-2 pb-3">
-                            <SidebarMenu className="gap-0.5">
-                                {sortNodes(data.children).map((child) => (
-                                    <TemplateNode
-                                        key={child.path}
-                                        node={child}
-                                        level={0}
-                                        onFileSelect={onFileSelect}
-                                        selectedFilePath={selectedFilePath}
-                                        onAddFile={onAddFile}
-                                        onAddFolder={onAddFolder}
-                                        onDeleteFile={onDeleteFile}
-                                        onDeleteFolder={onDeleteFolder}
-                                        onRenameFile={onRenameFile}
-                                        onRenameFolder={onRenameFolder}
-                                    />
-                                ))}
-                            </SidebarMenu>
-                        </SidebarGroupContent>
-                    )}
+                        {isExplorerOpen && (
+                            <SidebarGroupContent className="px-2 pb-3">
+                                <SidebarMenu className="gap-0.5">
+                                    {sortNodes(data.children).map((child) => (
+                                        <TemplateNode
+                                            key={child.path}
+                                            node={child}
+                                            level={0}
+                                            onFileSelect={onFileSelect}
+                                            selectedFilePath={selectedFilePath}
+                                            onAddFile={onAddFile}
+                                            onAddFolder={onAddFolder}
+                                            onDeleteFile={onDeleteFile}
+                                            onDeleteFolder={onDeleteFolder}
+                                            onRenameFile={onRenameFile}
+                                            onRenameFolder={onRenameFolder}
+                                        />
+                                    ))}
+                                </SidebarMenu>
+                            </SidebarGroupContent>
+                        )}
 
-                </SidebarGroup>
-            </SidebarContent>
+                    </SidebarGroup>
+                </SidebarContent>
 
-            <SidebarRail />
+                <SidebarRail />
 
-            <NewFileDialog
-                isOpen={isNewFileDialogOpen}
-                onClose={() => setIsNewFileDialogOpen(false)}
-                onCreateFile={(f, e) => {
-                    onAddFile?.(rootPath, f, e);
-                    setIsNewFileDialogOpen(false);
-                }}
-            />
+                <button
+                    type="button"
+                    onMouseDown={onResizeStart}
+                    title="Resize explorer"
+                    aria-label="Resize explorer"
+                    className="absolute right-0 top-0 hidden h-full w-2 translate-x-1/2 cursor-col-resize bg-transparent hover:bg-[#2a2f3a]/40 md:block"
+                />
 
-            <NewFolderDialog
-                isOpen={isNewFolderDialogOpen}
-                onClose={() => setIsNewFolderDialogOpen(false)}
-                onCreateFolder={(n) => {
-                    onAddFolder?.(rootPath, n);
-                    setIsNewFolderDialogOpen(false);
-                }}
-            />
-        </Sidebar>
+                <NewFileDialog
+                    isOpen={isNewFileDialogOpen}
+                    onClose={() => setIsNewFileDialogOpen(false)}
+                    onCreateFile={(f, e) => {
+                        onAddFile?.(rootPath, f, e);
+                        setIsNewFileDialogOpen(false);
+                    }}
+                />
+
+                <NewFolderDialog
+                    isOpen={isNewFolderDialogOpen}
+                    onClose={() => setIsNewFolderDialogOpen(false)}
+                    onCreateFolder={(n) => {
+                        onAddFolder?.(rootPath, n);
+                        setIsNewFolderDialogOpen(false);
+                    }}
+                />
+            </Sidebar>
+        </div>
     );
 }
 
@@ -238,18 +260,18 @@ function TemplateNode({
                 <div
                     onClick={() => onFileSelect?.(nodePath, node)}
                     className={cn(
-                        "group flex items-center px-3 py-1.25 text-[12.5px] font-mono rounded-md transition-all",
+                        "group/file-row flex min-w-0 items-center px-3 py-1.25 text-[12.5px] font-mono rounded-md transition-all",
                         selected
                             ? "bg-[#1a1f29] text-white font-semibold"
                             : "text-[#aab1bf] hover:bg-[#151922]"
                     )}
                     style={{ paddingLeft }}
                 >
-                    <FileText className="mr-3 h-4 w-4 text-[#d19a66]" />
+                    <FileText className="mr-3 h-4 w-4 shrink-0 text-[#d19a66]" />
 
-                    <span className="flex items-center gap-0.5 truncate">
-                        <span className="font-medium">{parsed.filename}</span>
-                        <span className="text-[#5c6370]">.{parsed.extension}</span>
+                    <span className="flex min-w-0 flex-1 items-center gap-0.5 pr-2">
+                        <span className="truncate font-medium">{parsed.filename}</span>
+                        <span className="shrink-0 text-[#5c6370]">.{parsed.extension}</span>
                     </span>
 
                     <DropdownMenu>
@@ -257,10 +279,10 @@ function TemplateNode({
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="ml-auto h-6 w-6 opacity-0 group-hover:opacity-100"
+                                className="ml-auto h-6 w-6 shrink-0 opacity-0 pointer-events-none group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100 data-[state=open]:pointer-events-auto data-[state=open]:opacity-100"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                ···
+                                <MoreHorizontal className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
 
@@ -308,21 +330,21 @@ function TemplateNode({
         <SidebarMenuItem>
             <Collapsible open={isOpen} onOpenChange={setIsOpen}>
                 <div
-                    className="group flex items-center px-3 py-1.25 text-[12.5px] font-mono text-[#c5c9d4] hover:bg-[#151922] rounded-md"
+                    className="group/folder-row flex min-w-0 items-center px-3 py-1.25 text-[12.5px] font-mono text-[#c5c9d4] hover:bg-[#151922] rounded-md"
                     style={{ paddingLeft }}
                 >
-                    <CollapsibleTrigger className="flex items-center w-full">
+                    <CollapsibleTrigger className="flex min-w-0 flex-1 items-center">
                         <ChevronRight
-                            className={cn("mr-2 h-3.5 w-3.5 transition-transform", isOpen && "rotate-90")}
+                            className={cn("mr-2 h-3.5 w-3.5 shrink-0 transition-transform", isOpen && "rotate-90")}
                         />
 
                         {isOpen ? (
-                            <FolderOpen className="mr-3 h-4 w-4 text-[#61afef]" />
+                            <FolderOpen className="mr-3 h-4 w-4 shrink-0 text-[#61afef]" />
                         ) : (
-                            <Folder className="mr-3 h-4 w-4 text-[#61afef]" />
+                            <Folder className="mr-3 h-4 w-4 shrink-0 text-[#61afef]" />
                         )}
 
-                        <span className="font-semibold">{node.name}</span>
+                        <span className="truncate font-semibold">{node.name}</span>
                     </CollapsibleTrigger>
 
                     <DropdownMenu>
@@ -330,10 +352,10 @@ function TemplateNode({
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="ml-auto h-6 w-6 opacity-0 group-hover:opacity-100"
+                                className="ml-auto h-6 w-6 shrink-0 opacity-0 pointer-events-none group-hover/folder-row:pointer-events-auto group-hover/folder-row:opacity-100 data-[state=open]:pointer-events-auto data-[state=open]:opacity-100"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                ···
+                                <MoreHorizontal className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
 

@@ -7,7 +7,7 @@ import { db } from "@/lib/db"
 import { currentUser } from './../../auth/actions/index';
 import { revalidatePath } from "next/cache"
 import { getTemplateAbsolutePath } from "@/lib/template"
-import { pathToJsonString } from "@/modules/playground/lib/path-to-json"
+import { pathToJsonString, type FileTreeNode } from "@/modules/playground/lib/path-to-json"
 
 // This function fetches all playgrounds associated with a given user ID. It first retrieves the user to ensure they exist and then includes their related playgrounds in the query.
 
@@ -228,6 +228,187 @@ async function togglePlaygroundStarMark(playgroundId: string) {
     }
 }
 
+type GitHubRepoRef = {
+    owner: string
+    repo: string
+    branch: string
+}
+
+// Parses common GitHub URL formats and returns owner/repo plus default branch fallback.
+function parseGitHubRepoUrl(repoUrl: string): GitHubRepoRef | null {
+    try {
+        const normalized = repoUrl.trim().replace(/\.git$/, "")
+        const url = new URL(normalized)
+        if (url.hostname !== "github.com") return null
+
+        const segments = url.pathname.split("/").filter(Boolean)
+        if (segments.length < 2) return null
+
+        const owner = segments[0]
+        const repo = segments[1]
+        let branch = "main"
+
+        const treeIndex = segments.indexOf("tree")
+        if (treeIndex >= 0 && segments[treeIndex + 1]) {
+            branch = segments[treeIndex + 1]
+        }
+
+        return { owner, repo, branch }
+    } catch {
+        return null
+    }
+}
+
+// Guesses the playground template from repository files so boot experience feels closer to the source project.
+function inferTemplateFromPaths(paths: string[]): "REACT" | "NEXTJS" | "EXPRESS" | "VUE" | "ANGULAR" | "HONO" {
+    const joined = paths.join("\n").toLowerCase()
+    if (joined.includes("next.config") || joined.includes("app/layout.tsx")) return "NEXTJS"
+    if (joined.includes("angular.json")) return "ANGULAR"
+    if (joined.includes("src/main.ts") && joined.includes("vue")) return "VUE"
+    if (joined.includes("hono")) return "HONO"
+    if (joined.includes("express") || joined.includes("server.js")) return "EXPRESS"
+    return "REACT"
+}
+
+// Inserts a file into a FileTreeNode tree using directory nodes for path segments.
+function insertFileNode(root: FileTreeNode, fullPath: string, content: string) {
+    const parts = fullPath.split("/").filter(Boolean)
+    if (parts.length === 0) return
+
+    let current = root
+    for (let index = 0; index < parts.length; index += 1) {
+        const part = parts[index]
+        const isLast = index === parts.length - 1
+        const nodePath = parts.slice(0, index + 1).join("/")
+
+        if (!current.children) {
+            current.children = []
+        }
+
+        if (isLast) {
+            current.children.push({
+                name: part,
+                path: nodePath,
+                type: "file",
+                content,
+            })
+            return
+        }
+
+        let next = current.children.find((child) => child.type === "directory" && child.name === part)
+        if (!next) {
+            next = {
+                name: part,
+                path: nodePath,
+                type: "directory",
+                children: [],
+            }
+            current.children.push(next)
+        }
+
+        current = next
+    }
+}
+
+// Sorts nodes with folders first so explorer rendering stays predictable.
+function sortTree(node: FileTreeNode): FileTreeNode {
+    if (node.type !== "directory") return node
+    const children = (node.children ?? []).map(sortTree)
+    children.sort((a, b) => {
+        if (a.type !== b.type) return a.type === "directory" ? -1 : 1
+        return a.name.localeCompare(b.name)
+    })
+    return { ...node, children }
+}
+
+async function createPlaygroundFromGithubRepo(repoUrl: string) {
+    const user = await currentUser()
+    if (!user) {
+        throw new Error("Unauthorized")
+    }
+
+    const parsed = parseGitHubRepoUrl(repoUrl)
+    if (!parsed) {
+        throw new Error("Please provide a valid public GitHub repository URL")
+    }
+
+    const { owner, repo, branch } = parsed
+    const apiBase = `https://api.github.com/repos/${owner}/${repo}`
+    const headers: Record<string, string> = {
+        Accept: "application/vnd.github+json",
+        "User-Agent": "BuildItUp",
+    }
+
+    const treeResponse = await fetch(`${apiBase}/git/trees/${branch}?recursive=1`, {
+        headers,
+        cache: "no-store",
+    })
+
+    if (!treeResponse.ok) {
+        throw new Error("Failed to fetch repository tree. Make sure the repo is public and URL is correct")
+    }
+
+    const treeJson = await treeResponse.json() as {
+        tree?: Array<{ path: string; type: string; size?: number }>
+    }
+
+    const ignorePrefixes = ["node_modules/", ".git/", "dist/", "build/", ".next/"]
+    const fileEntries = (treeJson.tree ?? [])
+        .filter((entry) => entry.type === "blob")
+        .filter((entry) => !ignorePrefixes.some((prefix) => entry.path.startsWith(prefix)))
+        .filter((entry) => (entry.size ?? 0) <= 200_000)
+        .slice(0, 250)
+
+    if (fileEntries.length === 0) {
+        throw new Error("No importable text files found in this repository")
+    }
+
+    const root: FileTreeNode = {
+        name: repo,
+        path: ".",
+        type: "directory",
+        children: [],
+    }
+
+    for (const entry of fileEntries) {
+        const fileResponse = await fetch(`${apiBase}/contents/${encodeURIComponent(entry.path).replace(/%2F/g, "/")}?ref=${encodeURIComponent(branch)}`, {
+            headers,
+            cache: "no-store",
+        })
+        if (!fileResponse.ok) {
+            continue
+        }
+
+        const fileJson = await fileResponse.json() as { content?: string; encoding?: string }
+        if (!fileJson.content || fileJson.encoding !== "base64") {
+            continue
+        }
+
+        const decoded = Buffer.from(fileJson.content.replace(/\n/g, ""), "base64").toString("utf8")
+        if (decoded.includes("\u0000")) {
+            continue
+        }
+
+        insertFileNode(root, entry.path, decoded)
+    }
+
+    const normalizedTree = sortTree(root)
+    const importedTemplate = inferTemplateFromPaths(fileEntries.map((entry) => entry.path))
+
+    const playground = await db.playground.create({
+        data: {
+            title: repo,
+            template: importedTemplate,
+            description: `Imported from https://github.com/${owner}/${repo}`,
+            code: JSON.stringify(normalizedTree, null, 2),
+            userId: user.id,
+        },
+    })
+
+    revalidatePath("/dashboard")
+    return playground
+}
+
 export {
     getAllPlaygroundForUser,
     createPlayground,
@@ -235,4 +416,5 @@ export {
     editPlaygroundById,
     duplicatePlaygroundById,
     togglePlaygroundStarMark,
+    createPlaygroundFromGithubRepo,
 }

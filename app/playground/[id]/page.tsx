@@ -17,7 +17,9 @@ import useWebContainer from "@/modules/webContainers/hooks/useWebContainer"
 import WebContainerPreview from "@/modules/webContainers/components/webContainerPreview"
 import PlaygroundTerminal from "@/modules/playground/components/playground-terminal"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { TerminalSquare, X, GripHorizontal, House, Settings } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { TerminalSquare, X, GripHorizontal, House, Settings, ArrowLeftRight, Search } from "lucide-react"
 import useFileExplorerStore, { type OpenFile } from "@/modules/playground/hooks/useFileExplorer"
 
 // Clones the full tree so updates remain immutable.
@@ -93,6 +95,21 @@ function getFileName(filePath: string): string {
     return filePath.includes("/") ? filePath.slice(filePath.lastIndexOf("/") + 1) : filePath
 }
 
+// Collects all files from the tree so search can match by name/path.
+function collectFileNodes(node: FileTreeNode | null, acc: FileTreeNode[] = []): FileTreeNode[] {
+    if (!node) return acc
+    if (node.type === "file") {
+        acc.push(node)
+        return acc
+    }
+
+    for (const child of node.children ?? []) {
+        collectFileNodes(child, acc)
+    }
+
+    return acc
+}
+
 type RuntimeTemplateItem = {
     filename: string
     fileExtension: string
@@ -146,6 +163,8 @@ type EditorPreferences = {
 }
 
 const EDITOR_PREFERENCES_STORAGE_KEY = "playground-editor-preferences"
+const SPLIT_EDITOR_STORAGE_KEY = "playground-split-preferences"
+const SIDEBAR_WIDTH_STORAGE_KEY = "playground-sidebar-width"
 const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = {
     theme: "dark",
     fontSize: 14,
@@ -158,6 +177,11 @@ const EDITOR_FONT_FAMILY_OPTIONS = [
     { label: "Source Code Pro", value: "Source Code Pro, Menlo, Monaco, monospace" },
     { label: "Menlo", value: "Menlo, Monaco, Consolas, monospace" },
 ]
+
+type SplitPreferences = {
+    isOpen: boolean
+    filePath: string
+}
 
 // Reads persisted preferences and guards against malformed storage values.
 function parseEditorPreferences(raw: string | null): EditorPreferences {
@@ -280,18 +304,25 @@ function MainPlaygroundPage() {
     const [isTerminalOpen, setIsTerminalOpen] = React.useState(false)
     const [terminalHeight, setTerminalHeight] = React.useState(220)
     const [isPreviewOpen, setIsPreviewOpen] = React.useState(true)
+    const [isSplitEditorOpen, setIsSplitEditorOpen] = React.useState(false)
+    const [splitFilePath, setSplitFilePath] = React.useState("")
     const [terminalLogs, setTerminalLogs] = React.useState<string[]>([])
     const [isSettingsDialogOpen, setIsSettingsDialogOpen] = React.useState(false)
+    const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false)
+    const [searchQuery, setSearchQuery] = React.useState("")
     const [isNavigatingHome, setIsNavigatingHome] = React.useState(false)
     const [editorPreferences, setEditorPreferences] = React.useState<EditorPreferences>(DEFAULT_EDITOR_PREFERENCES)
+    const [sidebarWidth, setSidebarWidth] = React.useState(300)
     const editorInstanceRef = React.useRef<MonacoEditor.IStandaloneCodeEditor | null>(null)
     const liveSyncTimersRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+    const isResizingSidebarRef = React.useRef(false)
 
     const fileTree = useFileExplorerStore((state) => state.fileTree)
     const openFiles = useFileExplorerStore((state) => state.openFiles)
     const activeFilePath = useFileExplorerStore((state) => state.activeFileId ?? "")
     const setPlaygroundId = useFileExplorerStore((state) => state.setPlaygroundId)
     const setTemplateFileTree = useFileExplorerStore((state) => state.setTemplateFileTree)
+    const setActiveFileId = useFileExplorerStore((state) => state.setActiveFileId)
     const openFile = useFileExplorerStore((state) => state.openFile)
     const closeFile = useFileExplorerStore((state) => state.closeFile)
     const closeAllFiles = useFileExplorerStore((state) => state.closeAllFiles)
@@ -305,8 +336,21 @@ function MainPlaygroundPage() {
     const renameFolder = useFileExplorerStore((state) => state.renameFolder)
 
     const runtimeTemplate = React.useMemo(() => toRuntimeTemplate(fileTree), [fileTree])
+    const fileSearchItems = React.useMemo(() => collectFileNodes(fileTree), [fileTree])
     const activeOpenFile = React.useMemo(() => openFiles.find((file) => file.id === activeFilePath) ?? null, [activeFilePath, openFiles])
+    const splitOpenFile = React.useMemo(() => openFiles.find((file) => file.id === splitFilePath) ?? null, [openFiles, splitFilePath])
     const activeEditorContent = activeOpenFile?.content ?? ""
+    const splitEditorContent = splitOpenFile?.content ?? ""
+    const activePathSegments = React.useMemo(() => activeFilePath.split("/").filter(Boolean), [activeFilePath])
+    const splitPathSegments = React.useMemo(() => splitFilePath.split("/").filter(Boolean), [splitFilePath])
+    const filteredSearchItems = React.useMemo(() => {
+        const normalized = searchQuery.trim().toLowerCase()
+        if (!normalized) return fileSearchItems.slice(0, 100)
+
+        return fileSearchItems
+            .filter((file) => `${file.name} ${file.path}`.toLowerCase().includes(normalized))
+            .slice(0, 100)
+    }, [fileSearchItems, searchQuery])
     const monacoTheme = editorPreferences.theme === "light" ? "vs" : "modern-dark"
     const editorOptions = React.useMemo(
         () => ({
@@ -351,6 +395,26 @@ function MainPlaygroundPage() {
     React.useEffect(() => {
         const stored = window.localStorage.getItem(EDITOR_PREFERENCES_STORAGE_KEY)
         setEditorPreferences(parseEditorPreferences(stored))
+
+        const storedSidebarWidth = window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)
+        if (storedSidebarWidth) {
+            const nextWidth = Number(storedSidebarWidth)
+            if (Number.isFinite(nextWidth)) {
+                setSidebarWidth(Math.max(220, Math.min(520, nextWidth)))
+            }
+        }
+
+        const splitStored = window.localStorage.getItem(SPLIT_EDITOR_STORAGE_KEY)
+        if (splitStored) {
+            try {
+                const parsed = JSON.parse(splitStored) as Partial<SplitPreferences>
+                setIsSplitEditorOpen(Boolean(parsed.isOpen))
+                setSplitFilePath(typeof parsed.filePath === "string" ? parsed.filePath : "")
+            } catch {
+                setIsSplitEditorOpen(false)
+                setSplitFilePath("")
+            }
+        }
     }, [])
 
     // Persists preferences and applies app theme whenever settings change.
@@ -359,6 +423,41 @@ function MainPlaygroundPage() {
         setTheme(editorPreferences.theme)
         editorInstanceRef.current?.layout()
     }, [editorPreferences, setTheme])
+
+    // Persists split pane preferences so the editor reopens in the same mode.
+    React.useEffect(() => {
+        const payload: SplitPreferences = {
+            isOpen: isSplitEditorOpen,
+            filePath: splitFilePath,
+        }
+        window.localStorage.setItem(SPLIT_EDITOR_STORAGE_KEY, JSON.stringify(payload))
+    }, [isSplitEditorOpen, splitFilePath])
+
+    React.useEffect(() => {
+        window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(sidebarWidth))
+    }, [sidebarWidth])
+
+    // Updates sidebar width while dragging the resize handle.
+    React.useEffect(() => {
+        function onMouseMove(event: MouseEvent) {
+            if (!isResizingSidebarRef.current) return
+            const nextWidth = Math.max(220, Math.min(520, event.clientX))
+            setSidebarWidth(nextWidth)
+        }
+
+        function onMouseUp() {
+            isResizingSidebarRef.current = false
+            document.body.style.cursor = ""
+            document.body.style.userSelect = ""
+        }
+
+        window.addEventListener("mousemove", onMouseMove)
+        window.addEventListener("mouseup", onMouseUp)
+        return () => {
+            window.removeEventListener("mousemove", onMouseMove)
+            window.removeEventListener("mouseup", onMouseUp)
+        }
+    }, [])
 
     // Clears pending live-sync timers when the component unmounts.
     React.useEffect(() => {
@@ -369,6 +468,31 @@ function MainPlaygroundPage() {
             liveSyncTimersRef.current.clear()
         }
     }, [])
+
+    // Keeps split editor selection valid when active/open files change.
+    React.useEffect(() => {
+        if (!isSplitEditorOpen) return
+        if (openFiles.length === 0) {
+            setSplitFilePath("")
+            return
+        }
+
+        const splitStillOpen = openFiles.some((file) => file.id === splitFilePath)
+        if (splitStillOpen) return
+
+        const fallback = openFiles.find((file) => file.id !== activeFilePath) ?? openFiles[0]
+        if (fallback) {
+            setSplitFilePath(fallback.id)
+        }
+    }, [activeFilePath, isSplitEditorOpen, openFiles, splitFilePath])
+
+    // Re-layouts editor when workspace panels change dimensions.
+    React.useEffect(() => {
+        const frame = window.requestAnimationFrame(() => {
+            editorInstanceRef.current?.layout()
+        })
+        return () => window.cancelAnimationFrame(frame)
+    }, [isPreviewOpen, isSplitEditorOpen, isTerminalOpen, terminalHeight])
 
     // Saves the active file content back into the tree and clears dirty state for that file.
     const handleSave = React.useCallback(() => {
@@ -419,7 +543,8 @@ function MainPlaygroundPage() {
 
     React.useEffect(() => {
         function onKeyDown(event: KeyboardEvent) {
-            if (!event.ctrlKey && !event.metaKey) return
+            const isMod = event.ctrlKey || event.metaKey
+            if (!isMod) return
             if (event.key === "s" || event.key === "S") {
                 event.preventDefault()
                 if (event.shiftKey) {
@@ -427,6 +552,12 @@ function MainPlaygroundPage() {
                 } else {
                     handleSave()
                 }
+                return
+            }
+
+            if (event.key.toLowerCase() === "p") {
+                event.preventDefault()
+                setIsSearchDialogOpen(true)
             }
         }
         window.addEventListener("keydown", onKeyDown)
@@ -477,6 +608,90 @@ function MainPlaygroundPage() {
     const handleToggleTerminal = React.useCallback(() => {
         setIsTerminalOpen((previous) => !previous)
     }, [])
+
+    const handleSidebarResizeStart = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault()
+        isResizingSidebarRef.current = true
+        document.body.style.cursor = "col-resize"
+        document.body.style.userSelect = "none"
+    }, [])
+
+    const handleToggleSplitEditor = React.useCallback(() => {
+        setIsSplitEditorOpen((previous) => {
+            const next = !previous
+            if (next) {
+                const fallback = openFiles.find((file) => file.id !== activeFilePath) ?? openFiles[0]
+                if (fallback && !splitFilePath) {
+                    setSplitFilePath(fallback.id)
+                }
+            }
+            return next
+        })
+    }, [activeFilePath, openFiles, splitFilePath])
+
+    const handleSwapSplitEditors = React.useCallback(() => {
+        if (!isSplitEditorOpen || !splitFilePath || !activeFilePath || splitFilePath === activeFilePath) {
+            return
+        }
+
+        const previousActive = activeFilePath
+        setActiveFileId(splitFilePath)
+        setSplitFilePath(previousActive)
+    }, [activeFilePath, isSplitEditorOpen, setActiveFileId, splitFilePath])
+
+    const handleOpenSearchResult = React.useCallback((path: string) => {
+        if (!fileTree) return
+        const file = findNodeByPath(fileTree, path)
+        if (!file || file.type !== "file") return
+        openFile(file)
+        setIsSearchDialogOpen(false)
+    }, [fileTree, openFile])
+
+    // Executes a terminal command inside the current WebContainer and streams output.
+    const handleTerminalCommand = React.useCallback(async (command: string) => {
+        const normalized = command.trim()
+        if (!normalized) return
+
+        appendTerminalLog(`$ ${normalized}\n`)
+
+        if (!instance) {
+            appendTerminalLog("[warn] WebContainer is not ready yet.\n")
+            return
+        }
+
+        const [binary, ...args] = normalized.split(/\s+/)
+        try {
+            const process = await instance.spawn(binary, args, { cwd: "/" })
+            process.output.pipeTo(new WritableStream({
+                write(data) {
+                    appendTerminalLog(typeof data === "string" ? data : new TextDecoder().decode(data))
+                },
+            }))
+
+            const exitCode = await process.exit
+            if (exitCode !== 0) {
+                appendTerminalLog(`[warn] Command exited with code ${exitCode}\n`)
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Unknown command error"
+            appendTerminalLog(`[error] ${message}\n`)
+        }
+    }, [appendTerminalLog, instance])
+
+    const handleCopyTerminalLogs = React.useCallback(async () => {
+        const combinedLogs = terminalLogs.join("")
+        if (!combinedLogs) {
+            appendTerminalLog("[info] No terminal logs to copy.\n")
+            return
+        }
+
+        try {
+            await navigator.clipboard.writeText(combinedLogs)
+            appendTerminalLog("[info] Terminal logs copied to clipboard.\n")
+        } catch {
+            appendTerminalLog("[warn] Unable to copy terminal logs.\n")
+        }
+    }, [appendTerminalLog, terminalLogs])
 
     // Handles dragging to resize the terminal panel height.
     const handleTerminalResizeStart = React.useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
@@ -556,6 +771,8 @@ function MainPlaygroundPage() {
                     onFileSelect={handleFileSelect}
                     selectedFilePath={activeFilePath}
                     title="File Explorer"
+                    sidebarWidth={sidebarWidth}
+                    onResizeStart={handleSidebarResizeStart}
                     onAddFile={handleAddFile}
                     onAddFolder={handleAddFolder}
                     onDeleteFile={handleDeleteFile}
@@ -566,6 +783,48 @@ function MainPlaygroundPage() {
             ) : null}
 
             <SidebarInset className="flex flex-1 flex-col overflow-hidden">
+                <Dialog open={isSearchDialogOpen} onOpenChange={setIsSearchDialogOpen}>
+                    <DialogContent className="max-w-3xl gap-0 overflow-hidden p-0">
+                        <DialogHeader className="border-b px-4 py-3">
+                            <DialogTitle>Search files</DialogTitle>
+                            <DialogDescription>
+                                Find files by name or path and open them quickly.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="border-b px-4 py-3">
+                            <Input
+                                autoFocus
+                                value={searchQuery}
+                                onChange={(event) => setSearchQuery(event.target.value)}
+                                placeholder="Type a file name or path..."
+                            />
+                        </div>
+
+                        <ScrollArea className="max-h-[60vh]">
+                            <div className="space-y-2 p-3">
+                                {filteredSearchItems.length > 0 ? (
+                                    filteredSearchItems.map((file) => (
+                                        <button
+                                            key={file.path}
+                                            type="button"
+                                            onClick={() => handleOpenSearchResult(file.path)}
+                                            className="w-full rounded-lg border border-transparent px-3 py-2 text-left transition-colors hover:border-border hover:bg-muted/50"
+                                        >
+                                            <div className="truncate text-sm font-medium text-foreground">{file.path}</div>
+                                            <div className="truncate text-xs text-muted-foreground">{file.name}</div>
+                                        </button>
+                                    ))
+                                ) : (
+                                    <div className="py-10 text-center text-sm text-muted-foreground">
+                                        No matching files found.
+                                    </div>
+                                )}
+                            </div>
+                        </ScrollArea>
+                    </DialogContent>
+                </Dialog>
+
                 <div className="flex shrink-0 items-center justify-between border-b border-[#1c1f26] bg-[#0f1115] px-4 py-2">
                     <div className="w-24" />
                     <div className="flex w-2xl items-center justify-center gap-2 rounded-md border border-[#2a2f3a] bg-[#141821] px-3 py-1">
@@ -634,30 +893,118 @@ function MainPlaygroundPage() {
 
                 <div className="flex min-h-0 flex-1 flex-col bg-[#0f1115]">
                     <div className={cn("min-h-0 flex-1", runtimeTemplate ? "flex flex-row" : "flex flex-col")}>
-                        <div className="min-h-0 flex flex-1 flex-col overflow-hidden">
-                            <div className="flex h-10 min-h-10 items-center justify-between border-b border-[#1c1f26] bg-[#0b0d11] px-3">
-                                <div className="flex items-center gap-2 text-[11px] text-[#5c6370]">
-                                    <span>Editor</span>
-                                    <span className="text-[#7d8596]">{activeOpenFile ? getFileName(activeOpenFile.id) : "No file open"}</span>
+                        <div className={cn("min-h-0 flex flex-1 overflow-hidden", isSplitEditorOpen ? "flex-row" : "flex-col")}>
+                            <div className={cn("min-h-0 min-w-0 flex flex-1 flex-col overflow-hidden", isSplitEditorOpen ? "border-r border-[#1c1f26]" : "")}>
+                                <div className="flex h-10 min-h-10 items-center justify-between border-b border-[#1c1f26] bg-[#0b0d11] px-3">
+                                    <div className="flex items-center gap-2 text-[11px] text-[#5c6370]">
+                                        <span>Editor</span>
+                                        <span className="text-[#7d8596]">{activeOpenFile ? getFileName(activeOpenFile.id) : "No file open"}</span>
+                                    </div>
+                                    <span className="text-[10px] text-[#5c6370]">Primary</span>
                                 </div>
-                                <span className="text-[10px] text-[#5c6370]">Primary</span>
+
+                                <div className="flex h-8 min-h-8 items-center gap-1 overflow-hidden border-b border-[#1c1f26] bg-[#0d1016] px-3 text-[11px] text-[#6f7788]">
+                                    <span className="shrink-0 text-[#5c6370]">Path:</span>
+                                    {activePathSegments.length > 0 ? (
+                                        activePathSegments.map((segment, index) => (
+                                            <React.Fragment key={`${segment}-${index}`}>
+                                                {index > 0 ? <span className="text-[#4c5463]">/</span> : null}
+                                                <span className={cn("truncate", index === activePathSegments.length - 1 ? "text-[#aab1bf]" : "text-[#73809a]")}>{segment}</span>
+                                            </React.Fragment>
+                                        ))
+                                    ) : (
+                                        <span className="text-[#5c6370]">No file selected</span>
+                                    )}
+                                </div>
+
+                                <div className="min-h-0 flex-1 overflow-hidden">
+                                    {activeOpenFile ? (
+                                        <Editor
+                                            path={activeFilePath}
+                                            language={getEditorLanguage(activeFilePath.split(".").pop() ?? "")}
+                                            value={activeEditorContent}
+                                            onChange={(value) => handleFileChange(activeFilePath, value ?? "")}
+                                            theme={monacoTheme}
+                                            options={editorOptions}
+                                            onMount={(editor, monaco) => handleEditorMount(editor, monaco)}
+                                        />
+                                    ) : (
+                                        <div className="flex h-full items-center justify-center text-sm text-[#5c6370]">No file open</div>
+                                    )}
+                                </div>
                             </div>
 
-                            <div className="min-h-0 flex-1 overflow-hidden">
-                                {activeOpenFile ? (
-                                    <Editor
-                                        path={activeFilePath}
-                                        language={getEditorLanguage(activeFilePath.split(".").pop() ?? "")}
-                                        value={activeEditorContent}
-                                        onChange={(value) => handleFileChange(activeFilePath, value ?? "")}
-                                        theme={monacoTheme}
-                                        options={editorOptions}
-                                        onMount={(editor, monaco) => handleEditorMount(editor, monaco)}
-                                    />
-                                ) : (
-                                    <div className="flex h-full items-center justify-center text-sm text-[#5c6370]">No file open</div>
-                                )}
-                            </div>
+                            {isSplitEditorOpen ? (
+                                <div className="min-h-0 min-w-0 flex flex-1 flex-col overflow-hidden">
+                                    <div className="flex h-10 min-h-10 items-center justify-between border-b border-[#1c1f26] bg-[#0b0d11] px-3">
+                                        <div className="flex items-center gap-2 text-[11px] text-[#5c6370]">
+                                            <span>Split Editor</span>
+                                            <span className="text-[#7d8596]">Secondary view</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={handleSwapSplitEditors}
+                                                className="flex h-7 w-7 items-center justify-center rounded-md border border-[#2a2f3a] text-[#aab1bf] transition-colors hover:border-[#3a4150] hover:text-white"
+                                                title="Swap split panes"
+                                                aria-label="Swap split panes"
+                                            >
+                                                <ArrowLeftRight size={13} />
+                                            </button>
+                                            <select
+                                                value={splitFilePath}
+                                                onChange={(event) => setSplitFilePath(event.target.value)}
+                                                className="h-7 max-w-52 rounded-md border border-[#2a2f3a] bg-[#141821] px-2 text-[11px] text-[#aab1bf] outline-none"
+                                            >
+                                                {openFiles.map((file) => (
+                                                    <option key={file.id} value={file.id}>
+                                                        {getFileName(file.id)}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsSplitEditorOpen(false)}
+                                                className="rounded border border-[#2a2f3a] px-2 py-1 text-[10px] text-[#8b92a3] transition-colors hover:border-[#3a4150] hover:text-white"
+                                            >
+                                                Close
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex h-8 min-h-8 items-center gap-1 overflow-hidden border-b border-[#1c1f26] bg-[#0d1016] px-3 text-[11px] text-[#6f7788]">
+                                        <span className="shrink-0 text-[#5c6370]">Path:</span>
+                                        {splitPathSegments.length > 0 ? (
+                                            splitPathSegments.map((segment, index) => (
+                                                <React.Fragment key={`${segment}-${index}`}>
+                                                    {index > 0 ? <span className="text-[#4c5463]">/</span> : null}
+                                                    <span className={cn("truncate", index === splitPathSegments.length - 1 ? "text-[#aab1bf]" : "text-[#73809a]")}>{segment}</span>
+                                                </React.Fragment>
+                                            ))
+                                        ) : (
+                                            <span className="text-[#5c6370]">No file selected</span>
+                                        )}
+                                    </div>
+
+                                    <div className="min-h-0 flex-1 overflow-hidden">
+                                        {splitOpenFile ? (
+                                            <Editor
+                                                path={splitFilePath}
+                                                language={getEditorLanguage(splitFilePath.split(".").pop() ?? "")}
+                                                value={splitEditorContent}
+                                                onChange={(value) => handleFileChange(splitFilePath, value ?? "")}
+                                                theme={monacoTheme}
+                                                options={editorOptions}
+                                                onMount={(editor, monaco) => configureMonaco(monaco)}
+                                            />
+                                        ) : (
+                                            <div className="flex h-full items-center justify-center text-sm text-[#5c6370]">
+                                                Pick a file to open in the split view.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : null}
                         </div>
 
                         {runtimeTemplate ? (
@@ -690,6 +1037,30 @@ function MainPlaygroundPage() {
                             <span>Tools</span>
                         </div>
                         <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setIsSearchDialogOpen(true)}
+                                className="flex h-7 items-center gap-1.5 rounded-md border border-[#2a2f3a] bg-[#141821] px-2.5 text-[11px] text-[#aab1bf] transition-colors hover:border-[#3a4150] hover:text-white"
+                                title="Search files"
+                            >
+                                <Search size={13} />
+                                <span>Search</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={handleToggleSplitEditor}
+                                className={cn(
+                                    "flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11px] transition-colors",
+                                    isSplitEditorOpen
+                                        ? "border-[#61afef] bg-[#1b2130] text-[#dbe8ff]"
+                                        : "border-[#2a2f3a] bg-[#141821] text-[#aab1bf] hover:border-[#3a4150] hover:text-white"
+                                )}
+                                title="Toggle split editor"
+                            >
+                                <span>Split</span>
+                            </button>
+
                             <button
                                 type="button"
                                 onClick={() => setIsSettingsDialogOpen(true)}
@@ -810,8 +1181,22 @@ function MainPlaygroundPage() {
                                 </button>
                             </div>
 
-                            <div className="h-[calc(100%-44px)] min-h-0 px-3 py-2 font-mono text-xs text-[#7d8596]">
-                                <PlaygroundTerminal logs={terminalLogs} className="h-full min-h-0" />
+                            <div className="flex items-center justify-end border-b border-[#1c1f26] px-3 py-1.5">
+                                <button
+                                    type="button"
+                                    onClick={() => void handleCopyTerminalLogs()}
+                                    className="rounded border border-[#2a2f3a] px-2 py-1 text-[10px] text-[#8b92a3] transition-colors hover:border-[#3a4150] hover:text-white"
+                                >
+                                    Copy Logs
+                                </button>
+                            </div>
+
+                            <div className="h-[calc(100%-76px)] min-h-0 px-3 py-2 font-mono text-xs text-[#7d8596]">
+                                <PlaygroundTerminal
+                                    logs={terminalLogs}
+                                    className="h-full min-h-0"
+                                    onCommand={handleTerminalCommand}
+                                />
                             </div>
                         </div>
                     ) : null}
