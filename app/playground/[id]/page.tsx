@@ -16,12 +16,12 @@ import { configureMonaco, defaultEditorOptions, getEditorLanguage } from "@/modu
 import useWebContainer from "@/modules/webContainers/hooks/useWebContainer"
 import WebContainerPreview from "@/modules/webContainers/components/webContainerPreview"
 import PlaygroundTerminal from "@/modules/playground/components/playground-terminal"
+import ToggleAi from "@/modules/playground/components/toggle-ai"
+import PlaygroundAiSidebar from "@/modules/playground/components/playground-ai-sidebar"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Switch } from "@/components/ui/switch"
-import { TerminalSquare, X, GripHorizontal, House, Settings, ArrowLeftRight, Search, Bot } from "lucide-react"
+import { TerminalSquare, X, GripHorizontal, House, Settings, ArrowLeftRight, Search } from "lucide-react"
 import useFileExplorerStore, { type OpenFile } from "@/modules/playground/hooks/useFileExplorer"
 
 // Clones the full tree so updates remain immutable.
@@ -1071,49 +1071,13 @@ function MainPlaygroundPage() {
                                     <span>Split</span>
                                 </button>
 
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <button
-                                            type="button"
-                                            className={cn(
-                                                "flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11px] transition-colors",
-                                                isAiAutocompleteEnabled || isAiChatOpen
-                                                    ? "border-[#61afef] bg-[#1b2130] text-[#dbe8ff]"
-                                                    : "border-[#2a2f3a] bg-[#141821] text-[#aab1bf] hover:border-[#3a4150] hover:text-white"
-                                            )}
-                                            title="AI options"
-                                        >
-                                            <Bot size={13} />
-                                            <span>AI</span>
-                                        </button>
-                                    </DropdownMenuTrigger>
-
-                                    <DropdownMenuContent align="end" className="w-64">
-                                        <div className="px-2 py-1.5 text-[11px] font-medium text-muted-foreground">AI Options</div>
-
-                                        <DropdownMenuItem
-                                            onSelect={(event) => event.preventDefault()}
-                                            className="flex items-center justify-between gap-3"
-                                        >
-                                            <span>Auto Completion</span>
-                                            <Switch
-                                                checked={isAiAutocompleteEnabled}
-                                                onCheckedChange={setIsAiAutocompleteEnabled}
-                                                aria-label="Toggle AI auto completion"
-                                            />
-                                        </DropdownMenuItem>
-
-                                        <DropdownMenuItem onSelect={() => setIsAiChatOpen(true)}>
-                                            Open AI Chat Sidebar
-                                        </DropdownMenuItem>
-
-                                        {isAiChatOpen ? (
-                                            <DropdownMenuItem onSelect={() => setIsAiChatOpen(false)}>
-                                                Hide AI Chat Sidebar
-                                            </DropdownMenuItem>
-                                        ) : null}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                <ToggleAi
+                                    isAiAutocompleteEnabled={isAiAutocompleteEnabled}
+                                    isAiChatOpen={isAiChatOpen}
+                                    onToggleAutocomplete={setIsAiAutocompleteEnabled}
+                                    onOpenChat={() => setIsAiChatOpen(true)}
+                                    onCloseChat={() => setIsAiChatOpen(false)}
+                                />
 
                                 <button
                                     type="button"
@@ -1256,29 +1220,10 @@ function MainPlaygroundPage() {
                         ) : null}
                     </div>
 
-                    {isAiChatOpen ? (
-                        <aside className="flex h-full w-85 shrink-0 flex-col border-l border-[#1c1f26] bg-[#0b0d11]">
-                            <div className="flex items-center justify-between border-b border-[#1c1f26] px-3 py-2">
-                                <div className="flex items-center gap-2 text-[12px] text-[#aab1bf]">
-                                    <Bot size={14} />
-                                    <span className="font-medium">AI Chat</span>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsAiChatOpen(false)}
-                                    className="rounded p-1 text-[#71798a] hover:bg-[#151922] hover:text-white"
-                                    aria-label="Close AI chat sidebar"
-                                    title="Close AI chat sidebar"
-                                >
-                                    <X size={14} />
-                                </button>
-                            </div>
-
-                            <div className="flex-1 px-3 py-3 text-[12px] text-[#7d8596]">
-                                AI chat sidebar is open. Connect your chat component here.
-                            </div>
-                        </aside>
-                    ) : null}
+                    <PlaygroundAiSidebar
+                        isOpen={isAiChatOpen}
+                        onClose={() => setIsAiChatOpen(false)}
+                    />
                 </div>
             </SidebarInset>
         </div>
