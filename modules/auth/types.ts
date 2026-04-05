@@ -1,3 +1,3 @@
 export interface LogoutButtonProps {
-  children?: React.ReactNode
+    children?: React.ReactNode
 }
