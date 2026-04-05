@@ -1,12 +1,12 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import { X } from "lucide-react";
+import { useState } from 'react'
+import { X } from 'lucide-react'
 
 function NotificationBanner() {
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(true)
 
-  if (!visible) return null;
+  if (!visible) return null
 
   return (
     /*
@@ -36,7 +36,7 @@ function NotificationBanner() {
     </div>
     */
     null
-  );
+  )
 }
 
 export default NotificationBanner

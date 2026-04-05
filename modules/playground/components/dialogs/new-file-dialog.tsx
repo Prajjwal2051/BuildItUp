@@ -1,7 +1,7 @@
-"use client";
+'use client'
 // This component is responsible for rendering a dialog that allows users to create a new file in the playground. It includes input fields for the filename and extension, and it calls the appropriate callback when the form is submitted.
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -9,30 +9,30 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import React from "react";
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import React from 'react'
 
 interface NewFileDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onCreateFile: (filename: string, extension: string) => void;
+  isOpen: boolean
+  onClose: () => void
+  onCreateFile: (filename: string, extension: string) => void
 }
 
 /// Renders a dialog for creating a new file with input fields for the filename and extension. The dialog can be opened or closed based on the `isOpen` prop, and it calls the `onCreateFile` callback with the entered filename and extension when the form is submitted. The filename input is required, while the extension defaults to "js" if left empty.
 function NewFileDialog({ isOpen, onClose, onCreateFile }: NewFileDialogProps) {
-  const [filename, setFilename] = React.useState("");
-  const [extension, setExtension] = React.useState("js");
+  const [filename, setFilename] = React.useState('')
+  const [extension, setExtension] = React.useState('js')
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     if (filename.trim()) {
-      onCreateFile(filename.trim(), extension.trim() || "js");
-      setFilename("");
-      setExtension("js");
+      onCreateFile(filename.trim(), extension.trim() || 'js')
+      setFilename('')
+      setExtension('js')
     }
-  };
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -82,7 +82,7 @@ function NewFileDialog({ isOpen, onClose, onCreateFile }: NewFileDialogProps) {
         </form>
       </DialogContent>
     </Dialog>
-  );
+  )
 }
 
-export default NewFileDialog;   
+export default NewFileDialog

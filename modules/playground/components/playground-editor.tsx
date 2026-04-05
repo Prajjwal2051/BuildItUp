@@ -1,4 +1,4 @@
-"use client"
+'use client'
 // This component is responsible for rendering the Monaco Editor and handling its interactions.
 import { useRef, useCallback, useState, useEffect } from 'react'
 import Editor, { type Monaco } from '@monaco-editor/react'
@@ -15,7 +15,6 @@ interface playgroundEditorProps {
 
 // The component uses refs to keep track of the editor instance and the Monaco instance for dynamic configuration and language updates.
 const PlaygroundEditor = ({ activeFile, content, onContentChange }: playgroundEditorProps) => {
-
   const editorRef = useRef<any>(null)
   const monacoRef = useRef<Monaco | null>(null)
   // The handleEditorDidMount function is called when the editor is mounted, allowing us to store references to the editor and Monaco instances for later use. It also applies the default editor options and configures Monaco with any additional settings needed for our playground.
@@ -37,12 +36,12 @@ const PlaygroundEditor = ({ activeFile, content, onContentChange }: playgroundEd
     }
   }
 
-  useEffect(()=>{
+  useEffect(() => {
     updateEditorLanguage(activeFile)
-  },[activeFile])
+  }, [activeFile])
 
   return (
-    <div className='h-full relative'>
+    <div className="h-full relative">
       <Editor
         height="100%"
         defaultLanguage={activeFile ? getEditorLanguage(activeFile.name) : 'plaintext'}
@@ -65,10 +64,8 @@ const PlaygroundEditor = ({ activeFile, content, onContentChange }: playgroundEd
           <p className="text-gray-500 text-lg">Select a file to view its content</p>
         </div>
       )}
-
     </div>
   )
-
 }
 
 export default PlaygroundEditor

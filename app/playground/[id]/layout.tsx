@@ -1,19 +1,16 @@
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider } from '@/components/ui/sidebar'
 import React from 'react'
 
 function PlaygroundLayout({
-    children,
+  children,
 }: Readonly<{
-    children: React.ReactNode;
+  children: React.ReactNode
 }>) {
-    return (
-        <div>
-            <SidebarProvider>
-                {children}
-            </SidebarProvider>
-        </div>
-    )
+  return (
+    <div>
+      <SidebarProvider>{children}</SidebarProvider>
+    </div>
+  )
 }
 
 export default PlaygroundLayout
-

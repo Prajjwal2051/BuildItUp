@@ -1,9 +1,9 @@
-@import url("https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..700,0..1,-25..200");
-@import "@xterm/xterm/css/xterm.css";
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..700,0..1,-25..200');
+@import '@xterm/xterm/css/xterm.css';
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -15,7 +15,7 @@ body {
 
 /* Small boxes grid */
 body::before {
-  content: "";
+  content: '';
   position: fixed;
   inset: 0;
   pointer-events: none;
@@ -28,7 +28,7 @@ body::before {
 
 /* Noise texture */
 body::after {
-  content: "";
+  content: '';
   position: fixed;
   inset: 0;
   pointer-events: none;
@@ -43,11 +43,9 @@ body::after {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans:
-    "Satoshi", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+    'Satoshi', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono:
-    ui-monospace, "SFMono-Regular", "SF Mono", Consolas, "Liberation Mono",
-    Menlo, monospace;
+    ui-monospace, 'SFMono-Regular', 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -180,21 +178,13 @@ body::after {
 
 /* Creates soft moving glows behind the hero area for depth and motion. */
 .orbit-blob-a {
-  background: radial-gradient(
-    circle at center,
-    rgba(255, 255, 255, 0.2),
-    transparent 70%
-  );
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.2), transparent 70%);
   filter: blur(18px);
   animation: blob-float-a 13s ease-in-out infinite;
 }
 
 .orbit-blob-b {
-  background: radial-gradient(
-    circle at center,
-    rgba(128, 128, 128, 0.2),
-    transparent 70%
-  );
+  background: radial-gradient(circle at center, rgba(128, 128, 128, 0.2), transparent 70%);
   filter: blur(20px);
   animation: blob-float-b 16s ease-in-out infinite;
 }
@@ -301,11 +291,7 @@ body::after {
   width: min(920px, 92vw);
   height: 510px;
   pointer-events: none;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(0, 212, 170, 0.06) 0%,
-    transparent 68%
-  );
+  background: radial-gradient(ellipse at center, rgba(0, 212, 170, 0.06) 0%, transparent 68%);
   z-index: 0;
 }
 
@@ -361,8 +347,8 @@ body::after {
   min-height: 240px;
   padding: 18px;
   font-family:
-    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
+    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
   font-size: 12px;
   transition:
     border-color 0.25s,
@@ -395,7 +381,7 @@ body::after {
 .zf-badge {
   padding: 2px 9px;
   border-radius: 999px;
-  font-family: "Satoshi", ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
   font-size: 10px;
   font-weight: 600;
   background: rgba(0, 212, 170, 0.1);
@@ -413,7 +399,7 @@ body::after {
 }
 
 .ip-label {
-  font-family: "Satoshi", ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
   font-size: 9.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -599,13 +585,13 @@ body::after {
 /* Gives the explorer a crisp code-editor style mono face similar to terminal UIs. */
 .font-jetbrains {
   font-family:
-    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
+    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
 }
 
 /* Standardized Material Symbols setup so icon size and weight stay consistent. */
 .material-symbols-rounded {
-  font-family: "Material Symbols Rounded";
+  font-family: 'Material Symbols Rounded';
   font-weight: 400;
   font-style: normal;
   font-size: 18px;
@@ -616,12 +602,12 @@ body::after {
   white-space: nowrap;
   word-wrap: normal;
   direction: ltr;
-  font-feature-settings: "liga";
-  -webkit-font-feature-settings: "liga";
+  font-feature-settings: 'liga';
+  -webkit-font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
   font-variation-settings:
-    "FILL" 0,
-    "wght" 500,
-    "GRAD" 0,
-    "opsz" 24;
+    'FILL' 0,
+    'wght' 500,
+    'GRAD' 0,
+    'opsz' 24;
 }

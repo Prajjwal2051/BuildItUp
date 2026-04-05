@@ -1,6 +1,6 @@
 /// This component is responsible for rendering a confirmation dialog in the playground. It is used to confirm actions like deleting a file or resetting the playground.
 
-import * as React from "react"
+import * as React from 'react'
 import {
   Dialog,
   DialogContent,
@@ -8,8 +8,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 
 export interface ConfirmationDialogProps {
   isOpen: boolean
@@ -27,8 +27,8 @@ function ConfirmationDialog({
   isOpen,
   title,
   description,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
   onConfirm,
   onCancel,
   setIsOpen,
