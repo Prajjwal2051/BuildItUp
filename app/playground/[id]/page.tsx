@@ -22,6 +22,7 @@ import WebContainerPreview from '@/modules/webContainers/components/webContainer
 import PlaygroundTerminal from '@/modules/playground/components/playground-terminal'
 import ToggleAi from '@/modules/playground/components/toggle-ai'
 import PlaygroundAiSidebar from '@/modules/playground/components/playground-ai-sidebar'
+import useAISuggestion from '@/modules/playground/hooks/useAISuggestion'
 import {
     Dialog,
     DialogContent,
@@ -39,6 +40,7 @@ import {
     Settings,
     ArrowLeftRight,
     Search,
+    Sparkles,
 } from 'lucide-react'
 import useFileExplorerStore, { type OpenFile } from '@/modules/playground/hooks/useFileExplorer'
 
@@ -392,6 +394,7 @@ function MainPlaygroundPage() {
             .slice(0, 100)
     }, [fileSearchItems, searchQuery])
     const monacoTheme = editorPreferences.theme === 'light' ? 'vs' : 'modern-dark'
+    const aiSuggestion = useAISuggestion({ enabled: isAiAutocompleteEnabled })
     const editorOptions = React.useMemo(
         () => ({
             ...(defaultEditorOptions as unknown as MonacoEditor.IStandaloneEditorConstructionOptions),
@@ -815,6 +818,61 @@ function MainPlaygroundPage() {
         [],
     )
 
+    // Requests one AI suggestion from the current cursor position in the active editor tab.
+    const handleRequestAiSuggestion = React.useCallback(async () => {
+        const editor = editorInstanceRef.current
+        const model = editor?.getModel()
+        const position = editor?.getPosition()
+        if (!editor || !model || !position || !activeFilePath) return
+
+        const nextSuggestion = await aiSuggestion.fetchSuggestion({
+            fileName: activeFilePath,
+            fileContent: model.getValue(),
+            cursorLine: Math.max(0, position.lineNumber - 1),
+            cursorColumn: Math.max(0, position.column - 1),
+        })
+
+        if (nextSuggestion) {
+            appendTerminalLog('[info] AI suggestion ready. Click Apply to insert it.\n')
+        }
+    }, [activeFilePath, aiSuggestion, appendTerminalLog])
+
+    // Inserts AI generated text at the current cursor and tracks it as an unsaved editor change.
+    const handleInsertAiText = React.useCallback(
+        (text: string) => {
+            const editor = editorInstanceRef.current
+            if (!editor || !activeFilePath || !text.trim()) return
+
+            const position = editor.getPosition()
+            if (!position) return
+
+            editor.executeEdits('ai-insert', [
+                {
+                    range: {
+                        startLineNumber: position.lineNumber,
+                        startColumn: position.column,
+                        endLineNumber: position.lineNumber,
+                        endColumn: position.column,
+                    },
+                    text,
+                    forceMoveMarkers: true,
+                },
+            ])
+
+            const latestContent = editor.getModel()?.getValue() ?? ''
+            markFileAsUnsaved(activeFilePath, latestContent)
+            appendTerminalLog(`[info] Inserted AI output into ${getFileName(activeFilePath)}.\n`)
+        },
+        [activeFilePath, appendTerminalLog, markFileAsUnsaved],
+    )
+
+    const handleToggleAiAutocomplete = React.useCallback((enabled: boolean) => {
+        setIsAiAutocompleteEnabled(enabled)
+        if (!enabled) {
+            aiSuggestion.clearSuggestion()
+        }
+    }, [aiSuggestion])
+
     const handleAddFile = React.useCallback(
         (parentPath: string, filename: string, extension: string) => {
             addFile(parentPath, filename, extension)
@@ -1042,7 +1100,42 @@ function MainPlaygroundPage() {
                                                     : 'No file open'}
                                             </span>
                                         </div>
-                                        <span className="text-[10px] text-[#5c6370]">Primary</span>
+                                        <div className="flex items-center gap-2">
+                                            {aiSuggestion.error ? (
+                                                <span className="max-w-60 truncate text-[10px] text-[#ef8d8d]">
+                                                    {aiSuggestion.error}
+                                                </span>
+                                            ) : null}
+
+                                            {aiSuggestion.suggestion ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        handleInsertAiText(aiSuggestion.suggestion)
+                                                        aiSuggestion.clearSuggestion()
+                                                    }}
+                                                    className="rounded border border-[#3a4150] bg-[#1b2130] px-2 py-1 text-[10px] text-[#dbe8ff] transition-colors hover:border-[#61afef]"
+                                                    title="Insert current AI suggestion"
+                                                >
+                                                    Apply
+                                                </button>
+                                            ) : null}
+
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleRequestAiSuggestion()}
+                                                disabled={!isAiAutocompleteEnabled || aiSuggestion.isLoading}
+                                                className="flex items-center gap-1 rounded border border-[#2a2f3a] px-2 py-1 text-[10px] text-[#8b92a3] transition-colors hover:border-[#3a4150] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                                title="Ask AI for suggestion"
+                                            >
+                                                <Sparkles size={11} />
+                                                <span>
+                                                    {aiSuggestion.isLoading ? 'Thinking' : 'Suggest'}
+                                                </span>
+                                            </button>
+
+                                            <span className="text-[10px] text-[#5c6370]">Primary</span>
+                                        </div>
                                     </div>
 
                                     <div className="flex h-8 min-h-8 items-center gap-1 overflow-hidden border-b border-[#1c1f26] bg-[#0d1016] px-3 text-[11px] text-[#6f7788]">
@@ -1251,7 +1344,7 @@ function MainPlaygroundPage() {
                                 <ToggleAi
                                     isAiAutocompleteEnabled={isAiAutocompleteEnabled}
                                     isAiChatOpen={isAiChatOpen}
-                                    onToggleAutocomplete={setIsAiAutocompleteEnabled}
+                                    onToggleAutocomplete={handleToggleAiAutocomplete}
                                     onOpenChat={() => setIsAiChatOpen(true)}
                                     onCloseChat={() => setIsAiChatOpen(false)}
                                 />
@@ -1422,6 +1515,9 @@ function MainPlaygroundPage() {
                     <PlaygroundAiSidebar
                         isOpen={isAiChatOpen}
                         onClose={() => setIsAiChatOpen(false)}
+                        fileName={activeFilePath}
+                        fileContent={activeEditorContent}
+                        onInsertInEditor={handleInsertAiText}
                     />
                 </div>
             </SidebarInset>
