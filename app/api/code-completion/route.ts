@@ -11,6 +11,11 @@ interface CodeCompletionRequestBody {
     cursorColumn: number
     suggestionType: 'code' | 'comment'
     fileName?: string
+    selectionStartLine?: number
+    selectionStartColumn?: number
+    selectionEndLine?: number
+    selectionEndColumn?: number
+    selectedText?: string
 }
 
 interface CodeContext {
@@ -21,6 +26,13 @@ interface CodeContext {
     currentLineContent: string
     beforeCursorContent: string
     afterCursorContent: string
+    selectedText?: string
+    selectionRange?: {
+        startLine: number
+        startColumn: number
+        endLine: number
+        endColumn: number
+    }
     cursorPosition: {
         line: number
         column: number
@@ -37,7 +49,18 @@ interface CodeContext {
 export async function POST(req: NextRequest) {
     try {
         const body: CodeCompletionRequestBody = await req.json()
-        const { fileContent, cursorLine, cursorColumn, suggestionType, fileName } = body
+        const {
+            fileContent,
+            cursorLine,
+            cursorColumn,
+            suggestionType,
+            fileName,
+            selectionStartLine,
+            selectionStartColumn,
+            selectionEndLine,
+            selectionEndColumn,
+            selectedText,
+        } = body
 
         // BUG FIX 1: `suggestionType` is required by the downstream functions but was
         // never validated. A missing or wrong value would cause silent incorrect behaviour.
@@ -62,7 +85,13 @@ export async function POST(req: NextRequest) {
             )
         }
 
-        const context = extractCodeContext(fileContent, cursorLine, cursorColumn, fileName)
+        const context = extractCodeContext(fileContent, cursorLine, cursorColumn, fileName, {
+            selectionStartLine,
+            selectionStartColumn,
+            selectionEndLine,
+            selectionEndColumn,
+            selectedText,
+        })
         const prompt = generatePrompt(context, suggestionType)
         const modelResolution = await resolveOllamaModel()
 
@@ -73,7 +102,9 @@ export async function POST(req: NextRequest) {
             )
         }
 
-        const suggestion = await getCodeSuggestion(prompt, modelResolution.model)
+        const suggestion = sanitizeCodeSuggestion(
+            await getCodeSuggestion(prompt, modelResolution.model),
+        )
 
         return NextResponse.json({
             suggestion,
@@ -100,6 +131,13 @@ function extractCodeContext(
     cursorLine: number,
     cursorColumn: number,
     fileName?: string,
+    selection?: {
+        selectionStartLine?: number
+        selectionStartColumn?: number
+        selectionEndLine?: number
+        selectionEndColumn?: number
+        selectedText?: string
+    },
 ): CodeContext {
     const lines = fileContent.split('\n')
     const currentLineContent = lines[cursorLine] || ''
@@ -129,6 +167,12 @@ function extractCodeContext(
     const isInClass = detectIfInClass(beforeCursorContent)
     const isInComment = detectIfInComment(beforeCursorContent)
 
+    const hasValidSelection =
+        typeof selection?.selectionStartLine === 'number' &&
+        typeof selection?.selectionStartColumn === 'number' &&
+        typeof selection?.selectionEndLine === 'number' &&
+        typeof selection?.selectionEndColumn === 'number'
+
     return {
         language,
         framework,
@@ -137,6 +181,15 @@ function extractCodeContext(
         currentLineContent,
         beforeCursorContent,
         afterCursorContent,
+        selectedText: typeof selection?.selectedText === 'string' ? selection.selectedText : '',
+        selectionRange: hasValidSelection
+            ? {
+                startLine: selection.selectionStartLine as number,
+                startColumn: selection.selectionStartColumn as number,
+                endLine: selection.selectionEndLine as number,
+                endColumn: selection.selectionEndColumn as number,
+            }
+            : undefined,
         cursorPosition: {
             line: cursorLine,
             column: cursorColumn,
@@ -389,6 +442,8 @@ function generatePrompt(context: CodeContext, suggestionType: 'code' | 'comment'
         fileName,
         beforeCursorContent,
         afterCursorContent,
+        selectedText,
+        selectionRange,
         isInFunction,
         isInClass,
         isInComment,
@@ -405,10 +460,13 @@ function generatePrompt(context: CodeContext, suggestionType: 'code' | 'comment'
             .filter(Boolean)
             .join(', ') || 'top-level scope'
 
+    const hasSelectedCode = Boolean(selectedText && selectedText.trim().length > 0)
     const task =
         suggestionType === 'comment'
             ? 'Write a concise, accurate JSDoc/docstring comment for the code at the cursor.'
-            : 'Complete the code at the cursor position. Return only the inserted text, no explanations.'
+            : hasSelectedCode
+                ? 'Rewrite the selected code to improve it. You may remove, reorder, or refactor lines if needed. Return only replacement code for the selected range.'
+                : 'Complete the code at the cursor position. Return only the inserted text, no explanations.'
 
     return `
 You are an expert ${language} developer${framework !== 'unknown' ? ` using ${framework}` : ''}.
@@ -424,6 +482,7 @@ ${beforeCursorContent}
 <CURSOR>
 ### Code after cursor:
 ${afterCursorContent}
+${hasSelectedCode ? `\n### Selected code range:\n${JSON.stringify(selectionRange ?? null)}\n\n### Selected code:\n${selectedText}` : ''}
 `.trim()
 }
 
@@ -493,4 +552,27 @@ async function getCodeSuggestion(prompt: string, model: string): Promise<string>
         console.error('Error fetching code suggestion:', error)
         return ''
     }
+}
+
+// Removes markdown fences so the editor always receives plain insertable code.
+function sanitizeCodeSuggestion(suggestion: string): string {
+    const trimmedSuggestion = suggestion.trim()
+
+    // Handles the common case where the model wraps the whole output in one fenced block.
+    const fencedBlockMatch = trimmedSuggestion.match(/^```[\w-]*\n?([\s\S]*?)\n?```$/)
+    if (fencedBlockMatch) {
+        return fencedBlockMatch[1].trimEnd()
+    }
+
+    const suggestionLines = trimmedSuggestion.split('\n')
+
+    if (suggestionLines[0]?.trimStart().startsWith('```')) {
+        suggestionLines.shift()
+    }
+
+    if (suggestionLines[suggestionLines.length - 1]?.trim() === '```') {
+        suggestionLines.pop()
+    }
+
+    return suggestionLines.join('\n').trimEnd()
 }

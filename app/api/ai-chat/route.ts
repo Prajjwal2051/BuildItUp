@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
                     {
                         role: 'system',
                         content:
-                            'You are an expert coding assistant for a browser editor. Keep answers concise and practical. When asked to generate code, return code only unless the user asks for explanation.',
+                            'You are an expert coding assistant for a browser editor. Keep answers concise and practical. When asked to generate code, return only raw code with no markdown fences, no backticks, and no introductory text unless the user explicitly asks for explanation.',
                     },
                     ...normalizedHistory,
                     {
@@ -86,10 +86,34 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        const assistant = data.message?.content?.trim() ?? ''
+        const assistant = sanitizeAssistantResponse(data.message?.content ?? '')
         return NextResponse.json({ assistant })
     } catch (error) {
         console.error('Error in AI chat route:', error)
         return NextResponse.json({ error: 'Failed to process AI chat request' }, { status: 500 })
     }
+}
+
+// Normalizes model output so chat insertion actions receive plain code without markdown wrappers.
+function sanitizeAssistantResponse(content: string): string {
+    const trimmedContent = content.trim()
+
+    // When the model returns fenced code, extract the first fenced block as the response.
+    const fencedBlockMatch = trimmedContent.match(/```[\w-]*\n?([\s\S]*?)```/)
+    if (fencedBlockMatch) {
+        return fencedBlockMatch[1].trim()
+    }
+
+    const lines = trimmedContent.split('\n')
+
+    // Drops common one-line preambles like "Here is the code:" before actual code lines.
+    if (
+        lines.length > 1 &&
+        /^(sure|here|okay|alright|this|below)\b/i.test(lines[0].trim()) &&
+        lines[0].includes(':')
+    ) {
+        return lines.slice(1).join('\n').trim()
+    }
+
+    return trimmedContent
 }

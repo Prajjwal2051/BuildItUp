@@ -40,7 +40,6 @@ import {
     Settings,
     ArrowLeftRight,
     Search,
-    Sparkles,
 } from 'lucide-react'
 import useFileExplorerStore, { type OpenFile } from '@/modules/playground/hooks/useFileExplorer'
 
@@ -344,9 +343,12 @@ function MainPlaygroundPage() {
     )
     const [sidebarWidth, setSidebarWidth] = React.useState(300)
     const editorInstanceRef = React.useRef<MonacoEditor.IStandaloneCodeEditor | null>(null)
+    const monacoInstanceRef = React.useRef<Monaco | null>(null)
+    const inlineProviderRef = React.useRef<{ dispose: () => void } | null>(null)
+    const inlineWidgetRef = React.useRef<MonacoEditor.IContentWidget | null>(null)
+    const inlineWidgetNodeRef = React.useRef<HTMLDivElement | null>(null)
     const liveSyncTimersRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
     const isResizingSidebarRef = React.useRef(false)
-    const shouldPrimeAiSuggestionRef = React.useRef(false)
 
     const fileTree = useFileExplorerStore((state) => state.fileTree)
     const openFiles = useFileExplorerStore((state) => state.openFiles)
@@ -396,6 +398,13 @@ function MainPlaygroundPage() {
     }, [fileSearchItems, searchQuery])
     const monacoTheme = editorPreferences.theme === 'light' ? 'vs' : 'modern-dark'
     const aiSuggestion = useAISuggestion({ enabled: isAiAutocompleteEnabled })
+    const {
+        suggestion: aiInlineSuggestion,
+        isLoading: aiSuggestionLoading,
+        error: aiSuggestionError,
+        fetchSuggestion: fetchAiSuggestion,
+        clearSuggestion: clearAiSuggestion,
+    } = aiSuggestion
     const editorOptions = React.useMemo(
         () => ({
             ...(defaultEditorOptions as unknown as MonacoEditor.IStandaloneEditorConstructionOptions),
@@ -814,31 +823,34 @@ function MainPlaygroundPage() {
     const handleEditorMount = React.useCallback(
         (editor: MonacoEditor.IStandaloneCodeEditor, monaco: Monaco) => {
             editorInstanceRef.current = editor
+            monacoInstanceRef.current = monaco
             configureMonaco(monaco)
         },
         [],
     )
 
-    // Requests one AI suggestion from the current cursor position in the active editor tab.
-    const handleRequestAiSuggestion = React.useCallback(async () => {
+    // Triggers Monaco inline suggestions so ghost text appears at the cursor.
+    const handleRequestAiSuggestion = React.useCallback(() => {
         const editor = editorInstanceRef.current
-        const model = editor?.getModel()
-        const position = editor?.getPosition()
-        if (!editor || !model || !position || !activeFilePath) return
+        if (!editor || !isAiAutocompleteEnabled) return
+        editor.focus()
+        editor.trigger('ai-inline-trigger', 'editor.action.inlineSuggest.trigger', {})
+    }, [isAiAutocompleteEnabled])
 
-        const nextSuggestion = await aiSuggestion.fetchSuggestion({
-            fileName: activeFilePath,
-            fileContent: model.getValue(),
-            cursorLine: Math.max(0, position.lineNumber - 1),
-            cursorColumn: Math.max(0, position.column - 1),
-        })
+    // Commits the active inline suggestion into the document and tracks unsaved changes.
+    const handleAcceptInlineSuggestion = React.useCallback(() => {
+        const editor = editorInstanceRef.current
+        if (!editor || !activeFilePath) return
 
-        if (nextSuggestion) {
-            appendTerminalLog('[info] AI suggestion ready. Click Apply to insert it.\n')
-        }
-    }, [activeFilePath, aiSuggestion, appendTerminalLog])
+        editor.focus()
+        editor.trigger('ai-inline-accept', 'editor.action.inlineSuggest.commit', {})
 
-    // Inserts AI generated text at the current cursor and tracks it as an unsaved editor change.
+        const latestContent = editor.getModel()?.getValue() ?? ''
+        markFileAsUnsaved(activeFilePath, latestContent)
+        clearAiSuggestion()
+    }, [activeFilePath, clearAiSuggestion, markFileAsUnsaved])
+
+    // Inserts explicit AI output at cursor for chat sidebar actions.
     const handleInsertAiText = React.useCallback(
         (text: string) => {
             const editor = editorInstanceRef.current
@@ -847,7 +859,7 @@ function MainPlaygroundPage() {
             const position = editor.getPosition()
             if (!position) return
 
-            editor.executeEdits('ai-insert', [
+            editor.executeEdits('ai-chat-insert', [
                 {
                     range: {
                         startLineNumber: position.lineNumber,
@@ -862,25 +874,174 @@ function MainPlaygroundPage() {
 
             const latestContent = editor.getModel()?.getValue() ?? ''
             markFileAsUnsaved(activeFilePath, latestContent)
-            appendTerminalLog(`[info] Inserted AI output into ${getFileName(activeFilePath)}.\n`)
         },
-        [activeFilePath, appendTerminalLog, markFileAsUnsaved],
+        [activeFilePath, markFileAsUnsaved],
     )
 
-    const handleToggleAiAutocomplete = React.useCallback((enabled: boolean) => {
-        shouldPrimeAiSuggestionRef.current = enabled
-        setIsAiAutocompleteEnabled(enabled)
-        if (!enabled) {
-            aiSuggestion.clearSuggestion()
+    const handleToggleAiAutocomplete = React.useCallback(
+        (enabled: boolean) => {
+            setIsAiAutocompleteEnabled(enabled)
+            if (!enabled) {
+                clearAiSuggestion()
+                const editor = editorInstanceRef.current
+                editor?.trigger('ai-inline-hide', 'editor.action.inlineSuggest.hide', {})
+            }
+        },
+        [clearAiSuggestion],
+    )
+
+    // Registers inline completions so Monaco renders AI output as grey ghost text.
+    React.useEffect(() => {
+        const editor = editorInstanceRef.current
+        const monaco = monacoInstanceRef.current
+        if (!editor || !monaco) return
+
+        inlineProviderRef.current?.dispose()
+
+        const currentLanguage = getEditorLanguage(activeFilePath.split('.').pop() ?? '')
+        const provider = monaco.languages.registerInlineCompletionsProvider(currentLanguage, {
+            provideInlineCompletions: async (
+                model: any,
+                position: any,
+                _context: any,
+                token: any,
+            ) => {
+                if (!isAiAutocompleteEnabled) {
+                    return { items: [] }
+                }
+
+                if (editor.getModel() !== model) {
+                    return { items: [] }
+                }
+
+                const selection = editor.getSelection()
+                const hasSelection = Boolean(selection && !selection.isEmpty())
+                const selectedText = hasSelection ? model.getValueInRange(selection!) : ''
+
+                const nextSuggestion = await fetchAiSuggestion({
+                    fileName: activeFilePath,
+                    fileContent: model.getValue(),
+                    cursorLine: Math.max(0, position.lineNumber - 1),
+                    cursorColumn: Math.max(0, position.column - 1),
+                    selectionStartLine: hasSelection ? selection!.startLineNumber - 1 : undefined,
+                    selectionStartColumn: hasSelection ? selection!.startColumn - 1 : undefined,
+                    selectionEndLine: hasSelection ? selection!.endLineNumber - 1 : undefined,
+                    selectionEndColumn: hasSelection ? selection!.endColumn - 1 : undefined,
+                    selectedText: hasSelection ? selectedText : undefined,
+                })
+
+                if (token.isCancellationRequested || !nextSuggestion.trim()) {
+                    return { items: [] }
+                }
+
+                const replaceRange = hasSelection
+                    ? new monaco.Range(
+                        selection!.startLineNumber,
+                        selection!.startColumn,
+                        selection!.endLineNumber,
+                        selection!.endColumn,
+                    )
+                    : new monaco.Range(
+                        position.lineNumber,
+                        position.column,
+                        position.lineNumber,
+                        position.column,
+                    )
+
+                return {
+                    items: [
+                        {
+                            insertText: nextSuggestion,
+                            range: replaceRange,
+                        },
+                    ],
+                }
+            },
+            freeInlineCompletions: () => {
+                // Monaco manages inline completion lifecycles internally.
+            },
+        })
+
+        inlineProviderRef.current = provider
+        return () => {
+            provider.dispose()
+            if (inlineProviderRef.current === provider) {
+                inlineProviderRef.current = null
+            }
         }
-    }, [aiSuggestion])
+    }, [activeFilePath, fetchAiSuggestion, isAiAutocompleteEnabled])
+
+    // Renders an inline button near the cursor so suggestion acceptance stays inside the editor.
+    React.useEffect(() => {
+        const editor = editorInstanceRef.current
+        const monaco = monacoInstanceRef.current
+        if (!editor || !monaco) return
+
+        const widgetNode = document.createElement('div')
+        const acceptButton = document.createElement('button')
+        acceptButton.type = 'button'
+        acceptButton.textContent = 'Accept AI'
+        acceptButton.className =
+            'rounded border border-[#3a4150] bg-[#1b2130] px-2 py-1 text-[10px] text-[#dbe8ff]'
+        acceptButton.onclick = (event) => {
+            event.preventDefault()
+            handleAcceptInlineSuggestion()
+        }
+
+        widgetNode.style.display = 'none'
+        widgetNode.style.pointerEvents = 'auto'
+        widgetNode.appendChild(acceptButton)
+
+        const widget: MonacoEditor.IContentWidget = {
+            allowEditorOverflow: true,
+            suppressMouseDown: false,
+            getId: () => 'ai-inline-accept-widget',
+            getDomNode: () => widgetNode,
+            getPosition: () => {
+                if (!isAiAutocompleteEnabled || !aiInlineSuggestion) {
+                    return null
+                }
+
+                const position = editor.getPosition()
+                if (!position) {
+                    return null
+                }
+
+                return {
+                    position,
+                    preference: [monaco.editor.ContentWidgetPositionPreference.BELOW],
+                }
+            },
+        }
+
+        inlineWidgetNodeRef.current = widgetNode
+        inlineWidgetRef.current = widget
+        editor.addContentWidget(widget)
+
+        const cursorListener = editor.onDidChangeCursorPosition(() => {
+            editor.layoutContentWidget(widget)
+        })
+
+        return () => {
+            cursorListener.dispose()
+            editor.removeContentWidget(widget)
+            if (inlineWidgetRef.current === widget) {
+                inlineWidgetRef.current = null
+                inlineWidgetNodeRef.current = null
+            }
+        }
+    }, [aiInlineSuggestion, handleAcceptInlineSuggestion, isAiAutocompleteEnabled])
 
     React.useEffect(() => {
-        if (!isAiAutocompleteEnabled || !shouldPrimeAiSuggestionRef.current) return
+        const editor = editorInstanceRef.current
+        const widget = inlineWidgetRef.current
+        const widgetNode = inlineWidgetNodeRef.current
+        if (!editor || !widget || !widgetNode) return
 
-        shouldPrimeAiSuggestionRef.current = false
-        void handleRequestAiSuggestion()
-    }, [handleRequestAiSuggestion, isAiAutocompleteEnabled])
+        const shouldShow = isAiAutocompleteEnabled && Boolean(aiInlineSuggestion)
+        widgetNode.style.display = shouldShow ? 'block' : 'none'
+        editor.layoutContentWidget(widget)
+    }, [aiInlineSuggestion, isAiAutocompleteEnabled])
 
     const handleAddFile = React.useCallback(
         (parentPath: string, filename: string, extension: string) => {
@@ -1110,37 +1271,20 @@ function MainPlaygroundPage() {
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            {aiSuggestion.error ? (
+                                            {aiSuggestionError ? (
                                                 <span className="max-w-60 truncate text-[10px] text-[#ef8d8d]">
-                                                    {aiSuggestion.error}
+                                                    {aiSuggestionError}
                                                 </span>
-                                            ) : null}
-
-                                            {aiSuggestion.suggestion ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        handleInsertAiText(aiSuggestion.suggestion)
-                                                        aiSuggestion.clearSuggestion()
-                                                    }}
-                                                    className="rounded border border-[#3a4150] bg-[#1b2130] px-2 py-1 text-[10px] text-[#dbe8ff] transition-colors hover:border-[#61afef]"
-                                                    title="Insert current AI suggestion"
-                                                >
-                                                    Apply
-                                                </button>
                                             ) : null}
 
                                             <button
                                                 type="button"
-                                                onClick={() => void handleRequestAiSuggestion()}
-                                                disabled={!isAiAutocompleteEnabled || aiSuggestion.isLoading}
-                                                className="flex items-center gap-1 rounded border border-[#2a2f3a] px-2 py-1 text-[10px] text-[#8b92a3] transition-colors hover:border-[#3a4150] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                                                title="Ask AI for suggestion"
+                                                onClick={handleRequestAiSuggestion}
+                                                disabled={!isAiAutocompleteEnabled || aiSuggestionLoading}
+                                                className="rounded border border-[#2a2f3a] px-2 py-1 text-[10px] text-[#8b92a3] transition-colors hover:border-[#3a4150] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                                title="Trigger inline AI suggestion"
                                             >
-                                                <Sparkles size={11} />
-                                                <span>
-                                                    {aiSuggestion.isLoading ? 'Thinking' : 'Suggest'}
-                                                </span>
+                                                {aiSuggestionLoading ? 'Thinking' : 'Trigger AI'}
                                             </button>
 
                                             <span className="text-[10px] text-[#5c6370]">Primary</span>

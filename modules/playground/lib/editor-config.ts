@@ -205,6 +205,11 @@ export const configureMonaco = (monaco: Monaco) => {
             'editorHoverWidget.border': '#2a2f3a',
             'editorHoverWidget.foreground': '#aab1bf',
 
+            // Inline ghost text for AI autocomplete
+            'editorGhostText.foreground': '#7d8596',
+            'editorGhostText.border': '#00000000',
+            'editorGhostText.background': '#00000000',
+
             // Panel / sidebar (matches your sidebar bg)
             'panel.background': '#0f1115',
             'panel.border': '#1c1f26',
