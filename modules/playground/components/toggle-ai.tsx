@@ -37,7 +37,7 @@ function ToggleAi({
                             ? 'border-[#61afef] bg-[#1b2130] text-[#dbe8ff]'
                             : 'border-[#2a2f3a] bg-[#141821] text-[#aab1bf] hover:border-[#3a4150] hover:text-white',
                     )}
-                    title="AI options"
+                    title="Ollama AI options"
                 >
                     <Bot size={13} />
                     <span>AI</span>
@@ -46,18 +46,18 @@ function ToggleAi({
 
             <DropdownMenuContent align="end" className="w-64">
                 <div className="px-2 py-1.5 text-[11px] font-medium text-muted-foreground">
-                    AI Options
+                    Ollama AI Options
                 </div>
 
                 <DropdownMenuItem
                     onSelect={(event) => event.preventDefault()}
                     className="flex items-center justify-between gap-3"
                 >
-                    <span>Auto Completion</span>
+                    <span>Ollama Autocomplete</span>
                     <Switch
                         checked={isAiAutocompleteEnabled}
                         onCheckedChange={onToggleAutocomplete}
-                        aria-label="Toggle AI auto completion"
+                        aria-label="Toggle Ollama autocomplete"
                     />
                 </DropdownMenuItem>
 

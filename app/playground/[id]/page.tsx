@@ -346,6 +346,7 @@ function MainPlaygroundPage() {
     const editorInstanceRef = React.useRef<MonacoEditor.IStandaloneCodeEditor | null>(null)
     const liveSyncTimersRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
     const isResizingSidebarRef = React.useRef(false)
+    const shouldPrimeAiSuggestionRef = React.useRef(false)
 
     const fileTree = useFileExplorerStore((state) => state.fileTree)
     const openFiles = useFileExplorerStore((state) => state.openFiles)
@@ -867,11 +868,19 @@ function MainPlaygroundPage() {
     )
 
     const handleToggleAiAutocomplete = React.useCallback((enabled: boolean) => {
+        shouldPrimeAiSuggestionRef.current = enabled
         setIsAiAutocompleteEnabled(enabled)
         if (!enabled) {
             aiSuggestion.clearSuggestion()
         }
     }, [aiSuggestion])
+
+    React.useEffect(() => {
+        if (!isAiAutocompleteEnabled || !shouldPrimeAiSuggestionRef.current) return
+
+        shouldPrimeAiSuggestionRef.current = false
+        void handleRequestAiSuggestion()
+    }, [handleRequestAiSuggestion, isAiAutocompleteEnabled])
 
     const handleAddFile = React.useCallback(
         (parentPath: string, filename: string, extension: string) => {

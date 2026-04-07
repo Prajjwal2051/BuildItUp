@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { resolveOllamaModel } from '@/lib/ollama'
 
 type ChatMessage = {
     role: 'user' | 'assistant'
@@ -29,13 +30,22 @@ export async function POST(request: NextRequest) {
             .filter((item) => item && (item.role === 'user' || item.role === 'assistant'))
             .slice(-10)
 
+        const modelResolution = await resolveOllamaModel()
+
+        if (!modelResolution.model) {
+            return NextResponse.json(
+                { error: modelResolution.error ?? 'No Ollama model is available' },
+                { status: 503 },
+            )
+        }
+
         const response = await fetch('http://localhost:11434/api/chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                model: 'qwen2.5-coder:7b',
+                model: modelResolution.model,
                 stream: false,
                 messages: [
                     {

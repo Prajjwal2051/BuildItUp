@@ -3,6 +3,7 @@
 // and returns a code suggestion based on that context.
 
 import { type NextRequest, NextResponse } from 'next/server'
+import { resolveOllamaModel } from '@/lib/ollama'
 
 interface CodeCompletionRequestBody {
     fileContent: string
@@ -63,7 +64,16 @@ export async function POST(req: NextRequest) {
 
         const context = extractCodeContext(fileContent, cursorLine, cursorColumn, fileName)
         const prompt = generatePrompt(context, suggestionType)
-        const suggestion = await getCodeSuggestion(prompt)
+        const modelResolution = await resolveOllamaModel()
+
+        if (!modelResolution.model) {
+            return NextResponse.json(
+                { error: modelResolution.error ?? 'No Ollama model is available' },
+                { status: 503 },
+            )
+        }
+
+        const suggestion = await getCodeSuggestion(prompt, modelResolution.model)
 
         return NextResponse.json({
             suggestion,
@@ -423,7 +433,7 @@ ${afterCursorContent}
 // request body shape.
 // ---------------------------------------------------------------------------
 
-async function getCodeSuggestion(prompt: string): Promise<string> {
+async function getCodeSuggestion(prompt: string, model: string): Promise<string> {
     try {
         // BUG FIX 4 (CRITICAL): The original code called `/api/generate` but sent a
         // `messages` array in the body. `/api/generate` does NOT accept `messages` —
@@ -446,7 +456,7 @@ async function getCodeSuggestion(prompt: string): Promise<string> {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                model: 'qwen2.5-coder:7b',                                  // FIX 6
+                model,
                 stream: false,
                 messages: [
                     {
@@ -468,7 +478,8 @@ async function getCodeSuggestion(prompt: string): Promise<string> {
 
         if (!response.ok) {
             const err = await response.text()
-            throw new Error(`AI API error ${response.status}: ${err}`)
+            console.error(`AI API error ${response.status}: ${err}`)
+            return ''
         }
 
         const data = await response.json()
