@@ -1,5 +1,6 @@
 // This API route handles loading and saving the playground template JSON, which captures the file tree state for each playground. It uses a single database row per playground to store the latest template snapshot. The GET method retrieves the template data for a given playground ID, while the PUT method updates or creates the template data for that playground. Both methods include error handling to ensure robust responses in case of missing parameters, invalid input, or database issues.
 
+import { auth } from '@/auth'
 import { db } from '@/lib/db'
 import type { Prisma } from '@prisma/client'
 import { NextRequest } from 'next/server'
@@ -22,7 +23,13 @@ function getRouteId(params: RouteParams): string | null {
 
 // Loads saved template JSON for one playground so the editor can restore file tree state.
 async function GET(_request: NextRequest, context: { params: RouteParams | Promise<RouteParams> }) {
+
     // The GET function retrieves the saved template JSON for a specific playground based on the provided playground ID. It queries the database for the template file associated with the given playground ID and returns its content and last updated timestamp. If the playground ID is missing, if the template file is not found, or if there is an error during the database query, it returns an appropriate error response with a corresponding status code.
+
+    const session=await auth()
+    if(!session?.user?.id){
+        return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const resolvedParams = await Promise.resolve(context.params)
     const id = getRouteId(resolvedParams)
 
@@ -31,6 +38,26 @@ async function GET(_request: NextRequest, context: { params: RouteParams | Promi
     }
 
     try {
+        // first we will verify the ownership - prevents leaking template content
+        const playground_ownership = await db.playground.findUnique({
+            where: { 
+                id,
+                userId:session.user.id, // Ensure the user can only access their own playgrounds
+             },
+            select: {
+                id: true,
+                template: true,
+                code: true,
+            },
+        })
+
+        if(!playground_ownership){
+            return Response.json({
+                error:"Playground Not Found",
+                status:404
+            })
+        }
+            
         const templateFile = await db.templateFile.findUnique({
             where: {
                 playgroundId: id,
@@ -137,7 +164,13 @@ async function GET(_request: NextRequest, context: { params: RouteParams | Promi
 
 // Saves updated template JSON for one playground and keeps a single row per playground.
 async function PUT(request: NextRequest, context: { params: RouteParams | Promise<RouteParams> }) {
+
     // The PUT function saves the updated template JSON for a specific playground based on the provided playground ID. It first validates the presence of the playground ID and the template content in the request body. If the validation passes, it checks if a playground with the given ID exists in the database. If it does, it performs an upsert operation to either update the existing template file or create a new one associated with the playground. Finally, it returns a success response with the template file ID and last updated timestamp. If any validation fails or if there is an error during the database operations, it returns an appropriate error response with a corresponding status code.
+
+    const session=await auth()
+    if(!session?.user?.id){
+        return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const resolvedParams = await Promise.resolve(context.params)
     const id = getRouteId(resolvedParams)
 
@@ -166,6 +199,7 @@ async function PUT(request: NextRequest, context: { params: RouteParams | Promis
         const playground = await db.playground.findUnique({
             where: {
                 id,
+                userId: session.user.id, // Ensure the user can only modify their own playgrounds
             },
             select: {
                 id: true,
