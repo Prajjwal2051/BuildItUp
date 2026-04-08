@@ -170,6 +170,7 @@ async function duplicatePlaygroundById(playground: string) {
         const originalPlayground = await db.playground.findUnique({
             where: {
                 id: playground,
+                userId: user.id,
             },
             // here we will implement the template feature later
         })
@@ -190,7 +191,11 @@ async function duplicatePlaygroundById(playground: string) {
         revalidatePath('/dashboard') // Revalidate the dashboard page to reflect the changes after duplication
         return duplicatePlayground
     } catch (error) {
-        console.log(`Error duplicating playground with id ${playground}:, error)`)
+        if ((error as { code?: string }).code === 'P2025') {
+            throw new Error('Playground not found or access denied')
+        }
+        console.error(`Error duplicating playground ${playground}:`, error)
+        throw new Error('Failed to duplicate playground')
     }
 }
 
