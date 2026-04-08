@@ -103,12 +103,21 @@ async function deletePlaygroundById(playgroundId: string) {
         const deletedPlayground = await db.playground.delete({
             where: {
                 id: playgroundId,
+                userId: user.id, // Ensure the user can only delete their own playgrounds
             },
         })
         revalidatePath('/dashboard') // Revalidate the dashboard page to reflect the changes after deletion
         return deletedPlayground
     } catch (error) {
+        if((error as {
+            code?: string
+        }).code === 'P2025'){
+            console.log(`Playground with id ${playgroundId} not found or already deleted.`)
+            throw new Error('Playground not found or already deleted')
+            return null
+        }
         console.log(`Error deleting playground with id ${playgroundId}:, error)`)
+        throw new Error('Failed to delete playground')
     }
 }
 
@@ -130,6 +139,7 @@ async function editPlaygroundById(
         const updatedPlayground = await db.playground.update({
             where: {
                 id: playgroundId,
+                userId: user.id, // Ensure the user can only edit their own playgrounds
             },
             data: {
                 title: data.title,
@@ -139,7 +149,12 @@ async function editPlaygroundById(
         revalidatePath('/dashboard') // Revalidate the dashboard page to reflect the changes after editing
         return updatedPlayground
     } catch (error) {
-        console.log(`Error updating playground with id ${playgroundId}:, error)`)
+        // If the error code is 'P2025', it means the playground was not found or the user does not have access to it.
+        if ((error as { code?: string }).code === 'P2025') {
+            throw new Error('Playground not found or access denied')
+        }
+        console.error(`Error updating playground ${playgroundId}:`, error)
+        throw new Error('Failed to update playground')
     }
 }
 
