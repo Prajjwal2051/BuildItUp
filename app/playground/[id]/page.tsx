@@ -1204,9 +1204,9 @@ function MainPlaygroundPage() {
                     </DialogContent>
                 </Dialog>
 
-                <div className="flex shrink-0 items-center justify-between border-b border-[#1e2028] bg-[#0c1117] px-4 py-2">
+                <div className="flex shrink-0 items-center justify-between border-b border-[#1e2028] bg-[#080e13] px-4 py-2">
                     <div className="w-24" />
-                    <div className="flex w-2xl items-center justify-center gap-2 rounded-xl border border-[#1e2028] bg-[#11161d] px-3 py-1">
+                    <div className="flex w-2xl items-center justify-center gap-2 rounded-xl border border-[#1e2028] bg-[#080e13] px-3 py-1">
                         <span className="select-none text-[11px] font-semibold uppercase tracking-widest text-[#00d4aa]">
                             Playground
                         </span>

@@ -68,12 +68,12 @@ function DashboardSidebar({ initialPlaygroundData }: { initialPlaygroundData: Pl
 
     return (
         <Sidebar
-            variant="inset"
-            collapsible="icon"
-            className="border border-r border-white/6 bg-[#0c1117]/95 text-white backdrop-blur-xl"
+            variant="sidebar"
+            collapsible="none"
+            className="h-svh min-h-svh border border-r border-white/6 bg-[#0d1015]/60 text-white backdrop-blur-xl"
             style={
                 {
-                    '--sidebar': '#0c1117',
+                    '--sidebar': '#ffff',
                     '--sidebar-foreground': '#f8fafc',
                     '--sidebar-primary': '#00d4aa',
                     '--sidebar-primary-foreground': '#03120f',
@@ -218,13 +218,13 @@ function DashboardSidebar({ initialPlaygroundData }: { initialPlaygroundData: Pl
                                         </SidebarMenuItem>
                                     )
                                 })}
-                            
+
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
             </SidebarContent>
-            <SidebarFooter className="border-t border-white/6 px-4 py-4">
-                <div className="rounded-2xl border border-white/6 bg-[rgba(255,255,255,0.02)] px-3 py-3">
+            <SidebarFooter className="mt-auto border-t border-white/6 px-4 py-4">
+                <div className="w-full rounded-2xl border border-white/6 bg-[rgba(255,255,255,0.02)] px-3 py-3">
                     <p className="text-[11px] uppercase tracking-[0.22em] text-neutral-500">
                         Workspace
                     </p>
