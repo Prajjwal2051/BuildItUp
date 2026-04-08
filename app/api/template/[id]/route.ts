@@ -9,6 +9,27 @@ import { pathToJson } from '@/modules/playground/lib/path-to-json'
 
 type RouteParams = { id?: string | string[] }
 
+// Verifies that the playground exists and belongs to the current user before any template access.
+async function getOwnedPlayground(playgroundId: string, userId: string) {
+    const playground = await db.playground.findUnique({
+        where: {
+            id: playgroundId,
+        },
+        select: {
+            id: true,
+            userId: true,
+            template: true,
+            code: true,
+        },
+    })
+
+    if (!playground || playground.userId !== userId) {
+        return null
+    }
+
+    return playground
+}
+
 // Normalizes dynamic route params so both string and catch-all array values resolve safely.
 function getRouteId(params: RouteParams): string | null {
     const rawId = params.id
@@ -26,8 +47,8 @@ async function GET(_request: NextRequest, context: { params: RouteParams | Promi
 
     // The GET function retrieves the saved template JSON for a specific playground based on the provided playground ID. It queries the database for the template file associated with the given playground ID and returns its content and last updated timestamp. If the playground ID is missing, if the template file is not found, or if there is an error during the database query, it returns an appropriate error response with a corresponding status code.
 
-    const session=await auth()
-    if(!session?.user?.id){
+    const session = await auth()
+    if (!session?.user?.id) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
     const resolvedParams = await Promise.resolve(context.params)
@@ -38,26 +59,11 @@ async function GET(_request: NextRequest, context: { params: RouteParams | Promi
     }
 
     try {
-        // first we will verify the ownership - prevents leaking template content
-        const playground_ownership = await db.playground.findUnique({
-            where: { 
-                id,
-                userId:session.user.id, // Ensure the user can only access their own playgrounds
-             },
-            select: {
-                id: true,
-                template: true,
-                code: true,
-            },
-        })
-
-        if(!playground_ownership){
-            return Response.json({
-                error:"Playground Not Found",
-                status:404
-            })
+        const playground = await getOwnedPlayground(id, session.user.id)
+        if (!playground) {
+            return Response.json({ error: 'Playground not found' }, { status: 404 })
         }
-            
+
         const templateFile = await db.templateFile.findUnique({
             where: {
                 playgroundId: id,
@@ -88,18 +94,6 @@ async function GET(_request: NextRequest, context: { params: RouteParams | Promi
                     { status: 200 },
                 )
             }
-        }
-
-        const playground = await db.playground.findUnique({
-            where: { id },
-            select: {
-                template: true,
-                code: true,
-            },
-        })
-
-        if (!playground) {
-            return Response.json({ error: 'Playground not found' }, { status: 404 })
         }
 
         // If a code snapshot exists, use it first so users get exactly what was previously stored.
@@ -167,8 +161,8 @@ async function PUT(request: NextRequest, context: { params: RouteParams | Promis
 
     // The PUT function saves the updated template JSON for a specific playground based on the provided playground ID. It first validates the presence of the playground ID and the template content in the request body. If the validation passes, it checks if a playground with the given ID exists in the database. If it does, it performs an upsert operation to either update the existing template file or create a new one associated with the playground. Finally, it returns a success response with the template file ID and last updated timestamp. If any validation fails or if there is an error during the database operations, it returns an appropriate error response with a corresponding status code.
 
-    const session=await auth()
-    if(!session?.user?.id){
+    const session = await auth()
+    if (!session?.user?.id) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
     const resolvedParams = await Promise.resolve(context.params)
@@ -196,15 +190,7 @@ async function PUT(request: NextRequest, context: { params: RouteParams | Promis
     const content = payload.content as Prisma.InputJsonValue
 
     try {
-        const playground = await db.playground.findUnique({
-            where: {
-                id,
-                userId: session.user.id, // Ensure the user can only modify their own playgrounds
-            },
-            select: {
-                id: true,
-            },
-        })
+        const playground = await getOwnedPlayground(id, session.user.id)
 
         if (!playground) {
             return Response.json({ error: 'Playground not found' }, { status: 404 })

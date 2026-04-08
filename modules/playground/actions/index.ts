@@ -6,22 +6,40 @@ import { db } from '../../../lib/db'
 import type { TemplateFile } from '@prisma/client'
 import { currentUser } from '@/modules/auth/actions'
 
-async function getPlaygroundById(id: string) {
-    // This function retrieves a playground by its ID from the database. It uses the Prisma client to query the Playground model and returns the corresponding playground data. This action can be called from the client to fetch the details of a specific playground when needed.
-    try {
-        const playground = await db.playground.findUnique({
-            where: {
-                id,
-            },
-            select: {
-                title: true,
-                templateFile: {
-                    select: {
-                        content: true,
-                    },
+// Loads one playground only if it belongs to the authenticated user.
+async function findOwnedPlayground(playgroundId: string, userId: string) {
+    const playground = await db.playground.findUnique({
+        where: {
+            id: playgroundId,
+        },
+        select: {
+            id: true,
+            userId: true,
+            title: true,
+            templateFile: {
+                select: {
+                    content: true,
                 },
             },
-        })
+        },
+    })
+
+    if (!playground || playground.userId !== userId) {
+        throw new Error('Playground not found')
+    }
+
+    return playground
+}
+
+async function getPlaygroundById(id: string) {
+    // This function retrieves a playground by its ID from the database. It uses the Prisma client to query the Playground model and returns the corresponding playground data. This action can be called from the client to fetch the details of a specific playground when needed.
+    const user = await currentUser()
+    if (!user) {
+        throw new Error('Unauthorized')
+    }
+
+    try {
+        const playground = await findOwnedPlayground(id, user.id)
         return playground
     } catch (error) {
         console.error('Error fetching playground:', error)
@@ -35,7 +53,11 @@ const SaveUpdatedCode = async (playgroundId: string, data: TemplateFile) => {
     if (!user) {
         throw new Error('Unauthorized')
     }
+
     try {
+        // Verify ownership before mutating template data to block cross-user writes.
+        await findOwnedPlayground(playgroundId, user.id)
+
         const upadtedPlayground = await db.templateFile.upsert({
             where: {
                 playgroundId: playgroundId,
