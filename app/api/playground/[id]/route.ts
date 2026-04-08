@@ -1,4 +1,7 @@
+// This API route handles fetching a single playground by its ID, returning the latest template snapshot for editor bootstrapping.
+
 import { db } from '@/lib/db'
+import { auth } from '@/auth'
 import { NextRequest } from 'next/server'
 
 type RouteParams = { id?: string | string[] }
@@ -17,6 +20,11 @@ function getRouteId(params: RouteParams): string | null {
 
 // Loads a single playground and returns its latest template snapshot so the editor can bootstrap state.
 async function GET(_request: NextRequest, context: { params: RouteParams | Promise<RouteParams> }) {
+    // first we will resolve the session- reject if the user is not authenticated
+    const session=await auth()
+    if(!session?.user?.id){
+        return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const resolvedParams = await Promise.resolve(context.params)
     const id = getRouteId(resolvedParams)
 
@@ -26,7 +34,10 @@ async function GET(_request: NextRequest, context: { params: RouteParams | Promi
 
     try {
         const playground = await db.playground.findUnique({
-            where: { id },
+            where: { 
+                id,
+                userId: session.user.id, // Ensure the user can only access their own playgrounds
+             },
             select: {
                 id: true,
                 title: true,
