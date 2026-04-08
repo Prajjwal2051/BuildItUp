@@ -1,227 +1,449 @@
-# 🏗️ BuildItUp
+<div align="center">
 
-> **A browser-based collaborative coding playground** — spin up instant full-stack development environments, edit code with Monaco, preview your app live, run terminal commands, and get AI-powered inline suggestions, all inside a Next.js 16 app.
+<h1>
+  <img src="https://raw.githubusercontent.com/Prajjwal2051/BuildItUp/main/app/favicon.ico" width="32" height="32" alt="" />
+  BuildItUp
+</h1>
 
----
+<p><strong>A browser-based, full-stack coding playground.</strong><br/>
+Spin up instant dev environments, edit with Monaco, preview live via WebContainers,<br/>run terminal commands, and get AI-powered completions — all in your browser.</p>
 
-## ✨ Features
+<p>
+  <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js" alt="Next.js" /></a>
+  <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" /></a>
+  <a href="https://tailwindcss.com"><img src="https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" /></a>
+  <a href="https://www.prisma.io"><img src="https://img.shields.io/badge/Prisma-6-2D3748?style=flat-square&logo=prisma&logoColor=white" alt="Prisma" /></a>
+  <a href="https://authjs.dev"><img src="https://img.shields.io/badge/NextAuth-v5-purple?style=flat-square" alt="NextAuth" /></a>
+  <img src="https://img.shields.io/badge/license-Private-red?style=flat-square" alt="License" />
+</p>
 
-- **Instant Playgrounds** — Create sandboxed coding environments from templates (React, Next.js, Express, Vue, Hono, Angular) in one click.
-- **Monaco Editor** — VS Code-grade editing with syntax highlighting, multi-tab support, split-pane view, and configurable font/theme settings.
-- **Live Preview** — Powered by WebContainers API; your code runs in the browser with a real Node.js-like runtime, no server required.
-- **Integrated Terminal** — Execute commands directly inside the WebContainer with streaming output, copy-logs, and resizable pane.
-- **AI Inline Autocomplete** — Ghost-text completions appear at your cursor via a Monaco `InlineCompletionsProvider`; toggle on/off per-session.
-- **AI Chat Sidebar** — Context-aware chat panel with the current file loaded; insert AI-generated code at the cursor with one click.
-- **File Explorer** — Full tree-based explorer with add/rename/delete for files and folders; drag-to-resize sidebar.
-- **Star Marks** — Bookmark favourite playgrounds for quick access from the dashboard.
-- **OAuth Authentication** — Sign in with any OAuth provider (e.g. GitHub, Google) via NextAuth v5 with JWT sessions.
-- **Role-based Access** — Three user roles: `USER`, `ADMIN`, `PREMIUM_USER` enforced at the session level.
-- **Persistent Preferences** — Editor theme, font size, font family, split-editor state, and sidebar width are persisted to `localStorage`.
-- **Keyboard Shortcuts** — `Ctrl+S` / `Ctrl+Shift+S` to save / save all; `Ctrl+P` to open file search.
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Framework | [Next.js 16](https://nextjs.org) (App Router) |
-| Language | TypeScript 5 |
-| Styling | Tailwind CSS v4, shadcn/ui, Radix UI |
-| Editor | Monaco Editor (`@monaco-editor/react`) |
-| In-browser Runtime | WebContainers API (`@webcontainer/api`) |
-| Database | MongoDB via [Prisma 6](https://www.prisma.io) + Prisma Accelerate |
-| Auth | [NextAuth v5](https://authjs.dev) (JWT strategy, `@auth/prisma-adapter`) |
-| State Management | [Zustand](https://zustand-demo.pmnd.rs) |
-| Charts | Recharts |
-| Notifications | Sonner |
-| Code Formatting | Prettier |
-| Linting | ESLint 9 |
+</div>
 
 ---
 
-## 📁 Project Structure
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Data Models](#data-models)
+- [Environment Variables](#environment-variables)
+- [Getting Started](#getting-started)
+- [Available Scripts](#available-scripts)
+- [Key Workflows](#key-workflows)
+- [Keyboard Shortcuts](#keyboard-shortcuts)
+- [Authentication Flow](#authentication-flow)
+- [WebContainers & COEP Headers](#webcontainers--coep-headers)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+## Overview
+
+**BuildItUp** is a full-featured, browser-based IDE and coding playground inspired by tools like StackBlitz and CodeSandbox. Users sign in via OAuth, create playgrounds from framework starter templates, and get a complete development experience — file explorer, Monaco code editor, live WebContainer preview, integrated terminal, split-pane editing, and an AI assistant — all without leaving the browser tab.
+
+---
+
+## Features
+
+### 🖥️ Editor
+- **Monaco Editor** (same engine as VS Code) with syntax highlighting for all major languages
+- **Multi-tab editing** with unsaved-change indicators (orange dot per dirty tab)
+- **Split-pane view** — open two files side by side with a swap button
+- **Fuzzy file search** (`Ctrl+P`) to jump to any file in the tree instantly
+- **Configurable preferences** — theme (Dark/Light), font size (11–28 px), font family (JetBrains Mono, Fira Code, Source Code Pro, Menlo)
+- Preferences and split state are **persisted to `localStorage`** across sessions
+
+### ⚡ Live Preview & Terminal
+- **WebContainers API** boots a real Node.js-like runtime in the browser — no backend server needed
+- **Hot file sync** — edits are debounced and written to the WebContainer within 150 ms
+- **Integrated terminal** with streaming command output, copy-logs button, and drag-to-resize pane
+- `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` headers configured for SharedArrayBuffer support
+
+### 🤖 AI Assistant
+- **Inline ghost-text completions** via Monaco's `InlineCompletionsProvider` — suggestions appear at the cursor as you type
+- **AI Chat Sidebar** — context-aware conversation with the current file pre-loaded; insert generated code directly at the cursor
+- Per-session toggle to enable or disable all AI features
+
+### 📁 File Explorer
+- Full **tree-based explorer** with collapsible directories
+- **Create, rename, and delete** files and folders from the sidebar
+- Drag-to-resize sidebar panel (220–520 px width range, persisted)
+
+### 🔒 Auth & Users
+- **OAuth sign-in** (GitHub, Google, and any NextAuth-compatible provider)
+- **JWT session strategy** — no database session table needed
+- **Role-based access**: `USER`, `ADMIN`, `PREMIUM_USER`
+- Multi-provider account linking — the same email can sign in via different providers
+
+### ⭐ Dashboard
+- Create and manage multiple playgrounds per user
+- **Star/bookmark** favourite playgrounds for quick access
+- Choose from six framework templates: **React, Next.js, Express, Vue, Hono, Angular**
+
+---
+
+## Tech Stack
+
+| Category | Technology | Purpose |
+|---|---|---|
+| Framework | [Next.js 16](https://nextjs.org) (App Router) | SSR, routing, API routes, server actions |
+| Language | TypeScript 5 | Type safety across the full stack |
+| Styling | Tailwind CSS v4, [shadcn/ui](https://ui.shadcn.com), Radix UI | UI components and design system |
+| Editor | [`@monaco-editor/react`](https://github.com/suren-atoyan/monaco-react) | VS Code-grade in-browser editor |
+| Runtime | [`@webcontainer/api`](https://webcontainers.io) | In-browser Node.js environment |
+| Database | MongoDB + [Prisma 6](https://www.prisma.io) + Prisma Accelerate | ORM, data models, edge caching |
+| Auth | [NextAuth v5](https://authjs.dev) + `@auth/prisma-adapter` | OAuth, JWT sessions, callbacks |
+| State | [Zustand](https://zustand-demo.pmnd.rs) | File explorer & playground client state |
+| Charts | [Recharts](https://recharts.org) | Dashboard analytics |
+| Notifications | [Sonner](https://sonner.emilkowal.ski) | Toast notifications |
+| Formatting | Prettier | Consistent code style |
+| Linting | ESLint 9 | Static analysis |
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Browser (Client)                     │
+│                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────────┐    │
+│  │ Monaco Editor│  │  File Tree   │  │  AI Sidebar    │    │
+│  │  (primary +  │  │  (Zustand    │  │  (chat +       │    │
+│  │   split pane)│  │   store)     │  │   inline AI)   │    │
+│  └──────┬───────┘  └──────┬───────┘  └───────┬────────┘    │
+│         │                 │                  │              │
+│  ┌──────▼─────────────────▼──────────────────▼──────────┐  │
+│  │                  Playground Page Shell                │  │
+│  │           (app/playground/[id]/page.tsx)              │  │
+│  └──────────────────────────┬────────────────────────────┘  │
+│                             │                               │
+│  ┌──────────────────────────▼────────────────────────────┐  │
+│  │              WebContainer (in-browser Node.js)        │  │
+│  │     live preview  │  terminal  │  file write sync     │  │
+│  └───────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                             │
+                  Next.js Server Actions
+                             │
+         ┌───────────────────▼──────────────────┐
+         │         Prisma ORM (MongoDB)          │
+         │  User · Account · Playground ·        │
+         │  TemplateFile · StarMark              │
+         └──────────────────────────────────────┘
+```
+
+---
+
+## Project Structure
 
 ```
 BuildItUp/
-├── app/                          # Next.js App Router pages
-│   ├── (auth)/                   # Auth routes (sign-in, sign-up)
-│   ├── (root)/                   # Public-facing landing page
-│   ├── dashboard/                # User dashboard (lists playgrounds)
-│   ├── playground/[id]/          # Full playground workspace
-│   │   └── page.tsx              # Main IDE shell (~79 KB, all editor logic)
-│   ├── api/                      # Next.js API routes
-│   ├── layout.tsx                # Root layout (fonts, themes, providers)
-│   └── globals.css               # Global Tailwind styles
-│
-├── modules/                      # Feature-based module boundaries
-│   ├── auth/                     # Auth actions (getUserById, getUserByEmail)
-│   ├── dashboard/                # Dashboard data fetching & components
-│   ├── home/                     # Landing page components
+├── app/                            # Next.js App Router
+│   ├── (auth)/                     # Sign-in / sign-up pages
+│   ├── (root)/                     # Public landing page
+│   ├── dashboard/                  # User dashboard
 │   ├── playground/
-│   │   ├── actions/              # Server actions (create/save/load playgrounds)
-│   │   ├── components/           # Explorer, terminal, AI sidebar, toggle-AI
-│   │   ├── hooks/                # usePlayground, useFileExplorer (Zustand), useAISuggestion
-│   │   └── lib/                  # path-to-json, editor-config, language mappings
-│   └── webContainers/
-│       ├── components/           # WebContainerPreview component
-│       └── hooks/                # useWebContainer (boot, write, destroy)
+│   │   └── [id]/
+│   │       ├── layout.tsx          # Minimal layout wrapper
+│   │       └── page.tsx            # Full IDE shell (Monaco + WebContainer + AI)
+│   ├── api/                        # Next.js API routes
+│   ├── layout.tsx                  # Root layout (fonts, theme provider)
+│   └── globals.css                 # Global Tailwind styles
 │
-├── components/                   # Shared shadcn/ui + custom components
-├── hooks/                        # Global custom React hooks
-├── lib/                          # Utility helpers (db, utils, etc.)
+├── modules/                        # Feature-scoped modules
+│   ├── auth/
+│   │   └── actions/                # getUserById, getUserByEmail
+│   ├── dashboard/
+│   │   ├── actions/                # Server actions for playground CRUD
+│   │   └── components/             # Dashboard UI components
+│   ├── home/
+│   │   └── components/             # Landing page sections
+│   ├── playground/
+│   │   ├── actions/                # saveTemplateData, loadPlayground
+│   │   ├── components/
+│   │   │   ├── playground-explorer.tsx    # File tree UI
+│   │   │   ├── playground-editor.tsx      # Editor wrapper
+│   │   │   ├── playground-terminal.tsx    # Terminal panel
+│   │   │   ├── playground-ai-sidebar.tsx  # AI chat panel
+│   │   │   ├── toggle-ai.tsx              # AI enable/disable toggle
+│   │   │   └── dialogs/                   # Create/rename dialogs
+│   │   ├── hooks/
+│   │   │   ├── usePlayground.ts           # Data fetching for playground
+│   │   │   ├── useFileExplorer.ts         # Zustand store (file tree + open tabs)
+│   │   │   └── useAISuggestion.ts         # Inline AI completion hook
+│   │   └── lib/
+│   │       ├── path-to-json.ts            # File tree ↔ JSON conversion
+│   │       └── editor-config.ts           # Monaco theme, language map, options
+│   └── webContainers/
+│       ├── components/
+│       │   └── webContainerPreview.tsx    # Live preview iframe
+│       └── hooks/
+│           └── useWebContainer.ts         # Boot, file write, destroy lifecycle
+│
+├── components/                     # Shared shadcn/ui + custom components
+├── hooks/                          # App-wide custom hooks
+├── lib/
+│   ├── db.ts                       # Prisma client singleton
+│   └── utils.ts                    # cn(), misc helpers
 ├── prisma/
-│   └── schema.prisma             # MongoDB data models
-├── OrbitCode-starters/           # Starter templates for each framework
-├── Docs/                         # Project documentation assets
-├── auth.ts                       # NextAuth configuration & callbacks
-├── auth.config.ts                # Provider + pages config
-├── proxy.ts                      # Dev proxy helper
-├── route.ts                      # Shared route constants
-├── next.config.ts                # Next.js config (headers, images, etc.)
-├── prisma.config.ts              # Prisma client singleton
-└── tsconfig.json                 # TypeScript path aliases
+│   └── schema.prisma               # MongoDB models
+├── OrbitCode-starters/             # Per-framework starter file trees
+├── Docs/                           # Documentation assets
+├── auth.ts                         # NextAuth config + signIn/jwt/session callbacks
+├── auth.config.ts                  # OAuth providers + custom pages
+├── next.config.ts                  # COEP/COOP headers for WebContainers
+├── prisma.config.ts                # Prisma client config
+├── proxy.ts                        # Dev reverse proxy
+├── route.ts                        # Centralised route path constants
+└── tsconfig.json                   # Path aliases (@/...)
 ```
 
 ---
 
-## 🗄️ Data Models
+## Data Models
 
 ```prisma
-User           — id, name, email, image, role (USER | ADMIN | PREMIUM_USER)
-Account        — OAuth provider link (supports multi-provider per user)
-Playground     — title, description, code, template (REACT | NEXTJS | EXPRESS | VUE | HONO | ANGULAR)
-TemplateFile   — JSON file-tree content stored per playground (1-to-1)
-StarMark       — userId ↔ playgroundId bookmark (unique constraint)
-```
+// Users and OAuth accounts
+model User {
+  id        String     @id @default(cuid())
+  name      String
+  email     String     @unique
+  image     String?
+  role      UserRole   @default(USER)   // USER | ADMIN | PREMIUM_USER
+  accounts  Account[]
+  playgrounds Playground[]
+  starMarks   StarMark[]
+}
 
-All models use MongoDB with Prisma's `@db.String` for large text fields.
+model Account {
+  // One per OAuth provider per user (GitHub, Google, etc.)
+  provider          String
+  providerAccountId String
+  // ...OAuth token fields
+  @@unique([provider, providerAccountId])
+}
+
+// Playground = a named coding project
+model Playground {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  template    Templates  // REACT | NEXTJS | EXPRESS | VUE | HONO | ANGULAR
+  templateFile TemplateFile?  // 1-to-1 JSON file tree
+  starMarks   StarMark[]
+}
+
+// Stores the full file tree as JSON (1-to-1 with Playground)
+model TemplateFile {
+  content      Json
+  playgroundId String @unique
+}
+
+// Bookmark: a user ↔ playground star
+model StarMark {
+  userId       String
+  playgroundId String
+  isMarked     Boolean @default(false)
+  @@unique([userId, playgroundId])
+}
+```
 
 ---
 
-## ⚙️ Environment Variables
+## Environment Variables
 
 Create a `.env.local` file at the project root:
 
 ```env
-# Database
+# ── Database ─────────────────────────────────────────────────
 DATABASE_URL="mongodb+srv://<user>:<password>@cluster.mongodb.net/builditup"
 
-# NextAuth
-AUTH_SECRET="your-nextauth-secret"
+# ── NextAuth ─────────────────────────────────────────────────
+AUTH_SECRET="a-long-random-secret"          # openssl rand -base64 32
 NEXTAUTH_URL="http://localhost:3000"
 
-# OAuth Providers (add whichever you use)
-AUTH_GITHUB_ID="your-github-app-id"
-AUTH_GITHUB_SECRET="your-github-app-secret"
+# ── OAuth Providers (add the ones you need) ──────────────────
+AUTH_GITHUB_ID="your-github-oauth-app-id"
+AUTH_GITHUB_SECRET="your-github-oauth-app-secret"
 
 AUTH_GOOGLE_ID="your-google-client-id"
 AUTH_GOOGLE_SECRET="your-google-client-secret"
 
-# Prisma Accelerate (optional, for edge/serverless)
+# ── Prisma Accelerate (optional — for edge/serverless) ───────
 PRISMA_ACCELERATE_URL="prisma://accelerate.prisma-data.net/?api_key=..."
 ```
 
+> **Tip:** Generate `AUTH_SECRET` with `openssl rand -base64 32` or use `npx auth secret`.
+
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
-- Node.js ≥ 20
-- npm ≥ 10
-- A MongoDB Atlas cluster (free tier works fine)
+| Requirement | Version |
+|---|---|
+| Node.js | ≥ 20 |
+| npm | ≥ 10 |
+| MongoDB | Atlas cluster (free tier works) |
 
 ### Installation
 
 ```bash
-# 1. Clone the repository
+# 1. Clone
 git clone https://github.com/Prajjwal2051/BuildItUp.git
 cd BuildItUp
 
 # 2. Install dependencies
 npm install
 
-# 3. Set up environment variables
+# 3. Configure environment
 cp .env.example .env.local
-# → Fill in DATABASE_URL, AUTH_SECRET, OAuth credentials
+# Edit .env.local and fill in all required values
 
-# 4. Push the Prisma schema to MongoDB
+# 4. Push schema to MongoDB
 npx prisma db push
 
-# 5. (Optional) Open Prisma Studio to inspect your DB
+# 5. (Optional) Inspect the database
 npx prisma studio
 
-# 6. Start the development server
+# 6. Start development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Visit **[http://localhost:3000](http://localhost:3000)** to open the app.
 
 ---
 
-## 📜 Available Scripts
+## Available Scripts
 
-| Command | Description |
-|---|---|
-| `npm run dev` | Start Next.js dev server with hot reload |
-| `npm run build` | Build production bundle |
-| `npm start` | Serve production build |
-| `npm run lint` | Run ESLint across the codebase |
+| Script | Command | Description |
+|---|---|---|
+| Dev server | `npm run dev` | Start Next.js with hot reload |
+| Production build | `npm run build` | Compile and optimise for production |
+| Production start | `npm start` | Serve the production build |
+| Lint | `npm run lint` | Run ESLint across the codebase |
+| DB push | `npx prisma db push` | Sync schema to MongoDB |
+| DB studio | `npx prisma studio` | Open Prisma's visual DB browser |
 
 ---
 
-## 🧭 Key Workflows
+## Key Workflows
 
 ### Creating a Playground
-1. Sign in via OAuth.
-2. From the **Dashboard**, click **New Playground**.
-3. Choose a framework template (React, Next.js, Express, Vue, Hono, or Angular).
-4. The editor opens with the starter file tree pre-loaded.
 
-### Working in the Editor
-- **File Explorer** — Left panel; click to open, right-click to add/rename/delete.
-- **Tabs** — An orange dot indicates unsaved changes; click ✕ to close a tab.
-- **Save** — `Ctrl+S` saves the active file; `Ctrl+Shift+S` saves all dirty tabs.
-- **Split View** — Click **Split** in the toolbar to open a secondary editor pane; use the swap (⇄) button to exchange panes.
-- **Search** — `Ctrl+P` opens the fuzzy file search dialog.
-- **Preview** — Toggle **Preview** in the top-right to show/hide the live WebContainer preview.
-- **Terminal** — Click the terminal icon to open a resizable terminal panel; type commands and stream output.
-- **AI** — Click **Trigger AI** in the editor header for ghost-text inline completions, or open the **AI Chat** sidebar to ask questions about the current file.
+1. Sign in with GitHub or Google.
+2. On the **Dashboard**, click **New Playground**.
+3. Pick a template — **React**, **Next.js**, **Express**, **Vue**, **Hono**, or **Angular**.
+4. The workspace opens with the full starter file tree pre-loaded.
 
-### Editor Settings
-Click the ⚙ icon in the toolbar to adjust:
-- Theme: **Dark** or **Light**
-- Font size: 11 – 28 px (slider)
-- Font family: JetBrains Mono, Fira Code, Source Code Pro, Menlo
+### Working in the IDE
 
----
-
-## 🔐 Authentication Flow
-
-BuildItUp uses **NextAuth v5** with a **JWT session strategy**. On first sign-in:
-
-1. NextAuth calls the `signIn` callback with the OAuth `user` and `account`.
-2. The callback checks for an existing `Account` record (by `provider + providerAccountId`).
-3. If found → OAuth tokens are refreshed; sign-in proceeds.
-4. If not found → checks for a `User` with the same email; creates one if absent, then creates and links the `Account`.
-5. The `jwt` callback enriches the token with `id`, `name`, `email`, and `role` from MongoDB.
-6. The `session` callback forwards these fields to the client so `session.user.role` is always available.
+| Area | How to use |
+|---|---|
+| **File Explorer** | Click a file to open it; use the `+` icon or right-click to add/rename/delete |
+| **Tabs** | Orange dot = unsaved changes; click `×` to close |
+| **Save** | `Ctrl+S` — active file; `Ctrl+Shift+S` — all dirty files |
+| **Split View** | Click **Split** in the bottom toolbar; use ⇄ to swap panes |
+| **File Search** | `Ctrl+P` — fuzzy search by name or path |
+| **Live Preview** | Click **Preview** (top-right) to toggle the WebContainer iframe |
+| **Terminal** | Click the terminal icon; drag the handle to resize; **Copy Logs** copies all output |
+| **AI Completions** | Click **Trigger AI** for ghost-text at cursor; Tab to accept |
+| **AI Chat** | Open the sidebar via **AI Chat**; generated code inserts at cursor |
+| **Settings** | Click ⚙ to change theme, font size, or font family |
+| **Fullscreen** | Click the ⛶ icon in the top-right toolbar |
 
 ---
 
-## 🤝 Contributing
+## Keyboard Shortcuts
 
-1. Fork the repository.
-2. Create a feature branch: `git checkout -b feat/your-feature`.
-3. Commit your changes: `git commit -m "feat: describe your change"`.
-4. Push to your fork: `git push origin feat/your-feature`.
-5. Open a Pull Request against `main`.
-
-Please follow the existing code style (Prettier config is included) and ensure `npm run lint` passes before submitting.
+| Shortcut | Action |
+|---|---|
+| `Ctrl+S` | Save active file |
+| `Ctrl+Shift+S` | Save all unsaved files |
+| `Ctrl+P` | Open file search dialog |
 
 ---
 
-## 📄 License
+## Authentication Flow
 
-This project is private. All rights reserved © Prajjwal2051.
+BuildItUp uses **NextAuth v5** with a **JWT session strategy** (no `Session` table in the DB).
+
+```
+User clicks "Sign In"
+        │
+        ▼
+  OAuth Provider (GitHub / Google)
+        │
+        ▼
+  signIn() callback
+   ├─ Account exists?  → refresh tokens  → ✅ allow
+   ├─ Email exists?    → link account     → ✅ allow
+   └─ New user?        → create User + Account → ✅ allow
+        │
+        ▼
+  jwt() callback  →  attach id, name, email, role to token
+        │
+        ▼
+  session() callback  →  expose token fields to client
+        │
+        ▼
+  Redirect → /dashboard
+```
+
+Multiple OAuth providers can be linked to the same user account (matched by email).
+
+---
+
+## WebContainers & COEP Headers
+
+WebContainers require `SharedArrayBuffer`, which is only available in [cross-origin isolated](https://developer.chrome.com/blog/enabling-shared-array-buffer/) contexts. BuildItUp sets the required HTTP headers globally in `next.config.ts`:
+
+```ts
+// next.config.ts
+headers: [
+  { key: 'Cross-Origin-Opener-Policy',   value: 'same-origin' },
+  { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
+]
+```
+
+> ⚠️ These headers affect how third-party iframes and resources load. Keep this in mind when embedding external content.
+
+---
+
+## Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. **Fork** the repository.
+2. **Create a branch**: `git checkout -b feat/your-feature-name`
+3. **Make your changes** and ensure the code style is consistent:
+   ```bash
+   npm run lint
+   ```
+4. **Commit** using [Conventional Commits](https://www.conventionalcommits.org):
+   ```
+   feat: add dark mode toggle
+   fix: resolve terminal scroll overflow
+   docs: update environment variables section
+   ```
+5. **Push** and open a **Pull Request** against `main`.
+
+> The Prettier config (`.prettierrc`) is included — run your editor's format-on-save or `npx prettier --write .` before committing.
+
+---
+
+## License
+
+This project is **private**. All rights reserved © 2026 [Prajjwal2051](https://github.com/Prajjwal2051).
+
+---
+
+<div align="center">
+  <sub>Built with ❤️ using Next.js, Monaco Editor, and WebContainers</sub>
+</div>
