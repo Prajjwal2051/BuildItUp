@@ -19,6 +19,7 @@ import {
     Zap,
     Database,
     FlameIcon,
+    Orbit,
 } from 'lucide-react'
 import {
     Sidebar,
@@ -69,12 +70,15 @@ function DashboardSidebar({ initialPlaygroundData }: { initialPlaygroundData: Pl
     return (
         <Sidebar variant="inset" collapsible="icon" className="border border-r">
             <SidebarHeader>
-                <div className="flex items-center justify-center px-3 py-4">
-                    <span
-                        className={`${audiowide.className} text-lg tracking-wide text-sidebar-foreground`}
-                    >
-                        Orbit Code
-                    </span>
+                <div className="flex items-center gap-3 px-3 py-4">
+                    
+                    <div className="justify-center flex min-w-0">
+                        <span
+                            className={`${audiowide.className} block truncate text-sm tracking-wide text-sidebar-foreground`}
+                        >
+                            Dashboard
+                        </span>
+                    </div>
                 </div>
             </SidebarHeader>
             <SidebarContent>
@@ -157,49 +161,34 @@ function DashboardSidebar({ initialPlaygroundData }: { initialPlaygroundData: Pl
                             {starredPlaygrounds.length === 0 && recentPlaygrounds.length === 0
                                 ? null
                                 : recentPlaygrounds.map((playground) => {
-                                      const IconComponent = lucideIconMap[playground.icon] || Code2
-                                      return (
-                                          <SidebarMenuItem key={playground.id}>
-                                              <SidebarMenuButton
-                                                  asChild
-                                                  isActive={
-                                                      pathname === `/playground/${playground.id}`
-                                                  }
-                                                  tooltip={playground.name}
-                                              >
-                                                  <Link href={`/playground/${playground.id}`}>
-                                                      {IconComponent && (
-                                                          <IconComponent className="h-4 w-4" />
-                                                      )}
-                                                      <span>{playground.name}</span>
-                                                  </Link>
-                                              </SidebarMenuButton>
-                                          </SidebarMenuItem>
-                                      )
-                                  })}
-                            <SidebarMenuItem>
-                                <SidebarMenuButton asChild tooltip="View all">
-                                    <Link href="/playgrounds">
-                                        <span className="text-sm text-muted-foreground">
-                                            View all playgrounds
-                                        </span>
-                                    </Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
+                                    const IconComponent = lucideIconMap[playground.icon] || Code2
+                                    return (
+                                        <SidebarMenuItem key={playground.id}>
+                                            <SidebarMenuButton
+                                                asChild
+                                                isActive={
+                                                    pathname === `/playground/${playground.id}`
+                                                }
+                                                tooltip={playground.name}
+                                            >
+                                                <Link href={`/playground/${playground.id}`}>
+                                                    {IconComponent && (
+                                                        <IconComponent className="h-4 w-4" />
+                                                    )}
+                                                    <span>{playground.name}</span>
+                                                </Link>
+                                            </SidebarMenuButton>
+                                        </SidebarMenuItem>
+                                    )
+                                })}
+                            
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
             </SidebarContent>
             <SidebarFooter>
                 <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton asChild tooltip="Settings">
-                            <Link href="/settings">
-                                <Settings className="h-4 w-4" />
-                                <span>Settings</span>
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
+                    
                 </SidebarMenu>
             </SidebarFooter>
             <SidebarRail />

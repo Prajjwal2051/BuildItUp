@@ -14,8 +14,9 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 
-const AddRepoButton = () => {
+const AddRepoButton = ({ className }: { className?: string }) => {
     const router = useRouter()
     const [isOpen, setIsOpen] = React.useState(false)
     const [repoUrl, setRepoUrl] = React.useState('')
@@ -54,13 +55,18 @@ const AddRepoButton = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => setIsOpen(true)}
-                className="group h-8 px-2.5 flex items-center gap-1.5 border-border bg-card text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                className={cn(
+                    'h-11 gap-2 rounded-lg border px-4 text-sm font-medium shadow-sm transition-colors',
+                    'border-slate-300 bg-[#f9f6ee] text-slate-900 hover:bg-[#f4efe3] hover:text-slate-950', // Light mode
+                    'dark:border-white/10 dark:bg-slate-50 dark:text-slate-900 dark:hover:bg-slate-200 dark:hover:text-slate-950', // Dark mode
+                    className,
+                )}
             >
                 <ArrowDown
                     size={14}
                     className="transition-transform duration-300 group-hover:translate-y-0.5"
                 />
-                <span className="text-xs font-medium">Open GitHub Repo</span>
+                <span>Open GitHub Repo</span>
             </Button>
 
             <Dialog open={isOpen} onOpenChange={setIsOpen}>

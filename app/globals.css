@@ -9,7 +9,7 @@
 
 /* globals.css */
 body {
-    background-color: #141519;
+    background-color: var(--background);
     position: relative;
 }
 
@@ -86,11 +86,11 @@ body::after {
 }
 
 :root {
-    --background: oklch(0.995 0 0);
+    --background: #f9f6ee;
     --foreground: oklch(0.15 0 0);
-    --card: oklch(1 0 0);
+    --card: #f9f6ee;
     --card-foreground: oklch(0.15 0 0);
-    --popover: oklch(1 0 0);
+    --popover: #f9f6ee;
     --popover-foreground: oklch(0.15 0 0);
     --primary: oklch(0.18 0 0);
     --primary-foreground: oklch(0.98 0 0);
@@ -110,7 +110,7 @@ body::after {
     --chart-4: oklch(0.66 0 0);
     --chart-5: oklch(0.78 0 0);
     --radius: 0.625rem;
-    --sidebar: oklch(0.98 0 0);
+    --sidebar: #f9f6ee;
     --sidebar-foreground: oklch(0.15 0 0);
     --sidebar-primary: oklch(0.18 0 0);
     --sidebar-primary-foreground: oklch(0.98 0 0);

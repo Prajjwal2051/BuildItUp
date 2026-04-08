@@ -29,7 +29,7 @@ async function DashboardLayout({
     return (
         <SidebarProvider>
             <DashboardSidebar initialPlaygroundData={formattedPlaygroundData || []} />
-            <SidebarInset className="min-h-svh overflow-x-hidden">
+            <SidebarInset className="border-xl border-sidebar-border min-h-svh overflow-x-hidden">
                 <Toaster />
                 {children}
             </SidebarInset>

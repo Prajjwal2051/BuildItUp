@@ -12,19 +12,20 @@ const Page = async () => {
     const playgrounds = await getAllPlaygroundForUser()
     const user = await currentUser()
     return (
-        <div className="flex flex-col justify-start min-h-screen w-full px-4 py-10 md:px-6 lg:px-8">
-            <ProjectSearch
-                projects={playgrounds || []}
-                className="reveal-up [animation-delay:80ms]"
-            />
-            <div className="fixed bottom-4 right-4 z-50 reveal-up [animation-delay:320ms]">
-                <ThemeToggle />
+        
+        <div className="relative flex min-h-screen w-full flex-col gap-6 px-8 py-6 md:px-6 lg:px-8  ">
+            <div className="flex items-center justify-between gap-4 reveal-up [animation-delay:80ms]">
+                <ProjectSearch
+                    projects={playgrounds || []}
+                    className="flex-1"
+                />
+                <div className="flex shrink-0 items-center gap-4 reveal-up [animation-delay:180ms]">
+                    <AddNewButton />
+                    <AddRepoButton />
+                </div>
             </div>
-            <div className="fixed top-4 right-4 z-50 flex items-center gap-2 reveal-up [animation-delay:180ms]">
-                <AddNewButton />
-                <AddRepoButton />
-            </div>
-            <div className="mt-10 flex flex-col justify-center items-center w-full reveal-up [animation-delay:260ms]">
+
+            <div className="reveal-up [animation-delay:260ms]">
                 {playgrounds && playgrounds.length === 0 ? (
                     <EmptyState />
                 ) : (
@@ -35,7 +36,12 @@ const Page = async () => {
                     />
                 )}
             </div>
+
+            <div className="fixed bottom-4 left-4 z-50 reveal-up [animation-delay:320ms]">
+                <ThemeToggle />
+            </div>
         </div>
+        
     )
 }
 

@@ -62,6 +62,15 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useRouter } from 'next/navigation'
 
+const templateBadgeStyle: Record<string, string> = {
+    HONO: 'bg-amber-900/40 text-amber-300 border-amber-700/40',
+    REACT: 'bg-blue-900/40 text-blue-300 border-blue-700/40',
+    NEXTJS: 'bg-zinc-800 text-zinc-300 border-zinc-600/40',
+    VUE: 'bg-green-900/40 text-green-300 border-green-700/40',
+    ANGULAR: 'bg-red-900/40 text-red-300 border-red-700/40',
+    EXPRESS: 'bg-slate-800 text-slate-300 border-slate-600/40',
+}
+
 interface ProjectTableProps {
     projects: Project[]
     currentUserName?: string
@@ -166,15 +175,16 @@ function ProjectTable({ projects, currentUserName, currentUserImage }: ProjectTa
 
     return (
         <>
-            <div className="w-full border rounded-lg overflow-hidden bg-white dark:bg-[#151516]">
+            <div className="w-full overflow-hidden rounded-[18px] border border-slate-200 bg-[#f9f6ee] dark:border-[#1e1e20] dark:bg-[#0f0f10]">
                 <Table>
                     <TableHeader>
-                        <TableRow>
-                            <TableHead>Project</TableHead>
-                            <TableHead>Template</TableHead>
-                            <TableHead>Created</TableHead>
-                            <TableHead>User</TableHead>
-                            <TableHead className="w-12.5">Actions</TableHead>
+                        <TableRow className="border-slate-200 hover:bg-transparent dark:border-[#232325]">
+                            <TableHead className="p-4 text-slate-600 dark:text-slate-300">Project</TableHead>
+                            <TableHead className="text-slate-600 dark:text-slate-300">Template</TableHead>
+                            <TableHead className="text-slate-600 dark:text-slate-300">Created</TableHead>
+                            <TableHead className="text-slate-600 dark:text-slate-300">User</TableHead>
+                            <TableHead className="text-slate-600 dark:text-slate-300">Status</TableHead>
+
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -182,32 +192,31 @@ function ProjectTable({ projects, currentUserName, currentUserImage }: ProjectTa
                         {projects.map((project, index) => (
                             <TableRow
                                 key={project.id}
-                                className="opacity-0 animate-[reveal-up_520ms_ease-out_forwards]"
+                                className="border-slate-200 p-4 opacity-0 animate-[reveal-up_520ms_ease-out_forwards] hover:bg-violet-50 dark:border-[#1f1f22] dark:hover:bg-violet-950/20"
                                 style={{ animationDelay: `${Math.min(index * 70, 350)}ms` }}
                             >
                                 <TableCell className="font-medium">
                                     <div className="flex flex-col">
                                         <Link
                                             href={`/playground/${project.id}`}
-                                            className="hover:underline"
+                                            className="px-2 font-semibold text-slate-900 transition-colors hover:text-violet-600 dark:text-slate-50 dark:hover:text-violet-200"
                                         >
-                                            <span className="font-semibold">{project.title}</span>
+                                            <span>{project.title}</span>
                                         </Link>
-                                        <span className="text-sm text-gray-500 line-clamp-1">
+                                        <span className="px-2 line-clamp-1 text-sm text-slate-500 dark:text-zinc-500">
                                             {project.description}
                                         </span>
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge
-                                        variant="outline"
-                                        className="border-violet-300 bg-violet-100 text-violet-700 dark:border-violet-700 dark:bg-violet-900/40 dark:text-violet-200"
-                                    >
+                                    <Badge className={`border ${templateBadgeStyle[project.template] ?? 'border-slate-300 bg-slate-100 text-slate-700 dark:border-zinc-600/40 dark:bg-zinc-800 dark:text-zinc-300'}`}>
                                         {project.template}
                                     </Badge>
                                 </TableCell>
                                 <TableCell>
-                                    {format(new Date(project.createdAt), 'MMM d, yyyy')}
+                                    <span className="text-sm text-slate-500 dark:text-zinc-400">
+                                        {format(new Date(project.createdAt), 'MMM d, yyyy')}
+                                    </span>
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex items-center gap-2">
@@ -226,79 +235,87 @@ function ProjectTable({ projects, currentUserName, currentUserImage }: ProjectTa
                                                     .toUpperCase()}
                                             </AvatarFallback>
                                         </Avatar>
-                                        <span className="text-sm">
+                                        <span className="text-sm text-slate-700 dark:text-slate-200">
                                             {project.user?.name || displayUserName}
                                         </span>
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                                <span className="sr-only">Open menu</span>
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-48">
-                                            <DropdownMenuItem
-                                                onClick={() => handleToggleFavorite(project)}
-                                                disabled={isLoading}
-                                            >
-                                                <Star
-                                                    className={`h-4 w-4 mr-2 ${isProjectStarred(project) ? 'fill-current' : ''}`}
-                                                />
-                                                {isProjectStarred(project)
-                                                    ? 'Remove from Starred'
-                                                    : 'Add to Starred'}
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem asChild>
-                                                <Link
-                                                    href={`/playground/${project.id}`}
-                                                    className="flex items-center"
+                                    <Badge className="border border-green-300 bg-green-100 text-green-700 dark:border-green-800/40 dark:bg-green-900/30 dark:text-green-400">
+                                        Active
+                                    </Badge>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="flex items-center gap-1">
+
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                    <span className="sr-only">Open menu</span>
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-48">
+                                                <DropdownMenuItem
+                                                    onClick={() => handleToggleFavorite(project)}
+                                                    disabled={isLoading}
                                                 >
-                                                    <Eye className="h-4 w-4 mr-2" />
-                                                    Open Project
-                                                </Link>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem asChild>
-                                                <Link
-                                                    href={`/playground/${project.id}`}
-                                                    target="_blank"
-                                                    className="flex items-center"
+                                                    <Star
+                                                        className={`h-4 w-4 mr-2 ${isProjectStarred(project) ? 'fill-current' : ''}`}
+                                                    />
+                                                    {isProjectStarred(project)
+                                                        ? 'Remove from Starred'
+                                                        : 'Add to Starred'}
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem asChild>
+                                                    <Link
+                                                        href={`/playground/${project.id}`}
+                                                        className="flex items-center"
+                                                    >
+                                                        <Eye className="h-4 w-4 mr-2" />
+                                                        Open Project
+                                                    </Link>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem asChild>
+                                                    <Link
+                                                        href={`/playground/${project.id}`}
+                                                        target="_blank"
+                                                        className="flex items-center"
+                                                    >
+                                                        <ExternalLink className="h-4 w-4 mr-2" />
+                                                        Open in New Tab
+                                                    </Link>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem
+                                                    onClick={() => handleEditClick(project)}
                                                 >
-                                                    <ExternalLink className="h-4 w-4 mr-2" />
-                                                    Open in New Tab
-                                                </Link>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem
-                                                onClick={() => handleEditClick(project)}
-                                            >
-                                                <Edit3 className="h-4 w-4 mr-2" />
-                                                Edit Project
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={() => handleDuplicateProject(project)}
-                                            >
-                                                <Copy className="h-4 w-4 mr-2" />
-                                                Duplicate
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={() => copyProjectUrl(project.id)}
-                                            >
-                                                <Download className="h-4 w-4 mr-2" />
-                                                Copy URL
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem
-                                                onClick={() => handleDeleteClick(project)}
-                                                className="text-destructive focus:text-destructive"
-                                            >
-                                                <Trash2 className="h-4 w-4 mr-2" />
-                                                Delete Project
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                                    <Edit3 className="h-4 w-4 mr-2" />
+                                                    Edit Project
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={() => handleDuplicateProject(project)}
+                                                >
+                                                    <Copy className="h-4 w-4 mr-2" />
+                                                    Duplicate
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={() => copyProjectUrl(project.id)}
+                                                >
+                                                    <Download className="h-4 w-4 mr-2" />
+                                                    Copy URL
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem
+                                                    onClick={() => handleDeleteClick(project)}
+                                                    className="text-destructive focus:text-destructive"
+                                                >
+                                                    <Trash2 className="h-4 w-4 mr-2" />
+                                                    Delete Project
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ))}
