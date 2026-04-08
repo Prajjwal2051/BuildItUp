@@ -1,8 +1,7 @@
 <div align="center">
 
 <h1>
-  <img src="https://raw.githubusercontent.com/Prajjwal2051/BuildItUp/main/app/favicon.ico" width="32" height="32" alt="" />
-  BuildItUp
+  Orbit Code
 </h1>
 
 <p><strong>A browser-based, full-stack coding playground.</strong><br/>
@@ -43,7 +42,7 @@ Spin up instant dev environments, edit with Monaco, preview live via WebContaine
 
 ## Overview
 
-**BuildItUp** is a full-featured, browser-based IDE and coding playground inspired by tools like StackBlitz and CodeSandbox. Users sign in via OAuth, create playgrounds from framework starter templates, and get a complete development experience — file explorer, Monaco code editor, live WebContainer preview, integrated terminal, split-pane editing, and an AI assistant — all without leaving the browser tab.
+**Orbit Code** is a full-featured, browser-based IDE and coding playground inspired by tools like StackBlitz and CodeSandbox. Users sign in via OAuth, create playgrounds from framework starter templates, and get a complete development experience — file explorer, Monaco code editor, live WebContainer preview, integrated terminal, split-pane editing, and an AI assistant — all without leaving the browser tab.
 
 ---
 
@@ -111,16 +110,16 @@ Spin up instant dev environments, edit with Monaco, preview live via WebContaine
 ┌─────────────────────────────────────────────────────────────┐
 │                        Browser (Client)                     │
 │                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────┐    │
-│  │ Monaco Editor│  │  File Tree   │  │  AI Sidebar    │    │
-│  │  (primary +  │  │  (Zustand    │  │  (chat +       │    │
-│  │   split pane)│  │   store)     │  │   inline AI)   │    │
-│  └──────┬───────┘  └──────┬───────┘  └───────┬────────┘    │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────────┐     │
+│  │ Monaco Editor│  │  File Tree   │  │  AI Sidebar    │     │
+│  │  (primary +  │  │  (Zustand    │  │  (chat +       │     │
+│  │   split pane)│  │   store)     │  │   inline AI)   │     │
+│  └──────┬───────┘  └──────┬───────┘  └───────┬────────┘     │
 │         │                 │                  │              │
-│  ┌──────▼─────────────────▼──────────────────▼──────────┐  │
-│  │                  Playground Page Shell                │  │
-│  │           (app/playground/[id]/page.tsx)              │  │
-│  └──────────────────────────┬────────────────────────────┘  │
+│  ┌──────▼─────────────────▼──────────────────▼──────────┐   │
+│  │                  Playground Page Shell               │   │
+│  │           (app/playground/[id]/page.tsx)             │   │
+│  └──────────────────────────┬───────────────────────────┘   │
 │                             │                               │
 │  ┌──────────────────────────▼────────────────────────────┐  │
 │  │              WebContainer (in-browser Node.js)        │  │
@@ -131,9 +130,9 @@ Spin up instant dev environments, edit with Monaco, preview live via WebContaine
                   Next.js Server Actions
                              │
          ┌───────────────────▼──────────────────┐
-         │         Prisma ORM (MongoDB)          │
-         │  User · Account · Playground ·        │
-         │  TemplateFile · StarMark              │
+         │         Prisma ORM (MongoDB)         │
+         │  User · Account · Playground ·       │
+         │  TemplateFile · StarMark             │
          └──────────────────────────────────────┘
 ```
 
@@ -372,7 +371,7 @@ Visit **[http://localhost:3000](http://localhost:3000)** to open the app.
 
 ## Authentication Flow
 
-BuildItUp uses **NextAuth v5** with a **JWT session strategy** (no `Session` table in the DB).
+OrbitCode uses **NextAuth v5** with a **JWT session strategy** (no `Session` table in the DB).
 
 ```
 User clicks "Sign In"
@@ -402,7 +401,7 @@ Multiple OAuth providers can be linked to the same user account (matched by emai
 
 ## WebContainers & COEP Headers
 
-WebContainers require `SharedArrayBuffer`, which is only available in [cross-origin isolated](https://developer.chrome.com/blog/enabling-shared-array-buffer/) contexts. BuildItUp sets the required HTTP headers globally in `next.config.ts`:
+WebContainers require `SharedArrayBuffer`, which is only available in [cross-origin isolated](https://developer.chrome.com/blog/enabling-shared-array-buffer/) contexts. OrbitCode sets the required HTTP headers globally in `next.config.ts`:
 
 ```ts
 // next.config.ts
