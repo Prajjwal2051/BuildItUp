@@ -36,24 +36,24 @@ function PlaygroundTerminal({ logs, className, onCommand }: PlaygroundTerminalPr
             letterSpacing: 0.2,
             scrollback: 5000,
             theme: {
-                background: '#070b14',
-                foreground: '#c7d5f2',
-                cursor: '#79c0ff',
-                selectionBackground: '#274a78',
-                black: '#0b1220',
+                background: '#0b1016',
+                foreground: '#c9d4e5',
+                cursor: '#00d4aa',
+                selectionBackground: '#0f4d4050',
+                black: '#0a0d12',
                 red: '#ff7b72',
-                green: '#56d364',
+                green: '#00d4aa',
                 yellow: '#e3b341',
-                blue: '#79c0ff',
-                magenta: '#d2a8ff',
+                blue: '#5cc8ff',
+                magenta: '#7ee7ff',
                 cyan: '#7ee7ff',
-                white: '#c7d5f2',
-                brightBlack: '#334155',
+                white: '#c9d4e5',
+                brightBlack: '#33404e',
                 brightRed: '#ffa198',
-                brightGreen: '#7ee787',
+                brightGreen: '#7ae8cc',
                 brightYellow: '#f2cc60',
                 brightBlue: '#a5d6ff',
-                brightMagenta: '#e2b8ff',
+                brightMagenta: '#b8f5ff',
                 brightCyan: '#a5f3fc',
                 brightWhite: '#e6edf3',
             },
@@ -159,7 +159,7 @@ function PlaygroundTerminal({ logs, className, onCommand }: PlaygroundTerminalPr
 
     return (
         <div className={className}>
-            <div className="h-full rounded-md border border-[#1d2a40] bg-linear-to-b from-[#070b14] via-[#060912] to-[#05070d] p-2 shadow-[inset_0_1px_0_rgba(121,192,255,0.12)]">
+            <div className="h-full rounded-xl border border-[#1e2028] bg-linear-to-b from-[#0d131a] via-[#0b1016] to-[#090d12] p-2 shadow-[inset_0_1px_0_rgba(0,212,170,0.08)]">
                 <div ref={hostRef} className="h-full w-full overflow-hidden rounded-sm" />
             </div>
         </div>

@@ -1,84 +1,50 @@
-import {
-    ArrowRight,
-    Box,
-    ChevronLeft,
-    ChevronRight,
-    Code2,
-    GitBranch,
-    MoreVertical,
-    Play,
-    Search,
-    Sparkles,
-    X,
-} from 'lucide-react'
-import Link from 'next/link'
+import { Box, Code2, GitBranch, Search, Sparkles } from 'lucide-react'
 
 // Shows a multi-view editor mockup so visitors can quickly see Orbit's editing, collaboration, and AI flow.
 function EditorMockup() {
     return (
-        <div className="w-full max-w-6xl mx-auto editor-fade-in mb-24" id="docs">
+        <section className="width-full relative mb-20 mt-16 reveal editor-fade-in" id="docs">
             <div
-                className="border border-neutral-800 rounded-3xl overflow-hidden flex flex-col h-140"
+                className="editor-atmosphere absolute inset-x-0 bottom-0 h-[60%] pointer-events-none z-0 "
                 style={{
-                    backgroundColor: '#090909',
-                    boxShadow: '0 -45px 120px rgba(0,212,170,0.1)',
+                    background:
+                        'radial-gradient(ellipse 80% 60% at 50% 100%, rgba(0,212,170,0.12) 0%, rgba(0,100,80,0.06) 50%, transparent 100%)',
+                }}
+            />
+            <div
+                className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[90vw] max-w-4xl h-64 pointer-events-none z-0 rounded-t-[50%]"
+                style={{
+                    background:
+                        'radial-gradient(ellipse at 50% 100%, #0a3d2e 0%, #061f17 40%, #02100c 70%, transparent 100%)',
+                    boxShadow: '0 0 120px 40px rgba(0,212,170,0.07)',
+                }}
+            />
+
+            <div
+                className="home-editor-shell relative z-10 rounded-2xl overflow-hidden border mx-auto flex flex-col h-150"
+                style={{
+                    borderColor: '#2a2b32',
+                    backgroundColor: '#13141a',
+                    maxHeight: '1000px',
+                    maxWidth: '1100px',
+                    boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
                 }}
             >
                 <div
-                    className="h-14 border-b border-neutral-800 flex items-center justify-between px-5 shrink-0"
-                    style={{ backgroundColor: '#111111' }}
+                    className="flex items-center gap-3 px-4 h-10 border-b shrink-0"
+                    style={{ backgroundColor: '#1a1b22', borderColor: '#2a2b32' }}
                 >
-                    <div className="flex items-center gap-6">
-                        <div className="w-5 h-5 grid grid-cols-2 gap-0.5">
-                            <div className="bg-neutral-400 rounded-tl-[3px]" />
-                            <div className="bg-neutral-400 rounded-tr-[3px]" />
-                            <div className="bg-neutral-400 rounded-bl-[3px]" />
-                            <div
-                                className="rounded-br-[3px]"
-                                style={{ backgroundColor: '#00d4aa' }}
-                            />
-                        </div>
-
-                        <div
-                            className="hidden md:flex rounded-lg px-4 py-2 text-xs text-neutral-500 font-sans items-center gap-12 border border-neutral-800 w-64"
-                            style={{ backgroundColor: '#1a1a1a' }}
-                        >
-                            orbit-code
-                            <MoreVertical className="w-3 h-3 ml-auto" />
-                        </div>
-
-                        <div className="hidden md:flex items-center gap-2 text-neutral-500">
-                            <ChevronLeft className="w-4 h-4 hover:text-white cursor-pointer" />
-                            <ChevronRight className="w-4 h-4 hover:text-white cursor-pointer" />
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <div
-                                className="px-4 py-1.5 text-white text-xs rounded-md flex items-center gap-3"
-                                style={{ backgroundColor: '#222222' }}
-                            >
-                                Main.tsx
-                                <X className="w-2.5 h-2.5 text-neutral-400 hover:text-white cursor-pointer" />
-                            </div>
-                            <div className="px-4 py-1.5 text-neutral-500 text-xs hidden sm:block">
-                                Queue.ts
-                            </div>
-                            <div className="px-4 py-1.5 text-neutral-500 text-xs hidden sm:block">
-                                OtEngine.ts
-                            </div>
-                        </div>
+                    <div className="flex gap-1.5">
+                        <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
+                        <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
+                        <div className="w-3 h-3 rounded-full bg-[#28c840]" />
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        <Play className="w-4.5 h-4.5 text-neutral-500 hover:text-white cursor-pointer transition-colors" />
-                        <Link
-                            href="/auth/sign-in"
-                            className="px-4 py-1.5 text-black text-xs font-bold rounded-md flex items-center gap-1 hover:bg-white transition-colors"
-                            style={{ backgroundColor: '#a4f0d6' }}
-                        >
-                            Sign In
-                            <ArrowRight className="w-3 h-3" />
-                        </Link>
+                    <div
+                        className="flex-1 mx-4 h-6 rounded-md flex items-center justify-center text-[11px] text-neutral-500 border"
+                        style={{ backgroundColor: '#0f1015', borderColor: '#2a2b32' }}
+                    >
+                        ✦ orbit.code/workspace
                     </div>
                 </div>
 
@@ -88,7 +54,7 @@ function EditorMockup() {
                         style={{ backgroundColor: '#111111' }}
                     >
                         <div
-                            className="p-2 rounded-md text-white cursor-pointer"
+                            className="home-editor-icon p-2 rounded-md text-white cursor-pointer"
                             style={{ backgroundColor: '#222' }}
                         >
                             <Code2 className="w-5 h-5" />
@@ -99,10 +65,13 @@ function EditorMockup() {
                     </div>
 
                     <div
-                        className="hidden md:block w-64 lg:w-72 border-r border-neutral-800 shrink-0"
-                        style={{ backgroundColor: '#101014' }}
+                        className="hidden md:block w-64 lg:w-72 border-r shrink-0"
+                        style={{ backgroundColor: '#101014', borderColor: '#2a2b32' }}
                     >
-                        <div className="h-11 border-b border-neutral-800 flex items-center px-4 text-[11px] tracking-[0.14em] uppercase text-neutral-500">
+                        <div
+                            className="h-11 border-b flex items-center px-4 text-[11px] tracking-[0.14em] uppercase text-neutral-500"
+                            style={{ borderColor: '#2a2b32' }}
+                        >
                             Explorer
                         </div>
                         <div className="p-4 font-mono text-[12px] leading-7 text-neutral-400">
@@ -119,11 +88,10 @@ function EditorMockup() {
                         </div>
                     </div>
 
-                    {/* Rotates through three editor snapshots using CSS timing so the preview feels dynamic. */}
                     <div className="editor-views relative flex-1 overflow-hidden p-6 font-mono text-[13px] leading-7 text-neutral-300">
-                        <div className="p-6 editor-view editor-view-1 ">
+                        <div className="p-6 editor-view editor-view-1">
                             <div className="text-neutral-500 italic text-xs mb-3">
-                                // AI generated block
+                                {'// AI generated block'}
                             </div>
                             <div>
                                 &lt;<span className="text-[#a8d5ff]">section</span>{' '}
@@ -156,7 +124,7 @@ function EditorMockup() {
                                     </div>
                                 </div>
                                 <div className="p-4 text-neutral-400">
-                                    queue.add("execute", payload)
+                                    queue.add(&quot;execute&quot;, payload)
                                     <span className="cursor-blink inline-block w-1.5 h-4 ml-1 align-middle bg-[#00d4aa]" />
                                 </div>
                             </div>
@@ -164,7 +132,7 @@ function EditorMockup() {
 
                         <div className="p-6 editor-view editor-view-2">
                             <div className="text-neutral-500 italic text-xs mb-3">
-                                // collaborative session snapshot
+                                {'// collaborative session snapshot'}
                             </div>
                             <div>
                                 <span className="text-[#7fb7ff]">const</span> room ={' '}
@@ -191,7 +159,7 @@ function EditorMockup() {
 
                         <div className="p-6 editor-view editor-view-3">
                             <div className="text-neutral-500 italic text-xs mb-3">
-                                // execution pipeline
+                                {'// execution pipeline'}
                             </div>
                             <div>
                                 <span className="text-[#7fb7ff]">jobQueue</span>.
@@ -215,7 +183,7 @@ function EditorMockup() {
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
     )
 }
 

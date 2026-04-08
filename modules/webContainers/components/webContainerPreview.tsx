@@ -49,11 +49,11 @@ function getTerminalTone(line: string): TerminalTone {
 }
 
 function getTerminalToneClass(tone: TerminalTone): string {
-    if (tone === 'error') return 'text-red-400'
-    if (tone === 'warn') return 'text-amber-400'
-    if (tone === 'info') return 'text-sky-400'
-    if (tone === 'success') return 'text-green-400'
-    return 'text-foreground'
+    if (tone === 'error') return 'text-[#ff8b8b]'
+    if (tone === 'warn') return 'text-[#f2cc60]'
+    if (tone === 'info') return 'text-[#5cc8ff]'
+    if (tone === 'success') return 'text-[#7ae8cc]'
+    return 'text-[#c9d4e5]'
 }
 
 // Wraps async container operations so the UI does not stay in a loading state forever.
@@ -104,43 +104,6 @@ function normalizePreviewUrl(url: string): string {
     return `https://${trimmedUrl}`
 }
 
-// Opens preview safely in a separate tab; falls back to iframe wrapper for connect-path URLs.
-function openPreviewInNewTab(url: string): void {
-    const resolvedUrl = (() => {
-        try {
-            return new URL(url, window.location.origin).toString()
-        } catch {
-            return url
-        }
-    })()
-
-    const isConnectPath = /\/webcontainer\/connect\//.test(resolvedUrl)
-    if (!isConnectPath) {
-        window.open(resolvedUrl, '_blank', 'noopener,noreferrer')
-        return
-    }
-
-    const previewTab = window.open('', '_blank', 'noopener,noreferrer')
-    if (!previewTab) return
-
-    previewTab.document.write(`<!doctype html>
-<html lang="en">
-    <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Live Preview</title>
-        <style>
-            html, body { margin: 0; width: 100%; height: 100%; background: #0b0d11; }
-            iframe { border: 0; width: 100%; height: 100%; display: block; }
-        </style>
-    </head>
-    <body>
-        <iframe src="${resolvedUrl.replace(/"/g, '&quot;')}" allow="clipboard-read; clipboard-write"></iframe>
-    </body>
-</html>`)
-    previewTab.document.close()
-}
-
 interface WebContainerPreviewProps {
     // Define any props you want to pass to the WebContainerPreview component
     tempateData: typeof TemplateFolder // Replace 'any' with the actual type of your template data
@@ -148,7 +111,6 @@ interface WebContainerPreviewProps {
     isLoading: boolean
     error: Error | null
     instance: WebContainer | null
-    useWriteFileSync: (path: string, content: string) => Promise<void>
     destroy: () => void
     forceReSetup?: boolean
     onTerminalLog?: (message: string) => void
@@ -164,7 +126,6 @@ function WebContainerPreview({
     isLoading,
     error,
     instance,
-    useWriteFileSync,
     destroy,
     forceReSetup = false,
     onTerminalLog,
@@ -278,7 +239,7 @@ function WebContainerPreview({
                 // Step 1: Transform the template data and write it to the WebContainer file system
                 setLoadingState((prev) => ({ ...prev, transforming: true }))
                 setCurrentStep(1)
-                //@ts-ignore
+                // @ts-expect-error transform helper returns the mountable file tree shape.
                 const files = transformToWebContainerFormat(tempateData)
                 setLoadingState((prev) => ({ ...prev, transforming: false, mounting: true }))
                 setCurrentStep(2)
@@ -393,12 +354,12 @@ function WebContainerPreview({
     // This renders terminal logs in a scrollable panel so users can inspect setup/runtime output.
     function TerminalPanel() {
         return (
-            <div className="w-full rounded-md border bg-muted/30">
-                <div className="border-b px-3 py-2 text-xs font-medium text-muted-foreground">
+            <div className="w-full rounded-xl border border-[#1e2028] bg-[#11161d]">
+                <div className="border-b border-[#1e2028] px-3 py-2 text-xs font-medium text-[#8ea5b5]">
                     Terminal Output
                 </div>
                 <ScrollArea className="h-44 w-full">
-                    <pre className="whitespace-pre-wrap wrap-break-word p-3 text-xs text-foreground">
+                    <pre className="wrap-break-word whitespace-pre-wrap p-3 text-xs text-[#c9d4e5]">
                         {terminalLogs.length > 0
                             ? terminalLogs
                                   .join('')
@@ -428,6 +389,7 @@ function WebContainerPreview({
                 aria-label="Toggle terminal logs"
                 title="Toggle terminal logs"
                 onClick={() => setIsTerminalOpen((prev) => !prev)}
+                className="border-[#1e2028] bg-[#11161d] text-[#c9d4e5] hover:border-[#00d4aa]/30 hover:bg-[rgba(0,212,170,0.08)] hover:text-white"
             >
                 <SquareTerminal size={16} />
             </Button>
@@ -436,16 +398,16 @@ function WebContainerPreview({
 
     if (isLoading || isSetupInProgress || isAwaitingServerReady) {
         return (
-            <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
+            <div className="flex h-full flex-col items-center justify-center gap-4 bg-[#0c1117] p-6 text-[#c9d4e5]">
                 {showInternalTerminal ? (
                     <div className="flex w-full max-w-xl justify-end">
                         <TerminalToggleButton />
                     </div>
                 ) : null}
-                <Loader2 className="animate-spin text-muted-foreground" size={40} />
+                <Loader2 className="animate-spin text-[#00d4aa]" size={40} />
                 <p className="text-lg font-medium">Setting up WebContainer...</p>
                 <div className="w-full max-w-xl space-y-3">
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-[#8ea5b5]">
                         Step {Math.min(currentStep, totalSteps)} / {totalSteps}
                     </p>
                     <Progress value={(currentStep / totalSteps) * 100} className="w-full" />
@@ -453,24 +415,21 @@ function WebContainerPreview({
                         {loadingSteps.map((step) => (
                             <div
                                 key={step.key}
-                                className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+                                className="flex items-center justify-between rounded-xl border border-[#1e2028] bg-[#11161d] px-3 py-2 text-sm"
                             >
                                 <span>{step.label}</span>
                                 {step.done ? (
-                                    <CheckCircle className="text-green-500" size={16} />
+                                    <CheckCircle className="text-[#00d4aa]" size={16} />
                                 ) : step.active ? (
-                                    <Loader2
-                                        className="animate-spin text-muted-foreground"
-                                        size={16}
-                                    />
+                                    <Loader2 className="animate-spin text-[#5cc8ff]" size={16} />
                                 ) : (
-                                    <span className="text-muted-foreground">Pending</span>
+                                    <span className="text-[#6a7280]">Pending</span>
                                 )}
                             </div>
                         ))}
                     </div>
                     {isAwaitingServerReady ? (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-[#8ea5b5]">
                             Waiting for preview server to become ready...
                         </p>
                     ) : null}
@@ -482,19 +441,19 @@ function WebContainerPreview({
 
     if (activeError) {
         return (
-            <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+            <div className="flex h-full flex-col items-center justify-center gap-3 bg-[#0c1117] p-6 text-center text-[#c9d4e5]">
                 {showInternalTerminal ? (
                     <div className="flex w-full max-w-2xl justify-end">
                         <TerminalToggleButton />
                     </div>
                 ) : null}
-                <XCircle size={48} className="text-red-500" />
+                <XCircle size={48} className="text-[#ff8b8b]" />
                 <p className="text-lg font-medium">Failed to set up WebContainer</p>
-                <p className="max-w-2xl text-sm text-muted-foreground">{activeError.message}</p>
+                <p className="max-w-2xl text-sm text-[#8ea5b5]">{activeError.message}</p>
                 <button
                     type="button"
                     onClick={destroy}
-                    className="rounded-md border px-3 py-2 text-sm hover:bg-muted"
+                    className="rounded-lg border border-[#1e2028] bg-[#11161d] px-3 py-2 text-sm text-[#c9d4e5] hover:border-[#00d4aa]/30 hover:bg-[rgba(0,212,170,0.08)]"
                 >
                     Reset Container
                 </button>
@@ -505,8 +464,8 @@ function WebContainerPreview({
 
     if (previewUrl) {
         return (
-            <div className="flex h-full flex-col gap-3 p-3">
-                <div className="h-full min-h-100 overflow-hidden rounded-md border bg-background">
+            <div className="flex h-full flex-col gap-3 bg-[#0c1117] p-3">
+                <div className="h-full min-h-100 overflow-hidden rounded-xl border border-[#1e2028] bg-[#11161d] shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
                     <iframe
                         src={normalizedPreviewUrl ?? undefined}
                         title="WebContainer Preview"
@@ -522,7 +481,7 @@ function WebContainerPreview({
     }
 
     return (
-        <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-sm text-muted-foreground">
+        <div className="flex h-full flex-col items-center justify-center gap-3 bg-[#0c1117] p-6 text-center text-sm text-[#8ea5b5]">
             {showInternalTerminal ? <TerminalToggleButton /> : null}
             <span>Waiting for WebContainer instance...</span>
             {showInternalTerminal && isTerminalOpen ? <TerminalPanel /> : null}

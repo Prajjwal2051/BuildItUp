@@ -177,19 +177,6 @@ body::after {
     animation: dot-drift 18s linear infinite;
 }
 
-/* Creates soft moving glows behind the hero area for depth and motion. */
-.orbit-blob-a {
-    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.2), transparent 70%);
-    filter: blur(18px);
-    animation: blob-float-a 13s ease-in-out infinite;
-}
-
-.orbit-blob-b {
-    background: radial-gradient(circle at center, rgba(128, 128, 128, 0.2), transparent 70%);
-    filter: blur(20px);
-    animation: blob-float-b 16s ease-in-out infinite;
-}
-
 /* Fades sections upward in sequence to improve first paint experience. */
 .reveal-up {
     opacity: 0;
@@ -203,47 +190,28 @@ body::after {
 }
 
 /* Staggers hero headline and supporting blocks to create a guided first impression. */
-.hero-eye,
-.hero-sub,
 .hero-desc,
 .hero-ctas,
-.hero-aside,
 .hero-word {
     opacity: 0;
     transform: translateY(18px);
     animation: fade-up 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.hero-eye {
-    animation-delay: 0.12s;
-}
-
 .hero-word-1 {
-    animation-delay: 0.22s;
+    animation-delay: 0.18s;
 }
 
 .hero-word-2 {
-    animation-delay: 0.34s;
-}
-
-.hero-word-3 {
-    animation-delay: 0.46s;
-}
-
-.hero-sub {
-    animation-delay: 0.58s;
+    animation-delay: 0.32s;
 }
 
 .hero-desc {
-    animation-delay: 0.66s;
+    animation-delay: 0.48s;
 }
 
 .hero-ctas {
-    animation-delay: 0.74s;
-}
-
-.hero-aside {
-    animation-delay: 0.5s;
+    animation-delay: 0.62s;
 }
 
 /* Brings the editor mockup in right after hero content settles. */
@@ -283,17 +251,8 @@ body::after {
     animation-delay: 10s;
 }
 
-/* Adds a soft central glow behind hero content so the top fold feels less flat. */
 .hero-glow {
-    position: absolute;
-    top: -20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(920px, 92vw);
-    height: 510px;
-    pointer-events: none;
-    background: radial-gradient(ellipse at center, rgba(0, 212, 170, 0.06) 0%, transparent 68%);
-    z-index: 0;
+    display: none;
 }
 
 /* Separates major landing sections with a subtle reference-style rail line. */
@@ -311,54 +270,267 @@ body::after {
 
 .zf-grid {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 2.5rem;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem 4rem;
+    align-items: center;
 }
 
-@media (min-width: 900px) {
+@media (max-width: 768px) {
     .zf-grid {
-        grid-template-columns: 1fr 1fr;
-        align-items: start;
+        grid-template-columns: 1fr;
+        gap: 2rem;
     }
 }
 
 .learn-more {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
+    gap: 0.375rem;
     font-size: 13.5px;
     font-weight: 500;
     color: #00d4aa;
-    margin-top: 6px;
-    transition:
-        gap 0.2s,
-        opacity 0.2s;
+    margin-top: 0.5rem;
+    transition: gap 0.15s ease;
 }
 
 .learn-more:hover {
-    gap: 11px;
-    opacity: 0.85;
+    gap: 0.6rem;
+}
+
+.home-hero-shell::before {
+    content: '';
+    position: absolute;
+    inset: -2.5rem auto auto 50%;
+    width: min(56rem, 88vw);
+    height: 18rem;
+    transform: translateX(-50%);
+    pointer-events: none;
+    background: radial-gradient(circle at center, rgba(0, 212, 170, 0.08), transparent 68%);
+    filter: blur(18px);
+    animation: home-hero-breathe 9s ease-in-out infinite;
+}
+
+.hero-gradient-flow {
+    background-size: 130% 130%;
+    animation:
+        fade-up 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+        gradient-flow 9s ease-in-out infinite;
+}
+
+.home-cta-btn {
+    box-shadow: 0 10px 30px rgba(0, 212, 170, 0.2);
+    transition:
+        transform 0.24s ease,
+        box-shadow 0.24s ease,
+        filter 0.24s ease;
+}
+
+.home-cta-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 42px rgba(0, 212, 170, 0.28);
+}
+
+.home-cta-btn:hover .home-cta-arrow {
+    transform: translateX(3px);
+}
+
+.home-cta-arrow {
+    transition: transform 0.22s ease;
+}
+
+.home-nav-logo {
+    transition: transform 0.22s ease;
+}
+
+.home-nav-logo:hover {
+    transform: translateY(-1px);
+}
+
+.home-nav-cta {
+    box-shadow: 0 8px 24px rgba(0, 212, 170, 0.14);
+}
+
+.home-nav-cta:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 30px rgba(0, 212, 170, 0.2);
+}
+
+.editor-atmosphere {
+    animation: home-atmosphere-pulse 10s ease-in-out infinite;
+}
+
+.home-editor-shell {
+    transition:
+        transform 0.34s ease,
+        box-shadow 0.34s ease,
+        border-color 0.34s ease;
+}
+
+.home-editor-shell:hover {
+    transform: translateY(-4px) scale(1.003);
+    border-color: rgba(0, 212, 170, 0.18);
+    box-shadow:
+        0 40px 100px rgba(0, 0, 0, 0.7),
+        0 0 0 1px rgba(0, 212, 170, 0.08);
+}
+
+.home-editor-icon {
+    transition:
+        transform 0.22s ease,
+        background-color 0.22s ease,
+        box-shadow 0.22s ease;
+}
+
+.home-editor-icon:hover {
+    transform: translateY(-1px);
+    background-color: rgba(0, 212, 170, 0.14);
+    box-shadow: 0 0 0 1px rgba(0, 212, 170, 0.14);
+}
+
+.home-feature-card {
+    transition:
+        transform 0.24s ease,
+        border-color 0.24s ease,
+        box-shadow 0.24s ease,
+        background-color 0.24s ease;
+}
+
+.home-feature-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.24);
+}
+
+.home-feature-card:hover .home-feature-icon {
+    transform: scale(1.06);
+    background-color: rgba(0, 212, 170, 0.16);
+}
+
+.home-feature-icon {
+    transition:
+        transform 0.22s ease,
+        background-color 0.22s ease;
+}
+
+.home-detail-panel {
+    transition:
+        transform 0.28s ease,
+        border-color 0.28s ease,
+        box-shadow 0.28s ease;
+}
+
+.home-detail-panel:hover {
+    transform: translateY(-3px);
+    border-color: rgba(0, 212, 170, 0.16);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+}
+
+.home-footer-link:hover {
+    transform: translateY(-2px);
+}
+
+.auth-panel-left,
+.auth-panel-right,
+.auth-stagger {
+    opacity: 0;
+    transform: translateY(18px);
+    animation: fade-up 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.auth-panel-left {
+    animation-delay: 0.08s;
+}
+
+.auth-panel-right {
+    animation-delay: 0.2s;
+}
+
+.auth-stagger-1 {
+    animation-delay: 0.16s;
+}
+
+.auth-stagger-2 {
+    animation-delay: 0.24s;
+}
+
+.auth-stagger-3 {
+    animation-delay: 0.32s;
+}
+
+.auth-stagger-4 {
+    animation-delay: 0.4s;
+}
+
+.auth-stagger-5 {
+    animation-delay: 0.48s;
+}
+
+.auth-stagger-6 {
+    animation-delay: 0.56s;
+}
+
+.auth-panel-hover {
+    transition:
+        transform 0.28s ease,
+        box-shadow 0.28s ease,
+        border-color 0.28s ease;
+}
+
+.auth-panel-hover:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255, 255, 255, 0.09);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.04),
+        0 28px 90px rgba(0, 0, 0, 0.42);
+}
+
+.auth-highlight-card {
+    transition:
+        transform 0.22s ease,
+        border-color 0.22s ease,
+        background-color 0.22s ease;
+}
+
+.auth-highlight-card:hover {
+    transform: translateX(4px);
+    border-color: rgba(0, 212, 170, 0.18);
+    background-color: rgba(255, 255, 255, 0.035);
+}
+
+.auth-pill {
+    transition:
+        border-color 0.22s ease,
+        background-color 0.22s ease,
+        transform 0.22s ease;
+}
+
+.auth-pill:hover {
+    transform: translateY(-1px);
+    border-color: rgba(0, 212, 170, 0.22);
+    background-color: rgba(0, 212, 170, 0.05);
+}
+
+.auth-signin-btn {
+    transition:
+        transform 0.22s ease,
+        border-color 0.22s ease,
+        box-shadow 0.22s ease,
+        background-color 0.22s ease;
+}
+
+.auth-signin-btn:hover {
+    transform: translateY(-2px);
+    border-color: rgba(0, 212, 170, 0.22);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
+    background-color: rgba(22, 28, 33, 0.96);
 }
 
 .zf-visual {
-    border-radius: 18px;
-    border: 1px solid #2a2b32;
-    background: #1a1b20;
-    overflow: hidden;
     min-height: 240px;
     padding: 18px;
     font-family:
         'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
         'Courier New', monospace;
     font-size: 12px;
-    transition:
-        border-color 0.25s,
-        box-shadow 0.25s;
-}
-
-.zf-visual:hover {
-    border-color: #3a3b44;
-    box-shadow: 0 0 30px rgba(0, 212, 170, 0.06);
 }
 
 .zf-vis-hdr {
@@ -474,6 +646,43 @@ body::after {
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+@keyframes gradient-flow {
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+}
+
+@keyframes home-hero-breathe {
+    0%,
+    100% {
+        opacity: 0.75;
+        transform: translateX(-50%) scale(1);
+    }
+
+    50% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1.05);
+    }
+}
+
+@keyframes home-atmosphere-pulse {
+    0%,
+    100% {
+        opacity: 0.8;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.03);
     }
 }
 

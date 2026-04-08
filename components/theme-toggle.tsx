@@ -23,7 +23,7 @@ function ThemeToggle() {
         type="button"
         variant="outline"
         size="icon"
-        className="h-9 w-9 rounded-full border-border bg-background"
+        className="h-9 w-9 rounded-full border-border bg-background dark:border-[#1e2028] dark:bg-[rgba(18,19,24,0.88)] dark:text-[#7ae8cc] dark:hover:bg-[rgba(0,212,170,0.08)]"
         aria-label="Toggle theme"
       >
         <Sun className="h-4 w-4" />
@@ -38,7 +38,7 @@ function ThemeToggle() {
       type="button"
       variant="outline"
       size="icon"
-      className="h-9 w-9 rounded-full border-border bg-background"
+      className="h-9 w-9 rounded-full border-border bg-background dark:border-[#1e2028] dark:bg-[rgba(18,19,24,0.88)] dark:text-[#7ae8cc] dark:hover:bg-[rgba(0,212,170,0.08)]"
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
     >

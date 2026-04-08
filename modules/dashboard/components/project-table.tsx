@@ -175,16 +175,15 @@ function ProjectTable({ projects, currentUserName, currentUserImage }: ProjectTa
 
     return (
         <>
-            <div className="w-full overflow-hidden rounded-[18px] border border-slate-200 bg-[#f9f6ee] dark:border-[#1e1e20] dark:bg-[#0f0f10]">
+            <div className="w-full overflow-hidden rounded-[18px] border border-slate-200 bg-[#f9f6ee] dark:border-[#1e2028] dark:bg-[rgba(17,20,24,0.88)] dark:shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
                 <Table>
                     <TableHeader>
-                        <TableRow className="border-slate-200 hover:bg-transparent dark:border-[#232325]">
-                            <TableHead className="p-4 text-slate-600 dark:text-slate-300">Project</TableHead>
-                            <TableHead className="text-slate-600 dark:text-slate-300">Template</TableHead>
-                            <TableHead className="text-slate-600 dark:text-slate-300">Created</TableHead>
-                            <TableHead className="text-slate-600 dark:text-slate-300">User</TableHead>
-                            <TableHead className="text-slate-600 dark:text-slate-300">Status</TableHead>
-
+                        <TableRow className="border-slate-200 hover:bg-transparent dark:border-[#1e2028]">
+                            <TableHead className="p-4 text-slate-600 dark:text-neutral-400">Project</TableHead>
+                            <TableHead className="text-slate-600 dark:text-neutral-400">Template</TableHead>
+                            <TableHead className="text-slate-600 dark:text-neutral-400">Created</TableHead>
+                            <TableHead className="text-slate-600 dark:text-neutral-400">User</TableHead>
+                            <TableHead className="text-slate-600 dark:text-neutral-400">Status</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -192,18 +191,18 @@ function ProjectTable({ projects, currentUserName, currentUserImage }: ProjectTa
                         {projects.map((project, index) => (
                             <TableRow
                                 key={project.id}
-                                className="border-slate-200 p-4 opacity-0 animate-[reveal-up_520ms_ease-out_forwards] hover:bg-violet-50 dark:border-[#1f1f22] dark:hover:bg-violet-950/20"
+                                className="border-slate-200 p-4 opacity-0 animate-[reveal-up_520ms_ease-out_forwards] hover:bg-violet-50 dark:border-[#171b22] dark:hover:bg-[rgba(0,212,170,0.05)]"
                                 style={{ animationDelay: `${Math.min(index * 70, 350)}ms` }}
                             >
                                 <TableCell className="font-medium">
                                     <div className="flex flex-col">
                                         <Link
                                             href={`/playground/${project.id}`}
-                                            className="px-2 font-semibold text-slate-900 transition-colors hover:text-violet-600 dark:text-slate-50 dark:hover:text-violet-200"
+                                            className="px-2 font-semibold text-slate-900 transition-colors hover:text-violet-600 dark:text-slate-50 dark:hover:text-[#00d4aa]"
                                         >
                                             <span>{project.title}</span>
                                         </Link>
-                                        <span className="px-2 line-clamp-1 text-sm text-slate-500 dark:text-zinc-500">
+                                        <span className="px-2 line-clamp-1 text-sm text-slate-500 dark:text-neutral-500">
                                             {project.description}
                                         </span>
                                     </div>
@@ -214,7 +213,7 @@ function ProjectTable({ projects, currentUserName, currentUserImage }: ProjectTa
                                     </Badge>
                                 </TableCell>
                                 <TableCell>
-                                    <span className="text-sm text-slate-500 dark:text-zinc-400">
+                                    <span className="text-sm text-slate-500 dark:text-neutral-500">
                                         {format(new Date(project.createdAt), 'MMM d, yyyy')}
                                     </span>
                                 </TableCell>
@@ -241,7 +240,7 @@ function ProjectTable({ projects, currentUserName, currentUserImage }: ProjectTa
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge className="border border-green-300 bg-green-100 text-green-700 dark:border-green-800/40 dark:bg-green-900/30 dark:text-green-400">
+                                    <Badge className="border border-green-300 bg-green-100 text-green-700 dark:border-[#0f4d40] dark:bg-[rgba(0,212,170,0.12)] dark:text-[#7ae8cc]">
                                         Active
                                     </Badge>
                                 </TableCell>
@@ -250,7 +249,7 @@ function ProjectTable({ projects, currentUserName, currentUserImage }: ProjectTa
 
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 dark:hover:bg-[rgba(0,212,170,0.08)] dark:hover:text-white">
                                                     <MoreHorizontal className="h-4 w-4" />
                                                     <span className="sr-only">Open menu</span>
                                                 </Button>

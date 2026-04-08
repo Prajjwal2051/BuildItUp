@@ -1,38 +1,38 @@
-import { Github } from 'lucide-react'
-
 export default function HomeFooter() {
     return (
-        <footer className="w-full max-w-360 mx-auto px-6 md:px-10 pb-0 pt-2 reveal">
-            <div
-                className="mx-auto w-full max-w-5xl rounded-t-2xl rounded-b-none border px-6 py-4 relative overflow-hidden"
-                style={{
-                    backgroundColor: 'rgba(26,27,32,0.7)',
-                    borderColor: '#2a2b32',
-                    backdropFilter: 'blur(8px)',
-                }}
-            >
-                {/* Noise overlay */}
-                <div
-                    className="absolute inset-0 pointer-events-none opacity-[0.04]"
-                    style={{
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-                        backgroundRepeat: 'repeat',
-                        backgroundSize: '128px 128px',
-                    }}
-                />
-                <div className="flex items-center justify-center gap-3 text-neutral-300 relative z-10">
-                    <span className="text-sm tracking-wide">Built by Prajjwal Sahu</span>
+        <footer
+            className="border-t py-8 px-6 md:px-10"
+            style={{ borderColor: '#1e2028', backgroundColor: '#080b0f' }}
+        >
+            <div className="max-w-360 mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 grid grid-cols-2 gap-0.5">
+                        <div className="bg-white rounded-tl-[4px]" />
+                        <div className="bg-white rounded-tr-[4px]" />
+                        <div className="bg-white rounded-bl-[4px]" />
+                        <div className="rounded-br-[4px]" style={{ backgroundColor: '#00d4aa' }} />
+                    </div>
+                    <span className="text-[14px] font-semibold text-white">Orbit Code</span>
+                </div>
+
+                <div className="flex flex-col items-center md:items-end gap-2 text-center md:text-right">
+                    <p className="text-[13px] text-neutral-400">
+                        Crafted with <span className="text-white">love</span> by{' '}
+                        <span className="font-semibold text-white">Prajjwal Sahu</span>
+                    </p>
+
                     <a
                         href="https://github.com/Prajjwal2051"
                         target="_blank"
-                        rel="noreferrer"
-                        className="group inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs text-neutral-300 hover:text-[#00d4aa] hover:border-[rgba(0,212,170,0.4)] transition-colors"
-                        style={{ borderColor: '#3a3b44' }}
+                        rel="noopener noreferrer"
+                        className="home-footer-link inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[13px] text-neutral-300 shadow-sm transition-all duration-300 hover:border-emerald-400/30 hover:bg-emerald-400/10 hover:text-white hover:shadow-[0_0_24px_rgba(16,185,129,0.15)]"
                     >
-                        <Github className="h-3.5 w-3.5 transition-colors group-hover:text-[#00d4aa]" />
-                        Prajjwal2051
+                        <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                        GitHub: @Prajjwal2051
                     </a>
                 </div>
+
+
             </div>
         </footer>
     )

@@ -12,13 +12,9 @@ const Page = async () => {
     const playgrounds = await getAllPlaygroundForUser()
     const user = await currentUser()
     return (
-        
-        <div className="relative flex min-h-screen w-full flex-col gap-6 px-8 py-6 md:px-6 lg:px-8  ">
+        <div className="relative flex min-h-screen w-full flex-col gap-6 px-8 py-6 md:px-6 lg:px-8">
             <div className="flex items-center justify-between gap-4 reveal-up [animation-delay:80ms]">
-                <ProjectSearch
-                    projects={playgrounds || []}
-                    className="flex-1"
-                />
+                <ProjectSearch projects={playgrounds || []} className="flex-1" />
                 <div className="flex shrink-0 items-center gap-4 reveal-up [animation-delay:180ms]">
                     <AddNewButton />
                     <AddRepoButton />
@@ -37,11 +33,8 @@ const Page = async () => {
                 )}
             </div>
 
-            <div className="fixed bottom-4 left-4 z-50 reveal-up [animation-delay:320ms]">
-                <ThemeToggle />
-            </div>
+            
         </div>
-        
     )
 }
 

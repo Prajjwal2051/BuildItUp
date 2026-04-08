@@ -34,24 +34,34 @@ function ToggleAi({
                     className={cn(
                         'flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11px] transition-colors',
                         isAiAutocompleteEnabled || isAiChatOpen
-                            ? 'border-[#61afef] bg-[#1b2130] text-[#dbe8ff]'
-                            : 'border-[#2a2f3a] bg-[#141821] text-[#aab1bf] hover:border-[#3a4150] hover:text-white',
+                            ? 'border-[#0f4d40] bg-[rgba(0,212,170,0.12)] text-[#7ae8cc]'
+                            : 'border-[#1e2028] bg-[#11161d] text-[#c9d4e5] hover:border-[#00d4aa]/30 hover:text-white',
                     )}
                     title="Ollama AI options"
                 >
-                    <Bot size={13} />
+                    <Bot
+                        size={13}
+                        className={
+                            isAiAutocompleteEnabled || isAiChatOpen
+                                ? 'text-[#00d4aa]'
+                                : 'text-[#7aa7b3]'
+                        }
+                    />
                     <span>AI</span>
                 </button>
             </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end" className="w-64">
-                <div className="px-2 py-1.5 text-[11px] font-medium text-muted-foreground">
+            <DropdownMenuContent
+                align="end"
+                className="w-64 border-[#1e2028] bg-[#11161d] text-[#c9d4e5]"
+            >
+                <div className="px-2 py-1.5 text-[11px] font-medium text-[#6a7280]">
                     Ollama AI Options
                 </div>
 
                 <DropdownMenuItem
                     onSelect={(event) => event.preventDefault()}
-                    className="flex items-center justify-between gap-3"
+                    className="flex items-center justify-between gap-3 text-[#c9d4e5] focus:bg-[rgba(0,212,170,0.08)] focus:text-white"
                 >
                     <span>Ollama Autocomplete</span>
                     <Switch
@@ -61,10 +71,20 @@ function ToggleAi({
                     />
                 </DropdownMenuItem>
 
-                <DropdownMenuItem onSelect={onOpenChat}>Open AI Chat Sidebar</DropdownMenuItem>
+                <DropdownMenuItem
+                    onSelect={onOpenChat}
+                    className="text-[#c9d4e5] focus:bg-[rgba(0,212,170,0.08)] focus:text-white"
+                >
+                    Open AI Chat Sidebar
+                </DropdownMenuItem>
 
                 {isAiChatOpen ? (
-                    <DropdownMenuItem onSelect={onCloseChat}>Hide AI Chat Sidebar</DropdownMenuItem>
+                    <DropdownMenuItem
+                        onSelect={onCloseChat}
+                        className="text-[#c9d4e5] focus:bg-[rgba(0,212,170,0.08)] focus:text-white"
+                    >
+                        Hide AI Chat Sidebar
+                    </DropdownMenuItem>
                 ) : null}
             </DropdownMenuContent>
         </DropdownMenu>

@@ -6,13 +6,12 @@ export default function LandingNavbar() {
         <header
             className="w-full sticky top-0 z-50 border-b nav-enter"
             style={{
-                backgroundColor: 'rgba(20, 21, 25, 0.88)',
-                borderColor: '#2a2b32',
+                backgroundColor: 'rgba(10, 13, 18, 0.78)',
+                borderColor: '#1e2028',
                 backdropFilter: 'blur(20px) saturate(1.4)',
                 WebkitBackdropFilter: 'blur(20px) saturate(1.4)',
             }}
         >
-            {/* Noise overlay */}
             <div
                 className="absolute inset-0 pointer-events-none opacity-[0.035]"
                 style={{
@@ -21,9 +20,10 @@ export default function LandingNavbar() {
                     backgroundSize: '128px 128px',
                 }}
             />
+
             <div className="w-full flex items-center justify-between px-6 md:px-10 h-15 max-w-360 mx-auto relative z-10">
-                <div className="flex items-center gap-12 lg:gap-16">
-                    <a href="#home-logo" id="nav-logo" className="flex items-center gap-3 group">
+                <div className="flex items-center">
+                    <a href="#home-logo" id="nav-logo" className="home-nav-logo flex items-center gap-3 group">
                         <div className="w-7 h-7 grid grid-cols-2 gap-0.75">
                             <div className="bg-white rounded-tl-[5px] transition-colors group-hover:bg-[#a8d5ff]" />
                             <div className="bg-white rounded-tr-[5px]" />
@@ -38,20 +38,21 @@ export default function LandingNavbar() {
                         </span>
                     </a>
                 </div>
-                <div className="flex items-center gap-6">
+
+                <div className="flex items-center gap-5">
                     <Link
                         href="/auth/sign-in"
-                        className="text-[14px] font-medium text-neutral-400 hover:text-white transition-colors hidden md:block"
+                        className="text-[14px] text-neutral-400 hover:text-white transition-colors hidden md:block"
                     >
                         Sign In
                     </Link>
                     <Link
                         href="/auth/sign-in"
-                        className="px-5 py-2 rounded-[10px] border text-white text-[14px] font-medium hover:border-white transition-colors flex items-center gap-2 group"
-                        style={{ borderColor: '#3a3b44' }}
+                        className="home-nav-cta px-4 py-2 rounded-lg text-[14px] font-medium text-black flex items-center gap-1.5 group transition-all"
+                        style={{ backgroundColor: '#00d4aa' }}
                     >
-                        Try now — it&apos;s free
-                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
+                        Try free
+                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                     </Link>
                 </div>
             </div>

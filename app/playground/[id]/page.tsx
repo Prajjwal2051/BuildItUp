@@ -11,7 +11,12 @@ import type { FileTreeNode } from '@/modules/playground/lib/path-to-json'
 import { cn } from '@/lib/utils'
 import Editor from '@monaco-editor/react'
 import type { Monaco } from '@monaco-editor/react'
-import type { editor as MonacoEditor } from 'monaco-editor'
+import type {
+    editor as MonacoEditor,
+    CancellationToken,
+    Position,
+    languages as MonacoLanguages,
+} from 'monaco-editor'
 import {
     configureMonaco,
     defaultEditorOptions,
@@ -37,6 +42,8 @@ import {
     X,
     GripHorizontal,
     House,
+    Maximize2,
+    Minimize2,
     Settings,
     ArrowLeftRight,
     Search,
@@ -246,7 +253,7 @@ function OpenFilesTabs({
     const hasUnsaved = openFiles.some((file) => file.hasUnsavedChanges)
 
     return (
-        <div className="flex items-center border-b border-[#1c1f26] bg-[#0f1115]">
+        <div className="flex items-center border-b border-[#1e2028] bg-[#0c1117]">
             <div className="flex flex-1 items-center overflow-x-auto scrollbar-none">
                 {openFiles.map((file) => {
                     const isActive = file.id === activeFilePath
@@ -256,10 +263,10 @@ function OpenFilesTabs({
                             key={file.id}
                             onClick={() => onSelect(file)}
                             className={cn(
-                                'group flex shrink-0 cursor-pointer select-none items-center gap-2 border-r border-[#1c1f26] px-4 py-2 font-mono text-[12px] transition-colors',
+                                'group flex shrink-0 cursor-pointer select-none items-center gap-2 border-r border-[#1e2028] px-4 py-2 font-mono text-[12px] transition-colors',
                                 isActive
-                                    ? 'border-t-2 border-t-[#61afef] bg-[#141821] text-white'
-                                    : 'text-[#5c6370] hover:bg-[#151922] hover:text-[#aab1bf]',
+                                    ? 'border-t-2 border-t-[#00d4aa] bg-[#11161d] text-white'
+                                    : 'text-[#6a7280] hover:bg-[#11161d] hover:text-[#c9d4e5]',
                             )}
                         >
                             {isDirty ? (
@@ -274,8 +281,8 @@ function OpenFilesTabs({
                                 className={cn(
                                     'flex h-4 w-4 items-center justify-center rounded text-[11px] transition-colors',
                                     isActive
-                                        ? 'text-[#5c6370] hover:bg-[#2a2f3a] hover:text-white'
-                                        : 'text-[#5c6370] opacity-0 hover:bg-[#2a2f3a] hover:text-white group-hover:opacity-100',
+                                        ? 'text-[#6a7280] hover:bg-[#1e2028] hover:text-white'
+                                        : 'text-[#6a7280] opacity-0 hover:bg-[#1e2028] hover:text-white group-hover:opacity-100',
                                 )}
                             >
                                 x
@@ -285,7 +292,7 @@ function OpenFilesTabs({
                 })}
             </div>
 
-            <div className="flex shrink-0 items-center gap-1 border-l border-[#1c1f26] px-2">
+            <div className="flex shrink-0 items-center gap-1 border-l border-[#1e2028] px-2">
                 <button
                     onClick={onSave}
                     title="Save (Ctrl+S)"
@@ -293,8 +300,8 @@ function OpenFilesTabs({
                     className={cn(
                         'flex h-7 w-7 items-center justify-center rounded transition-colors',
                         activeFilePath && hasUnsaved
-                            ? 'text-[#aab1bf] hover:bg-[#1b2130] hover:text-white'
-                            : 'cursor-not-allowed text-[#3a3f4b]',
+                            ? 'text-[#c9d4e5] hover:bg-[#11161d] hover:text-white'
+                            : 'cursor-not-allowed text-[#38414d]',
                     )}
                 >
                     S
@@ -307,8 +314,8 @@ function OpenFilesTabs({
                     className={cn(
                         'flex h-7 w-7 items-center justify-center rounded transition-colors',
                         hasUnsaved
-                            ? 'text-[#aab1bf] hover:bg-[#1b2130] hover:text-white'
-                            : 'cursor-not-allowed text-[#3a3f4b]',
+                            ? 'text-[#c9d4e5] hover:bg-[#11161d] hover:text-white'
+                            : 'cursor-not-allowed text-[#38414d]',
                     )}
                 >
                     A
@@ -336,6 +343,7 @@ function MainPlaygroundPage() {
     const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false)
     const [isAiAutocompleteEnabled, setIsAiAutocompleteEnabled] = React.useState(true)
     const [isAiChatOpen, setIsAiChatOpen] = React.useState(false)
+    const [isFullscreen, setIsFullscreen] = React.useState(false)
     const [searchQuery, setSearchQuery] = React.useState('')
     const [isNavigatingHome, setIsNavigatingHome] = React.useState(false)
     const [editorPreferences, setEditorPreferences] = React.useState<EditorPreferences>(
@@ -425,7 +433,7 @@ function MainPlaygroundPage() {
         isLoading: isWebContainerLoading,
         error: webContainerError,
         instance,
-        useWriteFileSync,
+        useWriteFileSync: writeFileSync,
         destroy,
     } = useWebContainer({
         templateData: templateData as never,
@@ -505,6 +513,18 @@ function MainPlaygroundPage() {
         window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(sidebarWidth))
     }, [sidebarWidth])
 
+    React.useEffect(() => {
+        function handleFullscreenChange() {
+            setIsFullscreen(Boolean(document.fullscreenElement))
+        }
+
+        handleFullscreenChange()
+        document.addEventListener('fullscreenchange', handleFullscreenChange)
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange)
+        }
+    }, [])
+
     // Updates sidebar width while dragging the resize handle.
     React.useEffect(() => {
         function onMouseMove(event: MouseEvent) {
@@ -529,11 +549,12 @@ function MainPlaygroundPage() {
 
     // Clears pending live-sync timers when the component unmounts.
     React.useEffect(() => {
+        const timers = liveSyncTimersRef.current
         return () => {
-            for (const timer of liveSyncTimersRef.current.values()) {
+            for (const timer of timers.values()) {
                 clearTimeout(timer)
             }
-            liveSyncTimersRef.current.clear()
+            timers.clear()
         }
     }, [])
 
@@ -659,7 +680,7 @@ function MainPlaygroundPage() {
             }
 
             const timer = setTimeout(() => {
-                void useWriteFileSync(filePath, newContent)
+                void writeFileSync(filePath, newContent)
                     .then(() => {
                         appendTerminalLog(
                             `[info] Synced ${getFileName(filePath)} to the live preview.\n`,
@@ -674,7 +695,7 @@ function MainPlaygroundPage() {
 
             liveSyncTimersRef.current.set(filePath, timer)
         },
-        [appendTerminalLog, markFileAsUnsaved, useWriteFileSync],
+        [appendTerminalLog, markFileAsUnsaved, writeFileSync],
     )
 
     const handleFileSelect = React.useCallback(
@@ -691,6 +712,17 @@ function MainPlaygroundPage() {
 
     const handleToggleTerminal = React.useCallback(() => {
         setIsTerminalOpen((previous) => !previous)
+    }, [])
+
+    const handleToggleFullscreen = React.useCallback(async () => {
+        if (typeof document === 'undefined') return
+
+        if (document.fullscreenElement) {
+            await document.exitFullscreen()
+            return
+        }
+
+        await document.documentElement.requestFullscreen()
     }, [])
 
     const handleSidebarResizeStart = React.useCallback(
@@ -901,10 +933,10 @@ function MainPlaygroundPage() {
         const currentLanguage = getEditorLanguage(activeFilePath.split('.').pop() ?? '')
         const provider = monaco.languages.registerInlineCompletionsProvider(currentLanguage, {
             provideInlineCompletions: async (
-                model: any,
-                position: any,
-                _context: any,
-                token: any,
+                model: MonacoEditor.ITextModel,
+                position: Position,
+                _context: MonacoLanguages.InlineCompletionContext,
+                token: CancellationToken,
             ) => {
                 if (!isAiAutocompleteEnabled) {
                     return { items: [] }
@@ -982,7 +1014,7 @@ function MainPlaygroundPage() {
         acceptButton.type = 'button'
         acceptButton.textContent = 'Accept AI'
         acceptButton.className =
-            'rounded border border-[#3a4150] bg-[#1b2130] px-2 py-1 text-[10px] text-[#dbe8ff]'
+            'rounded border border-[#0f4d40] bg-[rgba(0,212,170,0.12)] px-2 py-1 text-[10px] text-[#7ae8cc]'
         acceptButton.onclick = (event) => {
             event.preventDefault()
             handleAcceptInlineSuggestion()
@@ -1087,8 +1119,8 @@ function MainPlaygroundPage() {
 
     if (isLoading && !fileTree) {
         return (
-            <SidebarInset>
-                <div className="flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground">
+            <SidebarInset className="bg-[#0a0d12]">
+                <div className="flex min-h-[40vh] items-center justify-center text-sm text-[#8ea5b5]">
                     Loading playground...
                 </div>
             </SidebarInset>
@@ -1097,8 +1129,8 @@ function MainPlaygroundPage() {
 
     if (error && !fileTree) {
         return (
-            <SidebarInset>
-                <div className="flex min-h-[40vh] items-center justify-center text-sm text-destructive">
+            <SidebarInset className="bg-[#0a0d12]">
+                <div className="flex min-h-[40vh] items-center justify-center text-sm text-[#ff8b8b]">
                     {error}
                 </div>
             </SidebarInset>
@@ -1124,22 +1156,23 @@ function MainPlaygroundPage() {
                 />
             ) : null}
 
-            <SidebarInset className="relative flex flex-1 flex-col overflow-hidden">
+            <SidebarInset className="relative flex flex-1 flex-col overflow-hidden bg-[#0a0d12] text-white">
                 <Dialog open={isSearchDialogOpen} onOpenChange={setIsSearchDialogOpen}>
-                    <DialogContent className="max-w-3xl gap-0 overflow-hidden p-0">
-                        <DialogHeader className="border-b px-4 py-3">
+                    <DialogContent className="max-w-3xl gap-0 overflow-hidden border-[#1e2028] bg-[#11161d] p-0 text-white">
+                        <DialogHeader className="border-b border-[#1e2028] px-4 py-3">
                             <DialogTitle>Search files</DialogTitle>
-                            <DialogDescription>
+                            <DialogDescription className="text-[#8ea5b5]">
                                 Find files by name or path and open them quickly.
                             </DialogDescription>
                         </DialogHeader>
 
-                        <div className="border-b px-4 py-3">
+                        <div className="border-b border-[#1e2028] px-4 py-3">
                             <Input
                                 autoFocus
                                 value={searchQuery}
                                 onChange={(event) => setSearchQuery(event.target.value)}
                                 placeholder="Type a file name or path..."
+                                className="border-[#1e2028] bg-[#0f141b] text-white placeholder:text-[#6a7280]"
                             />
                         </div>
 
@@ -1151,18 +1184,18 @@ function MainPlaygroundPage() {
                                             key={file.path}
                                             type="button"
                                             onClick={() => handleOpenSearchResult(file.path)}
-                                            className="w-full rounded-lg border border-transparent px-3 py-2 text-left transition-colors hover:border-border hover:bg-muted/50"
+                                            className="w-full rounded-lg border border-transparent px-3 py-2 text-left transition-colors hover:border-[#1e2028] hover:bg-[#0f141b]"
                                         >
-                                            <div className="truncate text-sm font-medium text-foreground">
+                                            <div className="truncate text-sm font-medium text-[#d6e1ef]">
                                                 {file.path}
                                             </div>
-                                            <div className="truncate text-xs text-muted-foreground">
+                                            <div className="truncate text-xs text-[#8ea5b5]">
                                                 {file.name}
                                             </div>
                                         </button>
                                     ))
                                 ) : (
-                                    <div className="py-10 text-center text-sm text-muted-foreground">
+                                    <div className="py-10 text-center text-sm text-[#8ea5b5]">
                                         No matching files found.
                                     </div>
                                 )}
@@ -1171,13 +1204,13 @@ function MainPlaygroundPage() {
                     </DialogContent>
                 </Dialog>
 
-                <div className="flex shrink-0 items-center justify-between border-b border-[#1c1f26] bg-[#0f1115] px-4 py-2">
+                <div className="flex shrink-0 items-center justify-between border-b border-[#1e2028] bg-[#0c1117] px-4 py-2">
                     <div className="w-24" />
-                    <div className="flex w-2xl items-center justify-center gap-2 rounded-md border border-[#2a2f3a] bg-[#141821] px-3 py-1">
-                        <span className="select-none text-[11px] font-semibold uppercase tracking-widest text-[#5c6370]">
+                    <div className="flex w-2xl items-center justify-center gap-2 rounded-xl border border-[#1e2028] bg-[#11161d] px-3 py-1">
+                        <span className="select-none text-[11px] font-semibold uppercase tracking-widest text-[#00d4aa]">
                             Playground
                         </span>
-                        <span className="font-mono text-[13px] font-medium text-[#aab1bf]">
+                        <span className="font-mono text-[13px] font-medium text-[#c9d4e5]">
                             {playgroundTitle}
                         </span>
                     </div>
@@ -1193,8 +1226,8 @@ function MainPlaygroundPage() {
                             className={cn(
                                 'flex h-9 w-9 items-center justify-center rounded-md border transition-colors',
                                 isNavigatingHome
-                                    ? 'cursor-not-allowed border-[#2a2f3a] bg-[#141821] text-[#5c6370]'
-                                    : 'border-[#2a2f3a] bg-[#141821] text-[#8b92a3] hover:border-[#3a4150] hover:text-white',
+                                    ? 'cursor-not-allowed border-[#1e2028] bg-[#11161d] text-[#6a7280]'
+                                    : 'border-[#1e2028] bg-[#11161d] text-[#8ea5b5] hover:border-[#00d4aa]/30 hover:text-white',
                             )}
                         >
                             <House size={16} />
@@ -1202,13 +1235,29 @@ function MainPlaygroundPage() {
 
                         <button
                             type="button"
+                            onClick={() => {
+                                void handleToggleFullscreen()
+                            }}
+                            title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                            className={cn(
+                                'flex h-9 w-9 items-center justify-center rounded-md border transition-colors',
+                                isFullscreen
+                                    ? 'border-[#0f4d40] bg-[rgba(0,212,170,0.12)] text-[#7ae8cc]'
+                                    : 'border-[#1e2028] bg-[#11161d] text-[#8ea5b5] hover:border-[#00d4aa]/30 hover:text-white',
+                            )}
+                        >
+                            {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                        </button>
+
+                        <button
+                            type="button"
                             onClick={handleTogglePreview}
                             title={isPreviewOpen ? 'Hide Preview' : 'Show Preview'}
                             className={cn(
-                                'rounded-md border px-2 py-1 text-[11px] font-medium transition-colors',
+                                'rounded-md border px-2 py-2 text-[11px] font-medium transition-colors',
                                 isPreviewOpen
-                                    ? 'border-[#61afef] bg-[#1b2130] text-[#dbe8ff]'
-                                    : 'border-[#2a2f3a] bg-[#141821] text-[#8b92a3] hover:border-[#3a4150] hover:text-white',
+                                    ? 'border-[#0f4d40] bg-[rgba(0,212,170,0.12)] text-[#7ae8cc]'
+                                    : 'border-[#1e2028] bg-[#11161d] text-[#8ea5b5] hover:border-[#00d4aa]/30 hover:text-white',
                             )}
                         >
                             Preview
@@ -1221,8 +1270,8 @@ function MainPlaygroundPage() {
                             className={cn(
                                 'flex h-9 w-9 items-center justify-center rounded-md border transition-colors',
                                 isTerminalOpen
-                                    ? 'border-[#61afef] bg-[#1b2130] text-[#dbe8ff]'
-                                    : 'border-[#2a2f3a] bg-[#141821] text-[#8b92a3] hover:border-[#3a4150] hover:text-white',
+                                    ? 'border-[#0f4d40] bg-[rgba(0,212,170,0.12)] text-[#7ae8cc]'
+                                    : 'border-[#1e2028] bg-[#11161d] text-[#8ea5b5] hover:border-[#00d4aa]/30 hover:text-white',
                             )}
                         >
                             <TerminalSquare size={16} />
@@ -1241,7 +1290,7 @@ function MainPlaygroundPage() {
                     }}
                 />
 
-                <div className="flex min-h-0 flex-1 overflow-hidden bg-[#0f1115]">
+                <div className="flex min-h-0 flex-1 overflow-hidden bg-[#0a0d12]">
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                         <div
                             className={cn(
@@ -1258,13 +1307,13 @@ function MainPlaygroundPage() {
                                 <div
                                     className={cn(
                                         'min-h-0 min-w-0 flex flex-1 flex-col overflow-hidden',
-                                        isSplitEditorOpen ? 'border-r border-[#1c1f26]' : '',
+                                        isSplitEditorOpen ? 'border-r border-[#1e2028]' : '',
                                     )}
                                 >
-                                    <div className="flex h-10 min-h-10 items-center justify-between border-b border-[#1c1f26] bg-[#0b0d11] px-3">
-                                        <div className="flex items-center gap-2 text-[11px] text-[#5c6370]">
+                                    <div className="flex h-10 min-h-10 items-center justify-between border-b border-[#1e2028] bg-[#0c1117] px-3">
+                                        <div className="flex items-center gap-2 text-[11px] text-[#8ea5b5]">
                                             <span>Editor</span>
-                                            <span className="text-[#7d8596]">
+                                            <span className="text-[#6a7280]">
                                                 {activeOpenFile
                                                     ? getFileName(activeOpenFile.id)
                                                     : 'No file open'}
@@ -1281,30 +1330,30 @@ function MainPlaygroundPage() {
                                                 type="button"
                                                 onClick={handleRequestAiSuggestion}
                                                 disabled={!isAiAutocompleteEnabled || aiSuggestionLoading}
-                                                className="rounded border border-[#2a2f3a] px-2 py-1 text-[10px] text-[#8b92a3] transition-colors hover:border-[#3a4150] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                                className="rounded border border-[#1e2028] bg-[#11161d] px-2 py-1 text-[10px] text-[#8ea5b5] transition-colors hover:border-[#00d4aa]/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                                                 title="Trigger inline AI suggestion"
                                             >
                                                 {aiSuggestionLoading ? 'Thinking' : 'Trigger AI'}
                                             </button>
 
-                                            <span className="text-[10px] text-[#5c6370]">Primary</span>
+                                            <span className="text-[10px] text-[#00d4aa]">Primary</span>
                                         </div>
                                     </div>
 
-                                    <div className="flex h-8 min-h-8 items-center gap-1 overflow-hidden border-b border-[#1c1f26] bg-[#0d1016] px-3 text-[11px] text-[#6f7788]">
-                                        <span className="shrink-0 text-[#5c6370]">Path:</span>
+                                    <div className="flex h-8 min-h-8 items-center gap-1 overflow-hidden border-b border-[#1e2028] bg-[#0f141b] px-3 text-[11px] text-[#8ea5b5]">
+                                        <span className="shrink-0 text-[#6a7280]">Path:</span>
                                         {activePathSegments.length > 0 ? (
                                             activePathSegments.map((segment, index) => (
                                                 <React.Fragment key={`${segment}-${index}`}>
                                                     {index > 0 ? (
-                                                        <span className="text-[#4c5463]">/</span>
+                                                        <span className="text-[#33404e]">/</span>
                                                     ) : null}
                                                     <span
                                                         className={cn(
                                                             'truncate',
                                                             index === activePathSegments.length - 1
-                                                                ? 'text-[#aab1bf]'
-                                                                : 'text-[#73809a]',
+                                                                ? 'text-[#c9d4e5]'
+                                                                : 'text-[#8ea5b5]',
                                                         )}
                                                     >
                                                         {segment}
@@ -1312,7 +1361,7 @@ function MainPlaygroundPage() {
                                                 </React.Fragment>
                                             ))
                                         ) : (
-                                            <span className="text-[#5c6370]">No file selected</span>
+                                            <span className="text-[#6a7280]">No file selected</span>
                                         )}
                                     </div>
 
@@ -1334,7 +1383,7 @@ function MainPlaygroundPage() {
                                                 }
                                             />
                                         ) : (
-                                            <div className="flex h-full items-center justify-center text-sm text-[#5c6370]">
+                                            <div className="flex h-full items-center justify-center text-sm text-[#6a7280]">
                                                 No file open
                                             </div>
                                         )}
@@ -1343,10 +1392,10 @@ function MainPlaygroundPage() {
 
                                 {isSplitEditorOpen ? (
                                     <div className="min-h-0 min-w-0 flex flex-1 flex-col overflow-hidden">
-                                        <div className="flex h-10 min-h-10 items-center justify-between border-b border-[#1c1f26] bg-[#0b0d11] px-3">
-                                            <div className="flex items-center gap-2 text-[11px] text-[#5c6370]">
+                                        <div className="flex h-10 min-h-10 items-center justify-between border-b border-[#1e2028] bg-[#0c1117] px-3">
+                                            <div className="flex items-center gap-2 text-[11px] text-[#8ea5b5]">
                                                 <span>Split Editor</span>
-                                                <span className="text-[#7d8596]">
+                                                <span className="text-[#6a7280]">
                                                     Secondary view
                                                 </span>
                                             </div>
@@ -1354,7 +1403,7 @@ function MainPlaygroundPage() {
                                                 <button
                                                     type="button"
                                                     onClick={handleSwapSplitEditors}
-                                                    className="flex h-7 w-7 items-center justify-center rounded-md border border-[#2a2f3a] text-[#aab1bf] transition-colors hover:border-[#3a4150] hover:text-white"
+                                                    className="flex h-7 w-7 items-center justify-center rounded-md border border-[#1e2028] bg-[#11161d] text-[#c9d4e5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
                                                     title="Swap split panes"
                                                     aria-label="Swap split panes"
                                                 >
@@ -1365,7 +1414,7 @@ function MainPlaygroundPage() {
                                                     onChange={(event) =>
                                                         setSplitFilePath(event.target.value)
                                                     }
-                                                    className="h-7 max-w-52 rounded-md border border-[#2a2f3a] bg-[#141821] px-2 text-[11px] text-[#aab1bf] outline-none"
+                                                    className="h-7 max-w-52 rounded-md border border-[#1e2028] bg-[#11161d] px-2 text-[11px] text-[#c9d4e5] outline-none"
                                                 >
                                                     {openFiles.map((file) => (
                                                         <option key={file.id} value={file.id}>
@@ -1376,20 +1425,20 @@ function MainPlaygroundPage() {
                                                 <button
                                                     type="button"
                                                     onClick={() => setIsSplitEditorOpen(false)}
-                                                    className="rounded border border-[#2a2f3a] px-2 py-1 text-[10px] text-[#8b92a3] transition-colors hover:border-[#3a4150] hover:text-white"
+                                                    className="rounded border border-[#1e2028] bg-[#11161d] px-2 py-1 text-[10px] text-[#8ea5b5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
                                                 >
                                                     Close
                                                 </button>
                                             </div>
                                         </div>
 
-                                        <div className="flex h-8 min-h-8 items-center gap-1 overflow-hidden border-b border-[#1c1f26] bg-[#0d1016] px-3 text-[11px] text-[#6f7788]">
-                                            <span className="shrink-0 text-[#5c6370]">Path:</span>
+                                        <div className="flex h-8 min-h-8 items-center gap-1 overflow-hidden border-b border-[#1e2028] bg-[#0f141b] px-3 text-[11px] text-[#8ea5b5]">
+                                            <span className="shrink-0 text-[#6a7280]">Path:</span>
                                             {splitPathSegments.length > 0 ? (
                                                 splitPathSegments.map((segment, index) => (
                                                     <React.Fragment key={`${segment}-${index}`}>
                                                         {index > 0 ? (
-                                                            <span className="text-[#4c5463]">
+                                                            <span className="text-[#33404e]">
                                                                 /
                                                             </span>
                                                         ) : null}
@@ -1398,8 +1447,8 @@ function MainPlaygroundPage() {
                                                                 'truncate',
                                                                 index ===
                                                                     splitPathSegments.length - 1
-                                                                    ? 'text-[#aab1bf]'
-                                                                    : 'text-[#73809a]',
+                                                                    ? 'text-[#c9d4e5]'
+                                                                    : 'text-[#8ea5b5]',
                                                             )}
                                                         >
                                                             {segment}
@@ -1407,7 +1456,7 @@ function MainPlaygroundPage() {
                                                     </React.Fragment>
                                                 ))
                                             ) : (
-                                                <span className="text-[#5c6370]">
+                                                <span className="text-[#6a7280]">
                                                     No file selected
                                                 </span>
                                             )}
@@ -1431,7 +1480,7 @@ function MainPlaygroundPage() {
                                                     }
                                                 />
                                             ) : (
-                                                <div className="flex h-full items-center justify-center text-sm text-[#5c6370]">
+                                                <div className="flex h-full items-center justify-center text-sm text-[#6a7280]">
                                                     Pick a file to open in the split view.
                                                 </div>
                                             )}
@@ -1443,9 +1492,9 @@ function MainPlaygroundPage() {
                             {runtimeTemplate ? (
                                 <div
                                     className={cn(
-                                        'min-h-0 shrink-0 overflow-hidden bg-[#0f1115] transition-[width,border-color,opacity] duration-200',
+                                        'min-h-0 shrink-0 overflow-hidden bg-[#0a0d12] transition-[width,border-color,opacity] duration-200',
                                         isPreviewOpen
-                                            ? 'w-[45%] border-l border-[#1c1f26] opacity-100'
+                                            ? 'w-[45%] border-l border-[#1e2028] opacity-100'
                                             : 'pointer-events-none w-0 border-l border-transparent opacity-0',
                                     )}
                                     aria-hidden={!isPreviewOpen}
@@ -1456,7 +1505,6 @@ function MainPlaygroundPage() {
                                         isLoading={isWebContainerLoading}
                                         error={webContainerError}
                                         instance={instance}
-                                        useWriteFileSync={useWriteFileSync}
                                         destroy={destroy}
                                         onTerminalLog={appendTerminalLog}
                                         showInternalTerminal={false}
@@ -1465,15 +1513,15 @@ function MainPlaygroundPage() {
                             ) : null}
                         </div>
 
-                        <div className="flex items-center justify-between border-t border-[#1c1f26] bg-[#0b0d11] px-3 py-2">
-                            <div className="flex items-center gap-2 text-[11px] text-[#5c6370]">
+                        <div className="flex items-center justify-between border-t border-[#1e2028] bg-[#0c1117] px-3 py-2">
+                            <div className="flex items-center gap-2 text-[11px] text-[#8ea5b5]">
                                 <span>Tools</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setIsSearchDialogOpen(true)}
-                                    className="flex h-7 items-center gap-1.5 rounded-md border border-[#2a2f3a] bg-[#141821] px-2.5 text-[11px] text-[#aab1bf] transition-colors hover:border-[#3a4150] hover:text-white"
+                                    className="flex h-7 items-center gap-1.5 rounded-md border border-[#1e2028] bg-[#11161d] px-2.5 text-[11px] text-[#c9d4e5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
                                     title="Search files"
                                 >
                                     <Search size={13} />
@@ -1486,8 +1534,8 @@ function MainPlaygroundPage() {
                                     className={cn(
                                         'flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11px] transition-colors',
                                         isSplitEditorOpen
-                                            ? 'border-[#61afef] bg-[#1b2130] text-[#dbe8ff]'
-                                            : 'border-[#2a2f3a] bg-[#141821] text-[#aab1bf] hover:border-[#3a4150] hover:text-white',
+                                            ? 'border-[#0f4d40] bg-[rgba(0,212,170,0.12)] text-[#7ae8cc]'
+                                            : 'border-[#1e2028] bg-[#11161d] text-[#c9d4e5] hover:border-[#00d4aa]/30 hover:text-white',
                                     )}
                                     title="Toggle split editor"
                                 >
@@ -1505,7 +1553,7 @@ function MainPlaygroundPage() {
                                 <button
                                     type="button"
                                     onClick={() => setIsSettingsDialogOpen(true)}
-                                    className="flex h-7 w-7 items-center justify-center rounded-md border border-[#2a2f3a] bg-[#141821] text-[#aab1bf] transition-colors hover:border-[#3a4150] hover:text-white"
+                                    className="flex h-7 w-7 items-center justify-center rounded-md border border-[#1e2028] bg-[#11161d] text-[#c9d4e5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
                                     title="Editor settings"
                                     aria-label="Editor settings"
                                 >
@@ -1515,10 +1563,10 @@ function MainPlaygroundPage() {
                         </div>
 
                         <Dialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
-                            <DialogContent className="max-w-md">
+                            <DialogContent className="max-w-md border-[#1e2028] bg-[#11161d] text-white">
                                 <DialogHeader>
                                     <DialogTitle>Editor Settings</DialogTitle>
-                                    <DialogDescription>
+                                    <DialogDescription className="text-[#8ea5b5]">
                                         Choose your preferred editor theme, font size, and font
                                         family.
                                     </DialogDescription>
@@ -1539,8 +1587,8 @@ function MainPlaygroundPage() {
                                                 className={cn(
                                                     'h-8 rounded-md border px-3 text-xs transition-colors',
                                                     editorPreferences.theme === 'dark'
-                                                        ? 'border-primary bg-primary/10 text-primary'
-                                                        : 'border-border text-muted-foreground hover:text-foreground',
+                                                        ? 'border-[#0f4d40] bg-[rgba(0,212,170,0.12)] text-[#7ae8cc]'
+                                                        : 'border-[#1e2028] bg-[#0f141b] text-[#8ea5b5] hover:text-white',
                                                 )}
                                             >
                                                 Dark
@@ -1556,8 +1604,8 @@ function MainPlaygroundPage() {
                                                 className={cn(
                                                     'h-8 rounded-md border px-3 text-xs transition-colors',
                                                     editorPreferences.theme === 'light'
-                                                        ? 'border-primary bg-primary/10 text-primary'
-                                                        : 'border-border text-muted-foreground hover:text-foreground',
+                                                        ? 'border-[#0f4d40] bg-[rgba(0,212,170,0.12)] text-[#7ae8cc]'
+                                                        : 'border-[#1e2028] bg-[#0f141b] text-[#8ea5b5] hover:text-white',
                                                 )}
                                             >
                                                 Light
@@ -1568,7 +1616,7 @@ function MainPlaygroundPage() {
                                     <div className="space-y-2">
                                         <div className="flex items-center justify-between text-sm font-medium">
                                             <span>Font Size</span>
-                                            <span className="text-xs text-muted-foreground">
+                                            <span className="text-xs text-[#8ea5b5]">
                                                 {editorPreferences.fontSize}px
                                             </span>
                                         </div>
@@ -1600,7 +1648,7 @@ function MainPlaygroundPage() {
                                                     fontFamily: nextFamily,
                                                 }))
                                             }}
-                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                            className="h-9 w-full rounded-md border border-[#1e2028] bg-[#0f141b] px-3 text-sm text-white"
                                         >
                                             {EDITOR_FONT_FAMILY_OPTIONS.map((option) => (
                                                 <option key={option.value} value={option.value}>
@@ -1615,28 +1663,28 @@ function MainPlaygroundPage() {
 
                         {isTerminalOpen ? (
                             <div
-                                className="shrink-0 border-t border-[#1c1f26] bg-[#0b0d11]"
+                                className="shrink-0 border-t border-[#1e2028] bg-[#0c1117]"
                                 style={{ height: `${terminalHeight}px` }}
                             >
                                 <button
                                     type="button"
                                     onMouseDown={handleTerminalResizeStart}
-                                    className="flex h-3 w-full items-center justify-center text-[#5c6370] hover:text-[#aab1bf]"
+                                    className="flex h-3 w-full items-center justify-center text-[#6a7280] hover:text-[#c9d4e5]"
                                     aria-label="Resize terminal"
                                     title="Drag to resize"
                                 >
                                     <GripHorizontal size={14} />
                                 </button>
 
-                                <div className="flex items-center justify-between border-y border-[#1c1f26] px-3 py-2">
-                                    <div className="flex items-center gap-2 text-[12px] text-[#aab1bf]">
+                                <div className="flex items-center justify-between border-y border-[#1e2028] px-3 py-2">
+                                    <div className="flex items-center gap-2 text-[12px] text-[#c9d4e5]">
                                         <TerminalSquare size={14} />
                                         <span className="font-medium">Terminal</span>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={() => setIsTerminalOpen(false)}
-                                        className="rounded p-1 text-[#71798a] hover:bg-[#151922] hover:text-white"
+                                        className="rounded p-1 text-[#6a7280] hover:bg-[#11161d] hover:text-white"
                                         aria-label="Close terminal"
                                         title="Close terminal"
                                     >
@@ -1644,17 +1692,17 @@ function MainPlaygroundPage() {
                                     </button>
                                 </div>
 
-                                <div className="flex items-center justify-end border-b border-[#1c1f26] px-3 py-1.5">
+                                <div className="flex items-center justify-end border-b border-[#1e2028] px-3 py-1.5">
                                     <button
                                         type="button"
                                         onClick={() => void handleCopyTerminalLogs()}
-                                        className="rounded border border-[#2a2f3a] px-2 py-1 text-[10px] text-[#8b92a3] transition-colors hover:border-[#3a4150] hover:text-white"
+                                        className="rounded border border-[#1e2028] bg-[#11161d] px-2 py-1 text-[10px] text-[#8ea5b5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
                                     >
                                         Copy Logs
                                     </button>
                                 </div>
 
-                                <div className="h-[calc(100%-76px)] min-h-0 px-3 py-2 font-mono text-xs text-[#7d8596]">
+                                <div className="h-[calc(100%-76px)] min-h-0 px-3 py-2 font-mono text-xs text-[#8ea5b5]">
                                     <PlaygroundTerminal
                                         logs={terminalLogs}
                                         className="h-full min-h-0"

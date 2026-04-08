@@ -58,7 +58,7 @@ const AddRepoButton = ({ className }: { className?: string }) => {
                 className={cn(
                     'h-11 gap-2 rounded-lg border px-4 text-sm font-medium shadow-sm transition-colors',
                     'border-slate-300 bg-[#f9f6ee] text-slate-900 hover:bg-[#f4efe3] hover:text-slate-950', // Light mode
-                    'dark:border-white/10 dark:bg-slate-50 dark:text-slate-900 dark:hover:bg-slate-200 dark:hover:text-slate-950', // Dark mode
+                    'dark:border-[#1e2028] dark:bg-[rgba(18,19,24,0.88)] dark:text-slate-100 dark:hover:bg-[rgba(0,212,170,0.08)] dark:hover:text-white', // Dark mode
                     className,
                 )}
             >

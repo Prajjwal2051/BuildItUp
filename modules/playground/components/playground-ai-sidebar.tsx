@@ -103,16 +103,16 @@ function PlaygroundAiSidebar({
     if (!isOpen) return null
 
     return (
-        <aside className="flex h-full w-85 shrink-0 flex-col border-l border-[#1c1f26] bg-[#0b0d11]">
-            <div className="flex items-center justify-between border-b border-[#1c1f26] px-3 py-2">
-                <div className="flex items-center gap-2 text-[12px] text-[#aab1bf]">
-                    <Bot size={14} />
+        <aside className="flex h-full w-85 shrink-0 flex-col border-l border-[#1e2028] bg-[#0c1117] text-[#c9d4e5]">
+            <div className="flex items-center justify-between border-b border-[#1e2028] px-3 py-2">
+                <div className="flex items-center gap-2 text-[12px] text-[#c9d4e5]">
+                    <Bot size={14} className="text-[#00d4aa]" />
                     <span className="font-medium">AI Chat</span>
                 </div>
                 <button
                     type="button"
                     onClick={onClose}
-                    className="rounded p-1 text-[#71798a] hover:bg-[#151922] hover:text-white"
+                    className="rounded p-1 text-[#6a7280] hover:bg-[#11161d] hover:text-white"
                     aria-label="Close AI chat sidebar"
                     title="Close AI chat sidebar"
                 >
@@ -120,13 +120,13 @@ function PlaygroundAiSidebar({
                 </button>
             </div>
 
-            <div className="border-b border-[#1c1f26] px-3 py-2 text-[11px] text-[#71798a]">
-                Working file: <span className="text-[#aab1bf]">{fileName || 'No file open'}</span>
+            <div className="border-b border-[#1e2028] px-3 py-2 text-[11px] text-[#6a7280]">
+                Working file: <span className="text-[#c9d4e5]">{fileName || 'No file open'}</span>
             </div>
 
             <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
                 {messages.length === 0 ? (
-                    <p className="text-[12px] text-[#7d8596]">
+                    <p className="text-[12px] text-[#7f8f9d]">
                         Ask for refactors, bug fixes, or new code. The AI sees your open file.
                     </p>
                 ) : (
@@ -135,11 +135,11 @@ function PlaygroundAiSidebar({
                             key={message.id}
                             className={
                                 message.role === 'user'
-                                    ? 'ml-6 rounded-md border border-[#2a2f3a] bg-[#141821] px-3 py-2 text-[12px] text-[#d2d8e4]'
-                                    : 'mr-6 rounded-md border border-[#2a2f3a] bg-[#10141d] px-3 py-2 text-[12px] text-[#aab1bf]'
+                                    ? 'ml-6 rounded-xl border border-[#1e2028] bg-[#131a22] px-3 py-2 text-[12px] text-[#d6e1ef]'
+                                    : 'mr-6 rounded-xl border border-[#1e2028] bg-[#10161d] px-3 py-2 text-[12px] text-[#c9d4e5]'
                             }
                         >
-                            <div className="mb-1 text-[10px] uppercase tracking-wide text-[#6f7788]">
+                            <div className="mb-1 text-[10px] uppercase tracking-wide text-[#6a7280]">
                                 {message.role === 'user' ? 'You' : 'AI'}
                             </div>
                             <pre className="whitespace-pre-wrap font-sans leading-5">
@@ -150,7 +150,7 @@ function PlaygroundAiSidebar({
                 )}
             </div>
 
-            <div className="space-y-2 border-t border-[#1c1f26] px-3 py-3">
+            <div className="space-y-2 border-t border-[#1e2028] px-3 py-3">
                 {error ? <p className="text-[11px] text-[#ef8d8d]">{error}</p> : null}
 
                 <textarea
@@ -163,7 +163,7 @@ function PlaygroundAiSidebar({
                         }
                     }}
                     placeholder="Ask AI about this file..."
-                    className="h-24 w-full resize-none rounded-md border border-[#2a2f3a] bg-[#141821] px-2 py-2 text-[12px] text-[#d2d8e4] outline-none placeholder:text-[#6f7788]"
+                    className="h-24 w-full resize-none rounded-xl border border-[#1e2028] bg-[#11161d] px-2 py-2 text-[12px] text-[#d6e1ef] outline-none placeholder:text-[#6a7280]"
                 />
 
                 <div className="flex items-center gap-2">
@@ -171,7 +171,7 @@ function PlaygroundAiSidebar({
                         type="button"
                         onClick={() => void handleSend()}
                         disabled={isSending || !input.trim()}
-                        className="rounded-md border border-[#3a4150] bg-[#1b2130] px-3 py-1.5 text-[11px] text-[#dbe8ff] transition-colors hover:border-[#61afef] disabled:cursor-not-allowed disabled:opacity-60"
+                        className="rounded-lg border border-[#0f4d40] bg-[#00d4aa] px-3 py-1.5 text-[11px] font-medium text-black transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         {isSending ? 'Sending...' : 'Send'}
                     </button>
@@ -180,7 +180,7 @@ function PlaygroundAiSidebar({
                         type="button"
                         onClick={() => onInsertInEditor(latestAssistantReply)}
                         disabled={!latestAssistantReply}
-                        className="rounded-md border border-[#2a2f3a] px-3 py-1.5 text-[11px] text-[#aab1bf] transition-colors hover:border-[#3a4150] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                        className="rounded-lg border border-[#1e2028] bg-[#11161d] px-3 py-1.5 text-[11px] text-[#c9d4e5] transition-colors hover:border-[#00d4aa]/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                     >
                         Insert in editor
                     </button>

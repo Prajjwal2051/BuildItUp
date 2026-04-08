@@ -10,7 +10,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card'
-import { Chrome, Github } from 'lucide-react'
+import { Chrome, Github, LockKeyhole, Sparkles } from 'lucide-react'
 import { signIn } from 'next-auth/react'
 
 const SignInFormClient = () => {
@@ -24,43 +24,101 @@ const SignInFormClient = () => {
     }
 
     return (
-        <Card className="w-full max-w-md mx-auto border-neutral-800 bg-transparent shadow-none">
-            <CardHeader className="space-y-1">
-                <CardTitle className="text-2xl font-bold text-center text-white">Sign In</CardTitle>
-                <CardDescription className="text-center text-neutral-400">
-                    Choose your preferred sign-in method
-                </CardDescription>
+        <Card className="mx-auto flex h-full w-full max-w-sm flex-col border-0 bg-transparent shadow-none">
+            <CardHeader className="space-y-2.5 px-4 pt-2 pb-3 sm:px-5">
+                <div
+                    className="auth-stagger auth-stagger-1 auth-pill mx-auto flex w-fit items-center gap-2 rounded-full border px-3 py-2 text-[11px] text-neutral-300"
+                    style={{
+                        borderColor: 'rgba(255,255,255,0.08)',
+                        backgroundColor: 'rgba(255,255,255,0.03)',
+                    }}
+                >
+                    <Sparkles className="h-3.5 w-3.5 text-[#00d4aa]" />
+                    Secure access
+                </div>
+                <div className="space-y-2 text-center">
+                    <CardTitle className="auth-stagger auth-stagger-2 text-[1.65rem] font-semibold tracking-tight text-white">
+                        Sign In
+                    </CardTitle>
+                    <CardDescription className="auth-stagger auth-stagger-3 text-center text-[14px] leading-5.5 text-neutral-400">
+                        Choose a provider to enter your collaborative cloud workspace.
+                    </CardDescription>
+                </div>
             </CardHeader>
 
-            <CardContent className="grid gap-4 justify-center">
+            <CardContent className="grid gap-2.5 px-4 sm:px-5">
                 <Button
                     type="button"
                     onClick={handleGoogleSignIn}
-                    variant={'outline'}
-                    className="center justify-center w-45 bg-neutral-900 border-neutral-700 text-white hover:bg-neutral-800"
+                    variant="outline"
+                    className="auth-stagger auth-stagger-4 auth-signin-btn group h-11.5 w-full justify-between rounded-2xl border px-4 text-white hover:bg-[rgba(255,255,255,0.06)]"
+                    style={{
+                        borderColor: '#2a2b32',
+                        backgroundColor: 'rgba(17,20,24,0.85)',
+                    }}
                 >
-                    <Chrome className="mr-2 h-4 w-4" />
-                    <span>Sign in with Google</span>
+                    <span className="flex items-center gap-3">
+                        <span
+                            className="flex h-8.5 w-8.5 items-center justify-center rounded-xl"
+                            style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+                        >
+                            <Chrome className="h-4.5 w-4.5" />
+                        </span>
+                        <span className="text-[13.5px] font-medium">Continue with Google</span>
+                    </span>
+                    <span className="text-neutral-500 transition-colors group-hover:text-[#00d4aa]">
+                        →
+                    </span>
                 </Button>
+
                 <Button
                     type="button"
                     onClick={handleGithubSignIn}
-                    variant={'outline'}
-                    className="center justify-center w-45 bg-neutral-900 border-neutral-700 text-white hover:bg-neutral-800"
+                    variant="outline"
+                    className="auth-stagger auth-stagger-5 auth-signin-btn group h-11.5 w-full justify-between rounded-2xl border px-4 text-white hover:bg-[rgba(255,255,255,0.06)]"
+                    style={{
+                        borderColor: '#2a2b32',
+                        backgroundColor: 'rgba(17,20,24,0.85)',
+                    }}
                 >
-                    <Github className="mr-2 h-4 w-4" />
-                    <span>Sign in with GitHub</span>
+                    <span className="flex items-center gap-3">
+                        <span
+                            className="flex h-8.5 w-8.5 items-center justify-center rounded-xl"
+                            style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
+                        >
+                            <Github className="h-4.5 w-4.5" />
+                        </span>
+                        <span className="text-[13.5px] font-medium">Continue with GitHub</span>
+                    </span>
+                    <span className="text-neutral-500 transition-colors group-hover:text-[#00d4aa]">
+                        →
+                    </span>
                 </Button>
             </CardContent>
 
-            <CardFooter className="rounded-corners border-t-neutral-800 bg-neutral-950/80 text-center text-sm text-neutral-500">
-                <p className="text-sm text-cente ">
+            <CardFooter className="auth-stagger auth-stagger-6 mt-auto flex flex-col items-start gap-2.5 bg-transparent px-8 pt-3 py-5 pb-2 sm:px-5">
+                <div
+                    className="w-full rounded-2xl border px-4 py-2.5 text-[13.5px]"
+                    style={{
+                        borderColor: 'rgba(255,255,255,0.08)',
+                    }}
+                >
+                    <div className="mb-1.5 flex items-center gap-2 text-neutral-200">
+                        <LockKeyhole className="h-3.5 w-3.5 text-[#00d4aa]" />
+                        Protected sign-in
+                    </div>
+                    <p className="text-[13.5px] leading-5 text-neutral-400">
+                        OAuth is handled securely through your selected provider. We do not store
+                        your passwords.
+                    </p>
+                </div>
+                <p className="text-[13.5px] leading-5.5 text-neutral-400 py-2">
                     By signing in, you agree to our{' '}
-                    <a href="#" className="underline hover:text-neutral-300">
+                    <a href="#" className="underline underline-offset-4 text-neutral-300 hover:text-white">
                         Terms of Service
                     </a>{' '}
                     and{' '}
-                    <a href="#" className="underline hover:text-neutral-300">
+                    <a href="#" className="underline underline-offset-4 text-neutral-300 hover:text-white">
                         Privacy Policy
                     </a>
                     .

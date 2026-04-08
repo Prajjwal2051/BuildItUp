@@ -126,16 +126,16 @@ function TemplateFileTree({
             }
             className="relative"
         >
-            <Sidebar className="border-r border-[#1c1f26] bg-[#0f1115] text-[#aab1bf]">
-                <SidebarContent className="bg-[#0f1115]">
+            <Sidebar className="border-r border-[#1e2028] bg-[#0c1117] text-[#c9d4e5]">
+                <SidebarContent className="bg-[#0c1117]">
                     <SidebarGroup>
                         {/* HEADER */}
-                        <SidebarGroupLabel className="px-6 pr-9 pt-4 pb-3 text-[11px] tracking-widest uppercase text-[#5c6370] font-semibold flex items-center justify-between">
+                        <SidebarGroupLabel className="flex items-center justify-between px-6 pr-9 pt-4 pb-3 text-[11px] font-semibold uppercase tracking-widest text-[#00d4aa]">
                             {title}
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-5 w-5 text-[#5c6370] hover:text-white transition-colors"
+                                className="h-5 w-5 text-[#6a7280] transition-colors hover:text-white"
                                 onClick={() => setIsExplorerOpen((prev) => !prev)}
                             >
                                 <ChevronRight
@@ -150,7 +150,7 @@ function TemplateFileTree({
                         {isRootFolder && isExplorerOpen && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <SidebarGroupAction className="top-3 right-3 rounded-md border border-[#2a2f3a] bg-[#141821] text-[#7f8ea3] hover:bg-[#1b2130] hover:text-white transition-all">
+                                    <SidebarGroupAction className="top-3 right-3 rounded-md border border-[#1e2028] bg-[#11161d] text-[#8ea5b5] transition-all hover:border-[#00d4aa]/30 hover:bg-[rgba(0,212,170,0.08)] hover:text-white">
                                         <Plus className="h-4 w-4" />
                                     </SidebarGroupAction>
                                 </DropdownMenuTrigger>
@@ -201,7 +201,7 @@ function TemplateFileTree({
                     onMouseDown={onResizeStart}
                     title="Resize explorer"
                     aria-label="Resize explorer"
-                    className="absolute right-0 top-0 hidden h-full w-2 translate-x-1/2 cursor-col-resize bg-transparent hover:bg-[#2a2f3a]/40 md:block"
+                    className="absolute right-0 top-0 hidden h-full w-2 translate-x-1/2 cursor-col-resize bg-transparent hover:bg-[#00d4aa]/12 md:block"
                 />
 
                 <NewFileDialog
@@ -259,18 +259,18 @@ function TemplateNode({
                 <div
                     onClick={() => onFileSelect?.(nodePath, node)}
                     className={cn(
-                        'group/file-row flex min-w-0 items-center px-2.5 py-1 text-[11px] font-mono rounded-md transition-all',
+                        'group/file-row flex min-w-0 items-center rounded-md px-2.5 py-1 text-[11px] font-mono transition-all',
                         selected
-                            ? 'bg-[#1a1f29] text-white font-semibold'
-                            : 'text-[#aab1bf] hover:bg-[#151922]',
+                            ? 'bg-[rgba(0,212,170,0.12)] font-semibold text-white'
+                            : 'text-[#c9d4e5] hover:bg-[#11161d]',
                     )}
                     style={{ paddingLeft }}
                 >
-                    <FileText className="mr-2 h-3.5 w-3.5 shrink-0 text-[#d19a66]" />
+                    <FileText className="mr-2 h-3.5 w-3.5 shrink-0 text-[#7ae8cc]" />
 
                     <span className="flex min-w-0 flex-1 items-center gap-0.5 pr-2">
                         <span className="truncate font-medium">{parsed.filename}</span>
-                        <span className="shrink-0 text-[#5c6370]">.{parsed.extension}</span>
+                        <span className="shrink-0 text-[#6a7280]">.{parsed.extension}</span>
                     </span>
 
                     <DropdownMenu>
@@ -329,7 +329,7 @@ function TemplateNode({
         <SidebarMenuItem>
             <Collapsible open={isOpen} onOpenChange={setIsOpen}>
                 <div
-                    className="group/folder-row flex min-w-0 items-center px-2.5 py-1 text-[11px] font-mono text-[#c5c9d4] hover:bg-[#151922] rounded-md"
+                    className="group/folder-row flex min-w-0 items-center rounded-md px-2.5 py-1 text-[11px] font-mono text-[#d6e1ef] hover:bg-[#11161d]"
                     style={{ paddingLeft }}
                 >
                     <CollapsibleTrigger className="flex min-w-0 flex-1 items-center">
@@ -341,9 +341,9 @@ function TemplateNode({
                         />
 
                         {isOpen ? (
-                            <FolderOpen className="mr-2 h-3.5 w-3.5 shrink-0 text-[#61afef]" />
+                            <FolderOpen className="mr-2 h-3.5 w-3.5 shrink-0 text-[#5cc8ff]" />
                         ) : (
-                            <Folder className="mr-2 h-3.5 w-3.5 shrink-0 text-[#61afef]" />
+                            <Folder className="mr-2 h-3.5 w-3.5 shrink-0 text-[#5cc8ff]" />
                         )}
 
                         <span className="truncate font-semibold">{node.name}</span>
@@ -384,7 +384,7 @@ function TemplateNode({
                 </div>
 
                 <CollapsibleContent>
-                    <SidebarMenuSub className="ml-2 border-l border-[#222833] pl-2">
+                    <SidebarMenuSub className="ml-2 border-l border-[#1e2028] pl-2">
                         {sortNodes(node.children).map((child) => (
                             <TemplateNode
                                 key={child.path}
