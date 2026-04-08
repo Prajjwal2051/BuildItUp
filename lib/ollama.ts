@@ -6,7 +6,7 @@ type OllamaTagsResponse = {
     models?: OllamaTagItem[]
 }
 
-const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434'
+import { getOllamaBaseUrl } from '@/lib/ai-config'
 
 function getPreferredModels(): string[] {
     return [
@@ -20,7 +20,8 @@ function getPreferredModels(): string[] {
 
 export async function resolveOllamaModel(): Promise<{ model: string | null; error?: string }> {
     try {
-        const response = await fetch(`${OLLAMA_BASE_URL}/api/tags`, {
+        const baseUrl = getOllamaBaseUrl()
+        const response = await fetch(`${baseUrl}/api/tags`, {
             cache: 'no-store',
         })
 

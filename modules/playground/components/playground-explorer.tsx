@@ -126,8 +126,8 @@ function TemplateFileTree({
             }
             className="relative"
         >
-            <Sidebar className="border-r border-[#1e2028] bg-[#0c1117] text-[#c9d4e5]">
-                <SidebarContent className="bg-[#0c1117]">
+            <Sidebar className="border-r border-[#1e2028] bg-[#05090d] text-[#c9d4e5]">
+                <SidebarContent className="bg-[#080e13]">
                     <SidebarGroup>
                         {/* HEADER */}
                         <SidebarGroupLabel className="flex items-center justify-between px-6 pr-9 pt-4 pb-3 text-[11px] font-semibold uppercase tracking-widest text-[#00d4aa]">

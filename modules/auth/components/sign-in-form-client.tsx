@@ -12,8 +12,18 @@ import {
 } from '@/components/ui/card'
 import { Chrome, Github, LockKeyhole, Sparkles } from 'lucide-react'
 import { signIn } from 'next-auth/react'
+import { useSearchParams } from 'next/navigation'
 
 const SignInFormClient = () => {
+    const searchParams = useSearchParams()
+    const authError = searchParams.get('error')
+
+    // Shows a clear recovery path when users attempt sign-in with a different OAuth provider.
+    const accountLinkErrorMessage =
+        authError === 'OAuthAccountNotLinked'
+            ? 'An account with this email already exists. Sign in with your original provider first, then link additional providers from account settings.'
+            : null
+
     // Uses the auth client helper so OAuth starts without relying on server actions.
     const handleGoogleSignIn = async () => {
         await signIn('google', { redirectTo: '/dashboard' })
@@ -47,6 +57,19 @@ const SignInFormClient = () => {
             </CardHeader>
 
             <CardContent className="grid gap-2.5 px-4 sm:px-5">
+                {accountLinkErrorMessage ? (
+                    <div
+                        className="rounded-2xl border px-3.5 py-2.5 text-[13px] leading-5"
+                        style={{
+                            borderColor: 'rgba(250,204,21,0.35)',
+                            backgroundColor: 'rgba(250,204,21,0.08)',
+                            color: '#fde68a',
+                        }}
+                    >
+                        {accountLinkErrorMessage}
+                    </div>
+                ) : null}
+
                 <Button
                     type="button"
                     onClick={handleGoogleSignIn}

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { resolveOllamaModel } from '@/lib/ollama'
+import { getOllamaBaseUrl } from '@/lib/ai-config'
 
 type ChatMessage = {
     role: 'user' | 'assistant'
@@ -39,7 +40,17 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        const response = await fetch('http://localhost:11434/api/chat', {
+        let baseUrl: string
+        try {
+            baseUrl = getOllamaBaseUrl()
+        } catch {
+            return NextResponse.json(
+                { error: 'AI service is not configured. Contact your administrator.' },
+                { status: 503 },
+            )
+        }
+
+        const response = await fetch(`${baseUrl}/api/chat`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

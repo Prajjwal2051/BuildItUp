@@ -109,14 +109,14 @@ async function deletePlaygroundById(playgroundId: string) {
         revalidatePath('/dashboard') // Revalidate the dashboard page to reflect the changes after deletion
         return deletedPlayground
     } catch (error) {
-        if((error as {
+        if ((error as {
             code?: string
-        }).code === 'P2025'){
+        }).code === 'P2025') {
             console.log(`Playground with id ${playgroundId} not found or already deleted.`)
             throw new Error('Playground not found or already deleted')
             return null
         }
-        console.log(`Error deleting playground with id ${playgroundId}:, error)`)
+        console.error(`Error deleting playground with id ${playgroundId}:`, error)
         throw new Error('Failed to delete playground')
     }
 }
@@ -236,20 +236,20 @@ async function togglePlaygroundStarMark(playgroundId: string) {
 
         const updatedMark = existingMark
             ? await db.starMark.update({
-                  where: {
-                      id: existingMark.id,
-                  },
-                  data: {
-                      isMarked: !existingMark.isMarked,
-                  },
-              })
+                where: {
+                    id: existingMark.id,
+                },
+                data: {
+                    isMarked: !existingMark.isMarked,
+                },
+            })
             : await db.starMark.create({
-                  data: {
-                      userId: user.id,
-                      playgroundId,
-                      isMarked: true,
-                  },
-              })
+                data: {
+                    userId: user.id,
+                    playgroundId,
+                    isMarked: true,
+                },
+            })
 
         revalidatePath('/dashboard')
         return updatedMark

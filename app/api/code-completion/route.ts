@@ -4,6 +4,7 @@
 
 import { type NextRequest, NextResponse } from 'next/server'
 import { resolveOllamaModel } from '@/lib/ollama'
+import { getOllamaBaseUrl } from '@/lib/ai-config'
 
 interface CodeCompletionRequestBody {
     fileContent: string
@@ -98,6 +99,15 @@ export async function POST(req: NextRequest) {
         if (!modelResolution.model) {
             return NextResponse.json(
                 { error: modelResolution.error ?? 'No Ollama model is available' },
+                { status: 503 },
+            )
+        }
+
+        try {
+            getOllamaBaseUrl()
+        } catch {
+            return NextResponse.json(
+                { error: 'AI service is not configured. Contact your administrator.' },
                 { status: 503 },
             )
         }
@@ -488,12 +498,14 @@ ${hasSelectedCode ? `\n### Selected code range:\n${JSON.stringify(selectionRange
 
 // ---------------------------------------------------------------------------
 // getCodeSuggestion
-// Calls the local Ollama instance using the CORRECT /api/chat endpoint and
+// Calls the configured Ollama instance using the /api/chat endpoint and
 // request body shape.
 // ---------------------------------------------------------------------------
 
 async function getCodeSuggestion(prompt: string, model: string): Promise<string> {
     try {
+        const baseUrl = getOllamaBaseUrl()
+
         // BUG FIX 4 (CRITICAL): The original code called `/api/generate` but sent a
         // `messages` array in the body. `/api/generate` does NOT accept `messages` —
         // that field is silently ignored, so the model received no input and returned
@@ -509,7 +521,7 @@ async function getCodeSuggestion(prompt: string, model: string): Promise<string>
         // lowercase with a colon tag, e.g. `'qwen2.5-coder:7b'`. An incorrect name
         // causes a 404 / "model not found" error from Ollama.
 
-        const response = await fetch('http://localhost:11434/api/chat', {   // FIX 4
+        const response = await fetch(`${baseUrl}/api/chat`, {   // FIX 4
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
