@@ -2,12 +2,14 @@
 
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
-import type { Prisma } from '@prisma/client'
 import { NextRequest } from 'next/server'
 import { getTemplateAbsolutePath, type TemplateId } from '@/lib/template'
 import { pathToJson } from '@/modules/playground/lib/path-to-json'
 
 type RouteParams = { id?: string | string[] }
+type TemplateFileContentInput = NonNullable<
+    Parameters<typeof db.templateFile.upsert>[0]['create']['content']
+>
 
 // Verifies that the playground exists and belongs to the current user before any template access.
 async function getOwnedPlayground(playgroundId: string, userId: string) {
@@ -133,10 +135,10 @@ async function GET(_request: NextRequest, context: { params: RouteParams | Promi
         // Persist fallback once so future reads become fast and consistent.
         const savedTemplate = await db.templateFile.upsert({
             where: { playgroundId: id },
-            update: { content: starterTemplate as Prisma.InputJsonValue },
+            update: { content: starterTemplate as TemplateFileContentInput },
             create: {
                 playgroundId: id,
-                content: starterTemplate as Prisma.InputJsonValue,
+                content: starterTemplate as TemplateFileContentInput,
             },
             select: {
                 updatedAt: true,
@@ -187,7 +189,7 @@ async function PUT(request: NextRequest, context: { params: RouteParams | Promis
         return Response.json({ error: 'Template content cannot be null' }, { status: 400 })
     }
 
-    const content = payload.content as Prisma.InputJsonValue
+    const content = payload.content as TemplateFileContentInput
 
     try {
         const playground = await getOwnedPlayground(id, session.user.id)
