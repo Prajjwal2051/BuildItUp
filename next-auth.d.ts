@@ -1,5 +1,6 @@
-import { UserRole } from '@prisma/client'
 import { type DefaultSession } from 'next-auth'
+
+type UserRole = 'USER' | 'ADMIN' | 'PREMIUM_USER'
 
 // Extends the default NextAuth user type so our session.user always has id and role.
 export type ExtendUser = DefaultSession['user'] & {
