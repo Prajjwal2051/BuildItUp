@@ -49,6 +49,7 @@ Spin up instant dev environments, edit with Monaco, preview live via WebContaine
 ## Features
 
 ### 🖥️ Editor
+
 - **Monaco Editor** (same engine as VS Code) with syntax highlighting for all major languages
 - **Multi-tab editing** with unsaved-change indicators (orange dot per dirty tab)
 - **Split-pane view** — open two files side by side with a swap button
@@ -57,28 +58,33 @@ Spin up instant dev environments, edit with Monaco, preview live via WebContaine
 - Preferences and split state are **persisted to `localStorage`** across sessions
 
 ### ⚡ Live Preview & Terminal
+
 - **WebContainers API** boots a real Node.js-like runtime in the browser — no backend server needed
 - **Hot file sync** — edits are debounced and written to the WebContainer within 150 ms
 - **Integrated terminal** with streaming command output, copy-logs button, and drag-to-resize pane
 - `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` headers configured for SharedArrayBuffer support
 
 ### 🤖 AI Assistant
+
 - **Inline ghost-text completions** via Monaco's `InlineCompletionsProvider` — suggestions appear at the cursor as you type
 - **AI Chat Sidebar** — context-aware conversation with the current file pre-loaded; insert generated code directly at the cursor
 - Per-session toggle to enable or disable all AI features
 
 ### 📁 File Explorer
+
 - Full **tree-based explorer** with collapsible directories
 - **Create, rename, and delete** files and folders from the sidebar
 - Drag-to-resize sidebar panel (220–520 px width range, persisted)
 
 ### 🔒 Auth & Users
+
 - **OAuth sign-in** (GitHub, Google, and any NextAuth-compatible provider)
 - **JWT session strategy** — no database session table needed
 - **Role-based access**: `USER`, `ADMIN`, `PREMIUM_USER`
 - Multi-provider account linking — the same email can sign in via different providers
 
 ### ⭐ Dashboard
+
 - Create and manage multiple playgrounds per user
 - **Star/bookmark** favourite playgrounds for quick access
 - Choose from six framework templates: **React, Next.js, Express, Vue, Hono, Angular**
@@ -87,20 +93,20 @@ Spin up instant dev environments, edit with Monaco, preview live via WebContaine
 
 ## Tech Stack
 
-| Category | Technology | Purpose |
-|---|---|---|
-| Framework | [Next.js 16](https://nextjs.org) (App Router) | SSR, routing, API routes, server actions |
-| Language | TypeScript 5 | Type safety across the full stack |
-| Styling | Tailwind CSS v4, [shadcn/ui](https://ui.shadcn.com), Radix UI | UI components and design system |
-| Editor | [`@monaco-editor/react`](https://github.com/suren-atoyan/monaco-react) | VS Code-grade in-browser editor |
-| Runtime | [`@webcontainer/api`](https://webcontainers.io) | In-browser Node.js environment |
-| Database | MongoDB + [Prisma 6](https://www.prisma.io) + Prisma Accelerate | ORM, data models, edge caching |
-| Auth | [NextAuth v5](https://authjs.dev) + `@auth/prisma-adapter` | OAuth, JWT sessions, callbacks |
-| State | [Zustand](https://zustand-demo.pmnd.rs) | File explorer & playground client state |
-| Charts | [Recharts](https://recharts.org) | Dashboard analytics |
-| Notifications | [Sonner](https://sonner.emilkowal.ski) | Toast notifications |
-| Formatting | Prettier | Consistent code style |
-| Linting | ESLint 9 | Static analysis |
+| Category      | Technology                                               mn  ,               | Purpose                                  |
+| ------------- | ---------------------------------------------------------------------- | ---------------------------------------- |
+| Framework     | [Next.js 16](https://nextjs.org) (App Router)                          | SSR, routing, API routes, server actions |
+| Language      | TypeScript 5                                                           | Type safety across the full stack        |
+| Styling       | Tailwind CSS v4, [shadcn/ui](https://ui.shadcn.com), Radix UI          | UI components and design system          |
+| Editor        | [`@monaco-editor/react`](https://github.com/suren-atoyan/monaco-react) | VS Code-grade in-browser editor          |
+| Runtime       | [`@webcontainer/api`](https://webcontainers.io)                        | In-browser Node.js environment           |
+| Database      | MongoDB + [Prisma 6](https://www.prisma.io) + Prisma Accelerate        | ORM, data models, edge caching           |
+| Auth          | [NextAuth v5](https://authjs.dev) + `@auth/prisma-adapter`             | OAuth, JWT sessions, callbacks           |
+| State         | [Zustand](https://zustand-demo.pmnd.rs)                                | File explorer & playground client state  |
+| Charts        | [Recharts](https://recharts.org)                                       | Dashboard analytics                      |
+| Notifications | [Sonner](https://sonner.emilkowal.ski)                                 | Toast notifications                      |
+| Formatting    | Prettier                                                               | Consistent code style                    |
+| Linting       | ESLint 9                                                               | Static analysis                          |
 
 ---
 
@@ -285,11 +291,11 @@ PRISMA_ACCELERATE_URL="prisma://accelerate.prisma-data.net/?api_key=..."
 
 ### Prerequisites
 
-| Requirement | Version |
-|---|---|
-| Node.js | ≥ 20 |
-| npm | ≥ 10 |
-| MongoDB | Atlas cluster (free tier works) |
+| Requirement | Version                         |
+| ----------- | ------------------------------- |
+| Node.js     | ≥ 20                            |
+| npm         | ≥ 10                            |
+| MongoDB     | Atlas cluster (free tier works) |
 
 ### Installation
 
@@ -321,14 +327,14 @@ Visit **[http://localhost:3000](http://localhost:3000)** to open the app.
 
 ## Available Scripts
 
-| Script | Command | Description |
-|---|---|---|
-| Dev server | `npm run dev` | Start Next.js with hot reload |
-| Production build | `npm run build` | Compile and optimise for production |
-| Production start | `npm start` | Serve the production build |
-| Lint | `npm run lint` | Run ESLint across the codebase |
-| DB push | `npx prisma db push` | Sync schema to MongoDB |
-| DB studio | `npx prisma studio` | Open Prisma's visual DB browser |
+| Script           | Command              | Description                         |
+| ---------------- | -------------------- | ----------------------------------- |
+| Dev server       | `npm run dev`        | Start Next.js with hot reload       |
+| Production build | `npm run build`      | Compile and optimise for production |
+| Production start | `npm start`          | Serve the production build          |
+| Lint             | `npm run lint`       | Run ESLint across the codebase      |
+| DB push          | `npx prisma db push` | Sync schema to MongoDB              |
+| DB studio        | `npx prisma studio`  | Open Prisma's visual DB browser     |
 
 ---
 
@@ -343,29 +349,29 @@ Visit **[http://localhost:3000](http://localhost:3000)** to open the app.
 
 ### Working in the IDE
 
-| Area | How to use |
-|---|---|
-| **File Explorer** | Click a file to open it; use the `+` icon or right-click to add/rename/delete |
-| **Tabs** | Orange dot = unsaved changes; click `×` to close |
-| **Save** | `Ctrl+S` — active file; `Ctrl+Shift+S` — all dirty files |
-| **Split View** | Click **Split** in the bottom toolbar; use ⇄ to swap panes |
-| **File Search** | `Ctrl+P` — fuzzy search by name or path |
-| **Live Preview** | Click **Preview** (top-right) to toggle the WebContainer iframe |
-| **Terminal** | Click the terminal icon; drag the handle to resize; **Copy Logs** copies all output |
-| **AI Completions** | Click **Trigger AI** for ghost-text at cursor; Tab to accept |
-| **AI Chat** | Open the sidebar via **AI Chat**; generated code inserts at cursor |
-| **Settings** | Click ⚙ to change theme, font size, or font family |
-| **Fullscreen** | Click the ⛶ icon in the top-right toolbar |
+| Area               | How to use                                                                          |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| **File Explorer**  | Click a file to open it; use the `+` icon or right-click to add/rename/delete       |
+| **Tabs**           | Orange dot = unsaved changes; click `×` to close                                    |
+| **Save**           | `Ctrl+S` — active file; `Ctrl+Shift+S` — all dirty files                            |
+| **Split View**     | Click **Split** in the bottom toolbar; use ⇄ to swap panes                          |
+| **File Search**    | `Ctrl+P` — fuzzy search by name or path                                             |
+| **Live Preview**   | Click **Preview** (top-right) to toggle the WebContainer iframe                     |
+| **Terminal**       | Click the terminal icon; drag the handle to resize; **Copy Logs** copies all output |
+| **AI Completions** | Click **Trigger AI** for ghost-text at cursor; Tab to accept                        |
+| **AI Chat**        | Open the sidebar via **AI Chat**; generated code inserts at cursor                  |
+| **Settings**       | Click ⚙ to change theme, font size, or font family                                  |
+| **Fullscreen**     | Click the ⛶ icon in the top-right toolbar                                           |
 
 ---
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|---|---|
-| `Ctrl+S` | Save active file |
-| `Ctrl+Shift+S` | Save all unsaved files |
-| `Ctrl+P` | Open file search dialog |
+| Shortcut       | Action                  |
+| -------------- | ----------------------- |
+| `Ctrl+S`       | Save active file        |
+| `Ctrl+Shift+S` | Save all unsaved files  |
+| `Ctrl+P`       | Open file search dialog |
 
 ---
 
@@ -406,8 +412,8 @@ WebContainers require `SharedArrayBuffer`, which is only available in [cross-ori
 ```ts
 // next.config.ts
 headers: [
-  { key: 'Cross-Origin-Opener-Policy',   value: 'same-origin' },
-  { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
+    { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+    { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
 ]
 ```
 
@@ -422,15 +428,15 @@ Contributions are welcome! Please follow these steps:
 1. **Fork** the repository.
 2. **Create a branch**: `git checkout -b feat/your-feature-name`
 3. **Make your changes** and ensure the code style is consistent:
-   ```bash
-   npm run lint
-   ```
+    ```bash
+    npm run lint
+    ```
 4. **Commit** using [Conventional Commits](https://www.conventionalcommits.org):
-   ```
-   feat: add dark mode toggle
-   fix: resolve terminal scroll overflow
-   docs: update environment variables section
-   ```
+    ```
+    feat: add dark mode toggle
+    fix: resolve terminal scroll overflow
+    docs: update environment variables section
+    ```
 5. **Push** and open a **Pull Request** against `main`.
 
 > The Prettier config (`.prettierrc`) is included — run your editor's format-on-save or `npx prettier --write .` before committing.
