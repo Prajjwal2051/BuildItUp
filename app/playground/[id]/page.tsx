@@ -340,6 +340,7 @@ function MainPlaygroundPage() {
     const [splitFilePath, setSplitFilePath] = React.useState('')
     const [terminalLogs, setTerminalLogs] = React.useState<string[]>([])
     const [isSettingsDialogOpen, setIsSettingsDialogOpen] = React.useState(false)
+    const [isAiSettingsOpen, setIsAiSettingsOpen] = React.useState(false)
     const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false)
     const [isAiAutocompleteEnabled, setIsAiAutocompleteEnabled] = React.useState(true)
     const [isAiChatOpen, setIsAiChatOpen] = React.useState(false)
@@ -1204,6 +1205,25 @@ function MainPlaygroundPage() {
                     </DialogContent>
                 </Dialog>
 
+                {/* AI Provider Settings Dialog */}
+                <Dialog open={isAiSettingsOpen} onOpenChange={setIsAiSettingsOpen}>
+                    <DialogContent className="max-w-md border-[#1e2028] bg-[#11161d] text-white">
+                        <DialogHeader>
+                            <DialogTitle>AI Provider Settings</DialogTitle>
+                            <DialogDescription className="text-[#8ea5b5]">
+                                Choose how to connect to Ollama. Use a local instance for development
+                                or supply a remote base URL and API key for production.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 pt-1 text-sm text-[#c9d4e5]">
+                            <p className="rounded-md border border-[#1e2028] bg-[#0f141b] px-3 py-2 text-[#8ea5b5]">
+                                Full AI provider configuration coming soon. You will be able to
+                                choose between a local Ollama instance or a remote API key here.
+                            </p>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+
                 <div className="flex shrink-0 items-center justify-between border-b border-[#1e2028] bg-[#080e13] px-4 py-2">
                     <div className="w-24" />
                     <div className="flex w-2xl items-center justify-center gap-2 rounded-xl border border-[#1e2028] bg-[#080e13] px-3 py-1">
@@ -1548,6 +1568,7 @@ function MainPlaygroundPage() {
                                     onToggleAutocomplete={handleToggleAiAutocomplete}
                                     onOpenChat={() => setIsAiChatOpen(true)}
                                     onCloseChat={() => setIsAiChatOpen(false)}
+                                    onOpenSettings={() => setIsAiSettingsOpen(true)}
                                 />
 
                                 <button
