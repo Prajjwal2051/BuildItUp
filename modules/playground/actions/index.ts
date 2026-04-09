@@ -3,8 +3,15 @@
 // This file defines server actions for the playground module, which are functions that can be called from the client to perform server-side operations. These actions can include creating, updating, or deleting playgrounds, as well as fetching data related to playgrounds. By centralizing these actions in one file, we can keep our code organized and maintain a clear separation between client and server logic.
 
 import { db } from '../../../lib/db'
-import type { TemplateFile } from '@prisma/client'
 import { currentUser } from '@/modules/auth/actions'
+
+type JsonValue =
+    | string
+    | number
+    | boolean
+    | null
+    | { [key: string]: JsonValue }
+    | JsonValue[]
 
 // Loads one playground only if it belongs to the authenticated user.
 async function findOwnedPlayground(playgroundId: string, userId: string) {
@@ -48,7 +55,7 @@ async function getPlaygroundById(id: string) {
 }
 
 // This function saves the updated template data for a specific playground. It takes the playground ID and the new template data as parameters, and it updates the corresponding template file in the database. If the playground does not exist, it can create a new entry. This action allows the client to persist changes made to the playground's template data.
-const SaveUpdatedCode = async (playgroundId: string, data: TemplateFile) => {
+const SaveUpdatedCode = async (playgroundId: string, data: JsonValue) => {
     const user = await currentUser()
     if (!user) {
         throw new Error('Unauthorized')
