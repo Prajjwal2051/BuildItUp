@@ -12,6 +12,7 @@ export default {
     GitHub({
       clientId: process.env.GITHUB_ID!,
       clientSecret: process.env.GITHUB_SECRET!,
+      checks: ['state'],
     }),
     Google({
       clientId: process.env.GOOGLE_ID!,
