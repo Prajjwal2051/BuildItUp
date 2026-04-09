@@ -1,7 +1,13 @@
 import { getUserByEmail, getUserById } from './modules/auth/actions/index'
 import { db } from '@/lib/db'
+import { UserRole } from '@prisma/client'
 import NextAuth from 'next-auth'
 import authConfig from './auth.config'
+
+// Validates unknown token role values before writing them into typed session.user.role.
+function isUserRole(value: unknown): value is UserRole {
+  return Object.values(UserRole).includes(value as UserRole)
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   // Use JWT sessions because the Prisma schema currently has no Session model.
@@ -161,7 +167,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = (token.id as string) || token.sub!
       }
       if (token.sub && session.user) {
-        session.user.role = token.role
+        session.user.role = isUserRole(token.role) ? token.role : UserRole.USER
       }
 
       return session

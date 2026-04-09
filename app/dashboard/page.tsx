@@ -5,7 +5,6 @@ import EmptyState from '@/modules/dashboard/components/empty-state'
 import { getAllPlaygroundForUser } from '@/modules/dashboard/actions'
 import ProjectTable from '@/modules/dashboard/components/project-table'
 import ProjectSearch from '@/modules/dashboard/components/project-search'
-import ThemeToggle from '@/components/theme-toggle'
 import { currentUser } from '@/modules/auth/actions'
 
 const Page = async () => {
@@ -32,8 +31,6 @@ const Page = async () => {
                     />
                 )}
             </div>
-
-            
         </div>
     )
 }

@@ -47,6 +47,9 @@ const useWebContainer = ({ templateData }: UseWebContainerProps): UseWebContaine
     const [error, setError] = useState<Error | null>(null)
     const [instance, setInstance] = useState<WebContainer | null>(null)
 
+    // Keep this reference so future template-driven boot logic can be added without changing the hook API.
+    void templateData
+
     useEffect(() => {
         // Initializes or reuses the shared WebContainer instance on mount.
         let mounted = true

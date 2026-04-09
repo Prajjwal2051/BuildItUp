@@ -3,6 +3,10 @@ import { getAllPlaygroundForUser } from '@/modules/dashboard/actions'
 import { DashboardSidebar } from '@/modules/dashboard/components/dashboard-sidebar'
 import { Toaster } from '@/components/ui/sonner'
 
+type PlaygroundListItem = NonNullable<
+    Awaited<ReturnType<typeof getAllPlaygroundForUser>>
+>[number]
+
 async function DashboardLayout({
     children,
 }: Readonly<{
@@ -19,7 +23,7 @@ async function DashboardLayout({
         HONO: 'FlameIcon',
     }
     // Read isMarked from the relation returned by Prisma so Starred sidebar entries are real, not hardcoded.
-    const formattedPlaygroundData = playgrundData?.map((item) => ({
+    const formattedPlaygroundData = playgrundData?.map((item: PlaygroundListItem) => ({
         id: item.id,
         name: item.title,
         icon: technologyIconMap[item.template] || 'Code2', // Default icon if template is not in the map

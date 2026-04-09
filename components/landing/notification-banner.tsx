@@ -1,13 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { X } from 'lucide-react'
-
 function NotificationBanner() {
-  const [visible, setVisible] = useState(true)
-
-  if (!visible) return null
-
   return (
     /*
     <div className="w-full px-6 md:px-10 max-w-[1440px] mx-auto">
