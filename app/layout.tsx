@@ -19,7 +19,7 @@ async function RootLayout({
         <html lang="en" className="scroll-smooth" suppressHydrationWarning>
             <SessionProvider session={session}>
                 <body className="antialiased">
-                    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+                    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
                         {children}
                     </ThemeProvider>
                 </body>
