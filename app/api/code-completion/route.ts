@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
                 generatedAt: new Date().toISOString(),
             },
         })
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error in code completion API:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }

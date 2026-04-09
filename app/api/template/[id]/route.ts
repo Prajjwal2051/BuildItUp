@@ -7,9 +7,20 @@ import { getTemplateAbsolutePath, type TemplateId } from '@/lib/template'
 import { pathToJson } from '@/modules/playground/lib/path-to-json'
 
 type RouteParams = { id?: string | string[] }
-type TemplateFileContentInput = NonNullable<
-    Parameters<typeof db.templateFile.create>[0]['data']['content']
->
+type JsonValue =
+    | string
+    | number
+    | boolean
+    | null
+    | { [key: string]: JsonValue }
+    | JsonValue[]
+
+type TemplateFileContentInput =
+    Parameters<typeof db.templateFile.create> extends [infer T, ...unknown[]]
+    ? T extends { data: { content: infer C } }
+    ? NonNullable<C>
+    : JsonValue
+    : JsonValue
 
 // Verifies that the playground exists and belongs to the current user before any template access.
 async function getOwnedPlayground(playgroundId: string, userId: string) {
