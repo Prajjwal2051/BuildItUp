@@ -20,6 +20,15 @@ enum UserRole {
   PREMIUM_USER
 }
 
+// AI provider options available to the user
+enum AiProvider {
+  OLLAMA_LOCAL
+  OLLAMA_REMOTE
+  OPENAI
+  GEMINI
+  ANTHROPIC
+}
+
 // defining here the schema for our app
 model User {
   id       String    @id @default(cuid()) @map("_id")
@@ -28,6 +37,11 @@ model User {
   image    String?
   accounts Account[]
   role     UserRole  @default(USER)
+
+  // AI provider settings — key is stored AES-256-GCM encrypted, never in plaintext
+  aiProvider     AiProvider? // which provider the user has configured
+  encryptedApiKey String?    // encrypted API key (OpenAI / Gemini / Anthropic / Ollama remote)
+  ollamaBaseUrl   String?    // only used when aiProvider = OLLAMA_REMOTE
 
   myplaground        Playground[]
   starMarkPlayground StarMark[]
