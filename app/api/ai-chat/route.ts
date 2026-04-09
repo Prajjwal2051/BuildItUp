@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { resolveOllamaModel } from '@/lib/ollama'
-import { getOllamaBaseUrl } from '@/lib/ai-config'
+import { auth } from '@/auth'
+import { resolveUserAiConfig } from '@/modules/playground/actions/ai-settings'
+import { callAiProvider, type AiMessage } from '@/lib/ai-providers'
+import { sanitizeAssistantResponse } from '@/lib/ai-sanitize'
 
 type ChatMessage = {
     role: 'user' | 'assistant'
@@ -15,8 +17,16 @@ type ChatRequestBody = {
 }
 
 // Handles AI chat requests with optional file context from the playground editor.
+// Supports Ollama (local/remote), OpenAI, Gemini, and Anthropic.
 export async function POST(request: NextRequest) {
     try {
+        // ── Auth ──────────────────────────────────────────────────────────────
+        const session = await auth()
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        // ── Parse body ────────────────────────────────────────────────────────
         const body = (await request.json()) as ChatRequestBody
         const message = typeof body.message === 'string' ? body.message.trim() : ''
         const fileName = typeof body.fileName === 'string' ? body.fileName : 'unknown'
@@ -31,100 +41,52 @@ export async function POST(request: NextRequest) {
             .filter((item) => item && (item.role === 'user' || item.role === 'assistant'))
             .slice(-10)
 
-        const modelResolution = await resolveOllamaModel()
+        // ── Resolve user AI config ────────────────────────────────────────────
+        const config = await resolveUserAiConfig(session.user.id)
 
-        if (!modelResolution.model) {
+        if (!config.provider) {
             return NextResponse.json(
-                { error: modelResolution.error ?? 'No Ollama model is available' },
-                { status: 503 },
-            )
-        }
-
-        let baseUrl: string
-        try {
-            baseUrl = getOllamaBaseUrl()
-        } catch {
-            return NextResponse.json(
-                { error: 'AI service is not configured. Contact your administrator.' },
-                { status: 503 },
-            )
-        }
-
-        const response = await fetch(`${baseUrl}/api/chat`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                model: modelResolution.model,
-                stream: false,
-                messages: [
-                    {
-                        role: 'system',
-                        content:
-                            'You are an expert coding assistant for a browser editor. Keep answers concise and practical. When asked to generate code, return only raw code with no markdown fences, no backticks, and no introductory text unless the user explicitly asks for explanation.',
-                    },
-                    ...normalizedHistory,
-                    {
-                        role: 'user',
-                        content: [
-                            `Current file: ${fileName}`,
-                            fileContent
-                                ? `Current file content:\n${fileContent.slice(0, 12000)}`
-                                : 'Current file content is empty.',
-                            `User request:\n${message}`,
-                        ].join('\n\n'),
-                    },
-                ],
-                options: {
-                    temperature: 0.2,
-                    num_predict: 512,
+                {
+                    error: 'AI provider not configured. Please set up your AI provider in Settings.',
+                    setupRequired: true,
                 },
-            }),
+                { status: 503 },
+            )
+        }
+
+        // ── Build messages ────────────────────────────────────────────────────
+        const messages: AiMessage[] = [
+            {
+                role: 'system',
+                content:
+                    'You are an expert coding assistant for a browser editor. Keep answers concise and practical. When asked to generate code, return only raw code with no markdown fences, no backticks, and no introductory text unless the user explicitly asks for explanation.',
+            },
+            ...normalizedHistory.map((h) => ({ role: h.role, content: h.content }) as AiMessage),
+            {
+                role: 'user',
+                content: [
+                    `Current file: ${fileName}`,
+                    fileContent
+                        ? `Current file content:\n${fileContent.slice(0, 12000)}`
+                        : 'Current file content is empty.',
+                    `User request:\n${message}`,
+                ].join('\n\n'),
+            },
+        ]
+
+        // ── Call provider ─────────────────────────────────────────────────────
+        const result = await callAiProvider({
+            provider: config.provider,
+            messages,
+            apiKey: config.apiKey ?? undefined,
+            ollamaBaseUrl: config.ollamaBaseUrl ?? undefined,
         })
 
-        if (!response.ok) {
-            const errorText = await response.text()
-            return NextResponse.json(
-                { error: `AI API error ${response.status}: ${errorText}` },
-                { status: 502 },
-            )
-        }
-
-        const data = (await response.json()) as {
-            message?: {
-                content?: string
-            }
-        }
-
-        const assistant = sanitizeAssistantResponse(data.message?.content ?? '')
-        return NextResponse.json({ assistant })
+        const assistant = sanitizeAssistantResponse(result.content)
+        return NextResponse.json({ assistant, provider: result.provider, model: result.model })
     } catch (error) {
         console.error('Error in AI chat route:', error)
-        return NextResponse.json({ error: 'Failed to process AI chat request' }, { status: 500 })
+        const message = error instanceof Error ? error.message : 'Failed to process AI chat request'
+        return NextResponse.json({ error: message }, { status: 500 })
     }
-}
-
-// Normalizes model output so chat insertion actions receive plain code without markdown wrappers.
-function sanitizeAssistantResponse(content: string): string {
-    const trimmedContent = content.trim()
-
-    // When the model returns fenced code, extract the first fenced block as the response.
-    const fencedBlockMatch = trimmedContent.match(/```[\w-]*\n?([\s\S]*?)```/)
-    if (fencedBlockMatch) {
-        return fencedBlockMatch[1].trim()
-    }
-
-    const lines = trimmedContent.split('\n')
-
-    // Drops common one-line preambles like "Here is the code:" before actual code lines.
-    if (
-        lines.length > 1 &&
-        /^(sure|here|okay|alright|this|below)\b/i.test(lines[0].trim()) &&
-        lines[0].includes(':')
-    ) {
-        return lines.slice(1).join('\n').trim()
-    }
-
-    return trimmedContent
 }

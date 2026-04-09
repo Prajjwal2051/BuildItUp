@@ -1,3 +1,9 @@
+// Kept for backward-compatibility — new code should use lib/ai-providers.ts directly.
+// This re-exports the local Ollama model resolver used by the legacy routes
+// during the transition period.
+
+import { getOllamaBaseUrl } from '@/lib/ai-config'
+
 type OllamaTagItem = {
     name?: string
 }
@@ -5,8 +11,6 @@ type OllamaTagItem = {
 type OllamaTagsResponse = {
     models?: OllamaTagItem[]
 }
-
-import { getOllamaBaseUrl } from '@/lib/ai-config'
 
 function getPreferredModels(): string[] {
     return [

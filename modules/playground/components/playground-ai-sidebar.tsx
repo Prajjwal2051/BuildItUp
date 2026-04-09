@@ -1,6 +1,6 @@
 'use client'
 
-import { Bot, X } from 'lucide-react'
+import { Bot, X, Settings } from 'lucide-react'
 import React from 'react'
 
 type ChatRole = 'user' | 'assistant'
@@ -17,6 +17,8 @@ interface PlaygroundAiSidebarProps {
     fileName: string
     fileContent: string
     onInsertInEditor: (text: string) => void
+    onOpenSettings?: () => void
+    activeProvider?: string | null
 }
 
 // Shows the right-side AI chat area when enabled from the AI dropdown.
@@ -26,11 +28,14 @@ function PlaygroundAiSidebar({
     fileName,
     fileContent,
     onInsertInEditor,
+    onOpenSettings,
+    activeProvider,
 }: PlaygroundAiSidebarProps) {
     const [messages, setMessages] = React.useState<ChatMessage[]>([])
     const [input, setInput] = React.useState('')
     const [isSending, setIsSending] = React.useState(false)
     const [error, setError] = React.useState('')
+    const [setupRequired, setSetupRequired] = React.useState(false)
 
     // Sends the user prompt with current file context and appends the assistant answer.
     const handleSend = React.useCallback(async () => {
@@ -48,49 +53,40 @@ function PlaygroundAiSidebar({
         setInput('')
         setIsSending(true)
         setError('')
+        setSetupRequired(false)
 
         try {
             const response = await fetch('/api/ai-chat', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: prompt,
                     fileName,
                     fileContent,
-                    history: nextMessages.slice(-8).map((messageItem) => ({
-                        role: messageItem.role,
-                        content: messageItem.content,
-                    })),
+                    history: nextMessages.slice(-8).map((m) => ({ role: m.role, content: m.content })),
                 }),
             })
 
             const data = (await response.json()) as {
                 assistant?: string
                 error?: string
+                setupRequired?: boolean
             }
 
             if (!response.ok) {
+                if (data.setupRequired) setSetupRequired(true)
                 throw new Error(data.error || 'Failed to get AI response')
             }
 
             const assistantContent = (data.assistant ?? '').trim()
-            if (!assistantContent) {
-                throw new Error('AI returned an empty response')
-            }
+            if (!assistantContent) throw new Error('AI returned an empty response')
 
             setMessages((previous) => [
                 ...previous,
-                {
-                    id: crypto.randomUUID(),
-                    role: 'assistant',
-                    content: assistantContent,
-                },
+                { id: crypto.randomUUID(), role: 'assistant', content: assistantContent },
             ])
         } catch (requestError) {
-            const message =
-                requestError instanceof Error ? requestError.message : 'Failed to send message'
+            const message = requestError instanceof Error ? requestError.message : 'Failed to send message'
             setError(message)
         } finally {
             setIsSending(false)
@@ -98,7 +94,7 @@ function PlaygroundAiSidebar({
     }, [fileContent, fileName, input, isSending, messages])
 
     const latestAssistantReply =
-        [...messages].reverse().find((message) => message.role === 'assistant')?.content ?? ''
+        [...messages].reverse().find((m) => m.role === 'assistant')?.content ?? ''
 
     if (!isOpen) return null
 
@@ -108,16 +104,34 @@ function PlaygroundAiSidebar({
                 <div className="flex items-center gap-2 text-[12px] text-[#c9d4e5]">
                     <Bot size={14} className="text-[#00d4aa]" />
                     <span className="font-medium">AI Chat</span>
+                    {activeProvider && (
+                        <span className="rounded-full bg-[rgba(0,212,170,0.12)] px-2 py-0.5 text-[10px] text-[#00d4aa]">
+                            {activeProvider}
+                        </span>
+                    )}
                 </div>
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="rounded p-1 text-[#6a7280] hover:bg-[#11161d] hover:text-white"
-                    aria-label="Close AI chat sidebar"
-                    title="Close AI chat sidebar"
-                >
-                    <X size={14} />
-                </button>
+                <div className="flex items-center gap-1">
+                    {onOpenSettings && (
+                        <button
+                            type="button"
+                            onClick={onOpenSettings}
+                            className="rounded p-1 text-[#6a7280] hover:bg-[#11161d] hover:text-white"
+                            aria-label="AI provider settings"
+                            title="AI provider settings"
+                        >
+                            <Settings size={13} />
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="rounded p-1 text-[#6a7280] hover:bg-[#11161d] hover:text-white"
+                        aria-label="Close AI chat sidebar"
+                        title="Close AI chat sidebar"
+                    >
+                        <X size={14} />
+                    </button>
+                </div>
             </div>
 
             <div className="border-b border-[#1e2028] px-3 py-2 text-[11px] text-[#6a7280]">
@@ -126,9 +140,26 @@ function PlaygroundAiSidebar({
 
             <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
                 {messages.length === 0 ? (
-                    <p className="text-[12px] text-[#7f8f9d]">
-                        Ask for refactors, bug fixes, or new code. The AI sees your open file.
-                    </p>
+                    !activeProvider ? (
+                        <div className="rounded-lg border border-[#1e2028] bg-[#11161d] px-3 py-3 text-[11px] text-[#9ab0be]">
+                            <p className="mb-2 font-medium text-[#c9d4e5]">No AI provider configured</p>
+                            <p className="mb-3 text-[#6a7280]">Set up a provider to start using AI features.</p>
+                            {onOpenSettings && (
+                                <button
+                                    type="button"
+                                    onClick={onOpenSettings}
+                                    className="flex items-center gap-1.5 rounded-lg border border-[#0f4d40] bg-[#00d4aa] px-3 py-1.5 text-[11px] font-medium text-black hover:brightness-110"
+                                >
+                                    <Settings size={11} />
+                                    Configure AI Provider
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        <p className="text-[12px] text-[#7f8f9d]">
+                            Ask for refactors, bug fixes, or new code. The AI sees your open file.
+                        </p>
+                    )
                 ) : (
                     messages.map((message) => (
                         <div
@@ -142,16 +173,27 @@ function PlaygroundAiSidebar({
                             <div className="mb-1 text-[10px] uppercase tracking-wide text-[#6a7280]">
                                 {message.role === 'user' ? 'You' : 'AI'}
                             </div>
-                            <pre className="whitespace-pre-wrap font-sans leading-5">
-                                {message.content}
-                            </pre>
+                            <pre className="whitespace-pre-wrap font-sans leading-5">{message.content}</pre>
                         </div>
                     ))
                 )}
             </div>
 
             <div className="space-y-2 border-t border-[#1e2028] px-3 py-3">
-                {error ? <p className="text-[11px] text-[#ef8d8d]">{error}</p> : null}
+                {setupRequired && onOpenSettings ? (
+                    <div className="rounded-lg border border-yellow-900/40 bg-yellow-950/20 px-3 py-2 text-[11px] text-yellow-400">
+                        <p className="mb-1.5">AI provider not configured.</p>
+                        <button
+                            type="button"
+                            onClick={onOpenSettings}
+                            className="flex items-center gap-1 text-[#00d4aa] hover:underline"
+                        >
+                            <Settings size={11} /> Open Settings
+                        </button>
+                    </div>
+                ) : error ? (
+                    <p className="text-[11px] text-[#ef8d8d]">{error}</p>
+                ) : null}
 
                 <textarea
                     value={input}
@@ -175,7 +217,6 @@ function PlaygroundAiSidebar({
                     >
                         {isSending ? 'Sending...' : 'Send'}
                     </button>
-
                     <button
                         type="button"
                         onClick={() => onInsertInEditor(latestAssistantReply)}
