@@ -2,13 +2,14 @@
 
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
-import type { Prisma } from '@prisma/client'
 import { NextRequest } from 'next/server'
 import { getTemplateAbsolutePath, type TemplateId } from '@/lib/template'
 import { pathToJson } from '@/modules/playground/lib/path-to-json'
 
 type RouteParams = { id?: string | string[] }
-type TemplateFileContentInput = Prisma.InputJsonValue
+type TemplateFileContentInput = NonNullable<
+    Parameters<typeof db.templateFile.create>[0]['data']['content']
+>
 
 // Verifies that the playground exists and belongs to the current user before any template access.
 async function getOwnedPlayground(playgroundId: string, userId: string) {
