@@ -60,6 +60,7 @@
         "typescript": "^5"
     },
     "overrides": {
-        "dompurify": "^3.3.2"
+        "dompurify": "^3.3.2",
+        "oauth4webapi": "^3.3.0"
     }
 }
