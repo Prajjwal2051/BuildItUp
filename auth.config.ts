@@ -13,6 +13,10 @@ export default {
       clientId: process.env.GITHUB_ID!,
       clientSecret: process.env.GITHUB_SECRET!,
       checks: ['state'],
+      // GitHub is not an OIDC provider and does not return an `iss` claim.
+      // oauth4webapi v3+ enforces issuer validation by default, so we
+      // explicitly set the issuer to GitHub's API URL to skip the check.
+      issuer: 'https://github.com',
       authorization: {
         params: {
           scope: 'read:user user:email',
