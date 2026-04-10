@@ -1,10 +1,20 @@
 'use client'
 
+/// This component provides a modal dialog for configuring AI provider settings in the playground. It supports multiple providers (Ollama local/remote, OpenAI, Google Gemini, Anthropic Claude) and allows users to enter API keys and other necessary information. Settings are saved securely and persistently via the saveAiSettings action. The UI includes validation, loading states, and helpful links to provider documentation.
+
+// import necessary libraries and components
 import React from 'react'
 import { Settings, Eye, EyeOff, CheckCircle, AlertCircle, Loader2, ExternalLink } from 'lucide-react'
 import { saveAiSettings, getAiSettings } from '@/modules/playground/actions/ai-settings'
 import type { AiProviderType } from '@/lib/ai-providers'
 
+// Define the props for the AiSettingsModal component
+interface AiSettingsModalProps {
+    isOpen: boolean
+    onClose: () => void
+}
+
+// Define the supported AI providers and their configurations
 const PROVIDERS: { value: AiProviderType; label: string; requiresKey: boolean; requiresUrl: boolean; keyLabel: string; keyPlaceholder: string; docsUrl: string; description: string }[] = [
     {
         value: 'OLLAMA_LOCAL',
@@ -19,7 +29,7 @@ const PROVIDERS: { value: AiProviderType; label: string; requiresKey: boolean; r
     {
         value: 'OLLAMA_REMOTE',
         label: 'Ollama (Remote)',
-        requiresKey: false,
+        requiresKey: true,
         requiresUrl: true,
         keyLabel: 'Bearer Token (optional)',
         keyPlaceholder: 'Bearer token if your server requires auth',
@@ -58,11 +68,47 @@ const PROVIDERS: { value: AiProviderType; label: string; requiresKey: boolean; r
     },
 ]
 
-interface AiSettingsModalProps {
-    isOpen: boolean
-    onClose: () => void
+// Define the available models for each provider
+const PROVIDER_MODELS: Record<AiProviderType, {
+    value: string;
+    label: string
+}[]> = {
+    // this are my defaiult supported ai models for the ai models- local or cloud
+    OLLAMA_LOCAL: [
+
+        { value: 'qwen2.5-coder:7b', label: 'Qwen 2.5 Coder 7B (default)' },
+        { value: 'qwen2.5-coder:3b', label: 'Qwen 2.5 Coder 3B (faster)' },
+        { value: 'codellama:7b', label: 'CodeLlama 7B' },
+        { value: 'llama3.1:8b', label: 'Llama 3.1 8B' },
+        { value: 'deepseek-coder:6.7b', label: 'DeepSeek Coder 6.7B' },
+
+    ],
+    OLLAMA_REMOTE: [
+        { value: 'qwen2.5-coder:7b', label: 'Qwen 2.5 Coder 7B (default)' },
+        { value: 'qwen2.5-coder:3b', label: 'Qwen 2.5 Coder 3B' },
+        { value: 'codellama:7b', label: 'CodeLlama 7B' },
+        { value: 'llama3.1:8b', label: 'Llama 3.1 8B' },
+    ],
+    OPENAI: [
+        { value: 'gpt-4o-mini', label: 'GPT-4o Mini (default, fast)' },
+        { value: 'gpt-4o', label: 'GPT-4o (best quality)' },
+        { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+        { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo (cheapest)' },
+    ],
+    GEMINI: [
+        { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (default, free)' },
+        { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (best quality)' },
+        { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+    ],
+    ANTHROPIC: [
+        { value: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku (default, fast)' },
+        { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet (best quality)' },
+        { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus (most powerful)' },
+    ],
+
 }
 
+// Main component for the AI Settings Modal
 function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
     const [selectedProvider, setSelectedProvider] = React.useState<AiProviderType>('OLLAMA_LOCAL')
     const [apiKey, setApiKey] = React.useState('')
@@ -73,6 +119,7 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
     const [saveStatus, setSaveStatus] = React.useState<'idle' | 'success' | 'error'>('idle')
     const [errorMessage, setErrorMessage] = React.useState('')
     const [hasExistingKey, setHasExistingKey] = React.useState(false)
+    const [selectedModel, setSelectedModel] = React.useState<string>('')
 
     // Load existing settings when modal opens
     React.useEffect(() => {
@@ -83,6 +130,7 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                 setSelectedProvider(settings.provider)
                 setHasExistingKey(settings.hasKey)
                 if (settings.ollamaBaseUrl) setOllamaBaseUrl(settings.ollamaBaseUrl)
+                if (settings.model) setSelectedModel(settings.model)
             }
             setIsLoading(false)
         })
@@ -110,6 +158,7 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
             provider: selectedProvider,
             apiKey: apiKey.trim() || undefined,
             ollamaBaseUrl: ollamaBaseUrl.trim() || undefined,
+            model: selectedModel || undefined,
         })
         setIsSaving(false)
 
@@ -126,6 +175,7 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
 
     if (!isOpen) return null
 
+    // Render the modal dialog with provider selection, API key input, and status messages
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
@@ -170,12 +220,12 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                                         setHasExistingKey(false)
                                         setSaveStatus('idle')
                                         setErrorMessage('')
+                                        setSelectedModel('') // reset model selection when provider changes
                                     }}
-                                    className={`flex flex-col rounded-lg border px-4 py-3 text-left transition-colors ${
-                                        selectedProvider === provider.value
+                                    className={`flex flex-col rounded-lg border px-4 py-3 text-left transition-colors ${selectedProvider === provider.value
                                             ? 'border-[#00d4aa]/40 bg-[rgba(0,212,170,0.08)] text-white'
                                             : 'border-[#1e2028] bg-[#11161d] text-[#c9d4e5] hover:border-[#00d4aa]/20'
-                                    }`}
+                                        }`}
                                 >
                                     <div className="flex items-center justify-between">
                                         <span className="text-[13px] font-medium">{provider.label}</span>
@@ -189,6 +239,7 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                         </div>
 
                         {/* Ollama Base URL (only for OLLAMA_REMOTE) */}
+
                         {currentProvider.requiresUrl && (
                             <div className="mb-4">
                                 <label className="mb-1.5 block text-[11px] text-[#9ab0be]">
@@ -211,6 +262,25 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                                 />
                             </div>
                         )}
+
+                        {/* Model selector */}
+                        <div className="mb-4">
+                            <label className="mb-1.5 block text-[11px] text-[#9ab0be]">
+                                Model
+                            </label>
+                            <select
+                                value={selectedModel}
+                                onChange={(e) => setSelectedModel(e.target.value)}
+                                className="w-full rounded-lg border border-[#1e2028] bg-[#11161d] px-3 py-2 text-[12px] text-[#d6e1ef] outline-none focus:border-[#00d4aa]/50"
+                            >
+                                <option value="">Use default model</option>
+                                {PROVIDER_MODELS[selectedProvider].map((m) => (
+                                    <option key={m.value} value={m.value}>
+                                        {m.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
 
                         {/* API Key input */}
                         {(currentProvider.requiresKey || currentProvider.value === 'OLLAMA_REMOTE') && (

@@ -9,12 +9,14 @@ export type SaveAiSettingsInput = {
     provider: AiProviderType
     apiKey?: string       // raw key from the user — we encrypt before storing
     ollamaBaseUrl?: string
+    model?: string
 }
 
 export type AiSettingsResult = {
     provider: AiProviderType | null
     hasKey: boolean          // true when an encrypted key exists — never exposes the raw key
     ollamaBaseUrl: string | null
+    model: string | null
 }
 
 // Saves the user's chosen AI provider and (optionally) an API key.
@@ -26,6 +28,7 @@ export async function saveAiSettings(input: SaveAiSettingsInput): Promise<{ succ
     try {
         const updateData: Record<string, unknown> = {
             aiProvider: input.provider,
+            aiModel: input.model?.trim() || null, // Store model if provided, or null to clear
         }
 
         // Only update the key when the caller actually sends one.
@@ -74,6 +77,7 @@ export async function getAiSettings(): Promise<AiSettingsResult | null> {
                 aiProvider: true,
                 encryptedApiKey: true,
                 ollamaBaseUrl: true,
+                aiModel: true,  // Include aiModel in the selection for future use, even if it's not returned in the result yet
             },
         })
         if (!dbUser) return null
@@ -82,6 +86,7 @@ export async function getAiSettings(): Promise<AiSettingsResult | null> {
             provider: (dbUser.aiProvider as AiProviderType | null),
             hasKey: Boolean(dbUser.encryptedApiKey),
             ollamaBaseUrl: dbUser.ollamaBaseUrl ?? null,
+            model: dbUser.aiModel ?? null, // Placeholder for future model-specific settings
         }
     } catch (error) {
         console.error('getAiSettings error:', error)
@@ -95,6 +100,7 @@ export async function resolveUserAiConfig(userId: string): Promise<{
     provider: AiProviderType | null
     apiKey: string | null
     ollamaBaseUrl: string | null
+    model: string | null
 }> {
     try {
         const dbUser = await db.user.findUnique({
@@ -103,9 +109,11 @@ export async function resolveUserAiConfig(userId: string): Promise<{
                 aiProvider: true,
                 encryptedApiKey: true,
                 ollamaBaseUrl: true,
+                aiModel: true,
             },
         })
-        if (!dbUser) return { provider: null, apiKey: null, ollamaBaseUrl: null }
+
+        if (!dbUser) return { provider: null, apiKey: null, ollamaBaseUrl: null, model: null}
 
         let apiKey: string | null = null
         if (dbUser.encryptedApiKey) {
@@ -121,9 +129,10 @@ export async function resolveUserAiConfig(userId: string): Promise<{
             provider: (dbUser.aiProvider as AiProviderType | null),
             apiKey,
             ollamaBaseUrl: dbUser.ollamaBaseUrl ?? null,
+            model: dbUser.aiModel ?? null,
         }
     } catch (error) {
         console.error('resolveUserAiConfig error:', error)
-        return { provider: null, apiKey: null, ollamaBaseUrl: null }
+        return { provider: null, apiKey: null, ollamaBaseUrl: null, model: null}
     }
 }

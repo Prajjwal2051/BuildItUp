@@ -40,6 +40,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
      * Returns false → sign-in is blocked.
      */
     async signIn({ user, account }) {
+      // Credentials procider (dev only) doesn't return an account object, so we skip all DB checks and allow sign-in.
+      if(!account) {
+        return process.env.NODE_ENV === 'development'
+      }
+
       // Guard: if NextAuth didn't provide user/account data, block sign-in
       if (!user || !account) {
         return false

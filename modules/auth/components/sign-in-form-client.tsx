@@ -10,13 +10,16 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card'
-import { Chrome, Github, LockKeyhole, Sparkles } from 'lucide-react'
+import { Chrome, Github, LockKeyhole, Sparkles, Terminal } from 'lucide-react'
 import { signIn } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
+
+const IS_DEV = process.env.NODE_ENV === 'development'
 
 const SignInFormClient = () => {
     const searchParams = useSearchParams()
     const authError = searchParams.get('error')
+    const [devLoading, setDevLoading] = React.useState(false)
 
     // Shows a clear recovery path when users attempt sign-in with a different OAuth provider.
     const accountLinkErrorMessage =
@@ -31,6 +34,12 @@ const SignInFormClient = () => {
 
     const handleGithubSignIn = async () => {
         await signIn('github', { redirectTo: '/dashboard' })
+    }
+
+    const handleDevSignIn = async () => {
+        setDevLoading(true)
+        await signIn('credentials', { email: 'dev@local.dev', redirectTo: '/dashboard' })
+        setDevLoading(false)
     }
 
     return (
@@ -117,6 +126,50 @@ const SignInFormClient = () => {
                         →
                     </span>
                 </Button>
+
+                {/* ── DEV ONLY: never renders in production ── */}
+                {IS_DEV && (
+                    <>
+                        <div className="flex items-center gap-2 py-1">
+                            <div
+                                className="h-px flex-1"
+                                style={{ backgroundColor: 'rgba(255,255,255,0.07)' }}
+                            />
+                            <span className="text-[11px] text-neutral-600">dev only</span>
+                            <div
+                                className="h-px flex-1"
+                                style={{ backgroundColor: 'rgba(255,255,255,0.07)' }}
+                            />
+                        </div>
+
+                        <Button
+                            type="button"
+                            onClick={handleDevSignIn}
+                            disabled={devLoading}
+                            variant="outline"
+                            className="auth-signin-btn group h-11.5 w-full justify-between rounded-2xl border px-4 text-white hover:bg-[rgba(0,212,170,0.06)] disabled:opacity-60"
+                            style={{
+                                borderColor: 'rgba(0,212,170,0.25)',
+                                backgroundColor: 'rgba(0,212,170,0.04)',
+                            }}
+                        >
+                            <span className="flex items-center gap-3">
+                                <span
+                                    className="flex h-8.5 w-8.5 items-center justify-center rounded-xl"
+                                    style={{ backgroundColor: 'rgba(0,212,170,0.08)' }}
+                                >
+                                    <Terminal className="h-4.5 w-4.5 text-[#00d4aa]" />
+                                </span>
+                                <span className="text-[13.5px] font-medium text-[#00d4aa]">
+                                    {devLoading ? 'Signing in...' : 'Dev Login'}
+                                </span>
+                            </span>
+                            <span className="text-[#00d4aa]/50 transition-colors group-hover:text-[#00d4aa]">
+                                →
+                            </span>
+                        </Button>
+                    </>
+                )}
             </CardContent>
 
             <CardFooter className="auth-stagger auth-stagger-6 mt-auto flex flex-col items-start gap-2.5 bg-transparent px-8 pt-3 py-5 pb-2 sm:px-5">
