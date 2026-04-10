@@ -18,6 +18,8 @@ export default {
           scope: 'read:user user:email',
         },
       },
+      // disable oidc issuer validation since GitHub doesn't support it
+      issuer: 'https://github.com',
     }),
     Google({
       clientId: process.env.GOOGLE_ID!,
