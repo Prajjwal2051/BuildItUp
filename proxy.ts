@@ -26,5 +26,5 @@ export default auth((req) => {
 
 export const config = {
     //clerk regex to match all routes except for static files and api routes
-    matcher: ['/((?!.+\\.[\\w]+$|_next|api/auth).*)', '/', '/(api|trpc)(?!/auth)(.*)'],
+    matcher: ['/((?!.+\\.[\\w]+$|_next|api|trpc).*)', '/'],
 }
