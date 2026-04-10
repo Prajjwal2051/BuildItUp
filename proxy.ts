@@ -1,9 +1,5 @@
-import NextAuth from 'next-auth'
 import { apiAuthPrefix, publicRoutes, authRoutes } from './route'
-
-import authConfig from './auth.config'
-
-const { auth } = NextAuth(authConfig)
+import { auth } from './auth'
 
 export default auth((req) => {
     const { nextUrl } = req
@@ -30,5 +26,5 @@ export default auth((req) => {
 
 export const config = {
     //clerk regex to match all routes except for static files and api routes
-    matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)'],
+    matcher: ['/((?!.+\\.[\\w]+$|_next|api/auth).*)', '/', '/(api|trpc)(?!/auth)(.*)'],
 }
