@@ -13,6 +13,9 @@ export default {
       clientId: process.env.GITHUB_ID!,
       clientSecret: process.env.GITHUB_SECRET!,
       checks: ['state'],
+      // Disable issuer check — GitHub OAuth is not an OIDC provider
+      // and does not return a standard "iss" claim.
+      issuer:undefined,
     }),
     Google({
       clientId: process.env.GOOGLE_ID!,
