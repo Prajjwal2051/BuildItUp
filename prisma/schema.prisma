@@ -27,6 +27,7 @@ enum AiProvider {
   OPENAI
   GEMINI
   ANTHROPIC
+  OPEN_ROUTER
 }
 
 // defining here the schema for our app

@@ -66,6 +66,16 @@ const PROVIDERS: { value: AiProviderType; label: string; requiresKey: boolean; r
         docsUrl: 'https://console.anthropic.com/keys',
         description: 'Claude 3.5 Haiku by default. Excellent reasoning and code quality.',
     },
+    {
+        value: 'OPEN_ROUTER',
+        label: 'OpenRouter',
+        requiresKey: true,
+        requiresUrl: false,
+        keyLabel: 'API Key',
+        keyPlaceholder: 'sk-or-...',
+        docsUrl: 'https://openrouter.ai/keys',
+        description: 'Access 200+ models (GPT, Claude, Gemini, Llama) via a single API key.',
+    },
 ]
 
 // Define the available models for each provider
@@ -104,6 +114,14 @@ const PROVIDER_MODELS: Record<AiProviderType, {
         { value: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku (default, fast)' },
         { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet (best quality)' },
         { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus (most powerful)' },
+    ],
+    OPEN_ROUTER: [
+        { value: 'openai/gpt-4o-mini', label: 'GPT-4o Mini (default, fast)' },
+        { value: 'openai/gpt-4o', label: 'GPT-4o (best quality)' },
+        { value: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
+        { value: 'google/gemini-2.0-flash-001', label: 'Gemini 2.0 Flash' },
+        { value: 'meta-llama/llama-3.1-8b-instruct', label: 'Llama 3.1 8B (free)' },
+        { value: 'deepseek/deepseek-chat-v3-0324', label: 'DeepSeek V3 (cheap)' },
     ],
 
 }
@@ -184,7 +202,7 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
         setTestStatus('testing')
         setTestMessage('')
         try {
-            const res = await fetch('api/api-test', { method: 'POST' })
+            const res = await fetch('/api/ai-test', { method: 'POST' })
             const data = await res.json() as {
                 ok: boolean,
                 model?: string,
@@ -199,7 +217,7 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                 setTestMessage(data.error ?? 'Connection failed')
             }
 
-        } catch (error) {
+        } catch {
             setTestStatus('error')
             setTestMessage("Could not reach the server")
         }

@@ -1,7 +1,7 @@
 // This API route handles code completion requests from the client.
 // It receives the current file content and cursor position,
 // and returns a code suggestion based on that context.
-// Supports Ollama (local/remote), OpenAI, Gemini, and Anthropic.
+// Supports Ollama (local/remote), OpenAI, Gemini, Anthropic, and OpenRouter.
 
 import { type NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
@@ -129,6 +129,7 @@ export async function POST(req: NextRequest) {
             messages,
             apiKey: config.apiKey ?? undefined,
             ollamaBaseUrl: config.ollamaBaseUrl ?? undefined,
+            model: config.model ?? undefined,
             temperature: 0.2,
             maxTokens: suggestionType === 'comment' ? 128 : 512,
         })

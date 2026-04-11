@@ -10,6 +10,7 @@ export type AiProviderType =
     | 'OPENAI'
     | 'GEMINI'
     | 'ANTHROPIC'
+    | 'OPEN_ROUTER'
 
 export interface AiMessage {
     role: 'system' | 'user' | 'assistant'
@@ -40,6 +41,8 @@ const DEFAULT_MODELS: Record<AiProviderType, string> = {
     OPENAI:        'gpt-4o-mini',
     GEMINI:        'gemini-2.0-flash',
     ANTHROPIC:     'claude-3-5-haiku-20251022',
+    OPEN_ROUTER: 'openai/gpt-4o-mini', 
+
 }
 
 // ─── Entry point ────────────────────────────────────────────────────────────
@@ -57,12 +60,52 @@ export async function callAiProvider(options: AiRequestOptions): Promise<AiRespo
             return callGemini(options)
         case 'ANTHROPIC':
             return callAnthropic(options)
+        case 'OPEN_ROUTER':
+            return callOpenRouter(options)
         default: {
             const exhaustive: never = provider
             throw new Error(`Unknown AI provider: ${String(exhaustive)}`)
         }
     }
 }
+// ---- OpenRouter ───────────────────────────────────────────────────────────────
+async function callOpenRouter(options: AiRequestOptions): Promise<AiResponse> {
+    const { apiKey, messages, model, temperature, maxTokens } = options
+    if (!apiKey) throw new Error('OpenRouter API key is required')
+
+    const resolvedModel = model ?? DEFAULT_MODELS.OPEN_ROUTER
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+            'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL ?? 'https://builditup.app',
+            'X-Title': 'BuildItUp',
+        },
+        body: JSON.stringify({
+            model: resolvedModel,
+            messages,
+            temperature: temperature ?? 0.2,
+            max_tokens: maxTokens ?? 512,
+        }),
+    })
+
+    if (!response.ok) {
+        const err = await response.text()
+        throw new Error(`OpenRouter API error ${response.status}: ${err}`)
+    }
+
+    const data = await response.json() as {
+        choices?: { message?: { content?: string } }[]
+    }
+    return {
+        content: (data.choices?.[0]?.message?.content ?? '').trim(),
+        provider: 'OPEN_ROUTER',
+        model: resolvedModel,
+    }
+}
+
 
 // ─── Ollama ──────────────────────────────────────────────────────────────────
 

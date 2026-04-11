@@ -44,6 +44,7 @@ export function providerLabel(provider: AiProviderType): string {
         OPENAI:        'OpenAI',
         GEMINI:        'Google Gemini',
         ANTHROPIC:     'Anthropic Claude',
+        OPEN_ROUTER:   'OpenRouter',
     }
     return labels[provider]
 }
@@ -56,6 +57,7 @@ export function providerKeyPlaceholder(provider: AiProviderType): string {
         OPENAI:        'sk-...',
         GEMINI:        'AIza...',
         ANTHROPIC:     'sk-ant-...',
+        OPEN_ROUTER:   'sk-or-...',
     }
     return placeholders[provider]
 }

@@ -219,6 +219,7 @@ const PROVIDER_LABELS: Record<string, string> = {
     OPENAI: 'OpenAI',
     GEMINI: 'Gemini',
     ANTHROPIC: 'Anthropic',
+    OPEN_ROUTER: 'OpenRouter',
 }
 
 // Reads persisted preferences and guards against malformed storage values.
