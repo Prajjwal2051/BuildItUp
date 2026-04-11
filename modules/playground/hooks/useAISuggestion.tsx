@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { simplifyAiErrorMessage } from '@/lib/ai-error'
 
 type SuggestionRequest = {
     fileName: string
@@ -123,10 +124,8 @@ function useAISuggestion({ enabled }: UseAISuggestionOptions): UseAISuggestionRe
                     return ''
                 }
 
-                const message =
-                    requestError instanceof Error
-                        ? requestError.message
-                        : 'Failed to fetch AI suggestion'
+                console.error('AI autocomplete request failed:', requestError)
+                const message = simplifyAiErrorMessage(requestError, 'Failed to fetch AI suggestion')
                 setError(message)
                 setSuggestion('')
                 return ''

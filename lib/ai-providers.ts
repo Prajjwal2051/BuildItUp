@@ -3,6 +3,9 @@
 // a plain string response. All HTTP calls are made server-side only.
 
 import { getOllamaBaseUrl, normalizeBaseUrl } from './ai-config'
+import OpenAI from 'openai'
+import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenAI } from '@google/genai'
 
 export type AiProviderType =
     | 'OLLAMA_LOCAL'
@@ -195,31 +198,17 @@ async function callOpenAi(options: AiRequestOptions): Promise<AiResponse> {
     if (!apiKey) throw new Error('OpenAI API key is required')
 
     const resolvedModel = model ?? DEFAULT_MODELS.OPENAI
+    const client = new OpenAI({ apiKey })
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-            model: resolvedModel,
-            messages,
-            temperature: temperature ?? 0.2,
-            max_tokens: maxTokens ?? 512,
-        }),
+    const res = await client.chat.completions.create({
+        model: resolvedModel,
+        messages,
+        temperature: temperature ?? 0.2,
+        max_tokens: maxTokens ?? 512,
     })
 
-    if (!response.ok) {
-        const err = await response.text()
-        throw new Error(`OpenAI API error ${response.status}: ${err}`)
-    }
-
-    const data = await response.json() as {
-        choices?: { message?: { content?: string } }[]
-    }
     return {
-        content: (data.choices?.[0]?.message?.content ?? '').trim(),
+        content: res.choices[0]?.message?.content?.trim() ?? '',
         provider: 'OPENAI',
         model: resolvedModel,
     }
@@ -234,94 +223,54 @@ async function callGemini(options: AiRequestOptions): Promise<AiResponse> {
     if (!apiKey) throw new Error('Gemini API key is required')
 
     const resolvedModel = model ?? DEFAULT_MODELS.GEMINI
+    const client = new GoogleGenAI({ apiKey })
 
-    // Separate system instruction from conversation turns
     const systemMsg = messages.find((m) => m.role === 'system')
     const conversationMsgs = messages.filter((m) => m.role !== 'system')
 
-    // Gemini uses 'model' instead of 'assistant'
-    const contents = conversationMsgs.map((m) => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-    }))
-
-    const body: Record<string, unknown> = {
-        contents,
-        generationConfig: {
+    const res = await client.models.generateContent({
+        model: resolvedModel,
+        contents: conversationMsgs.map((m) => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content }],
+        })),
+        config: {
+            systemInstruction: systemMsg?.content,
             temperature: temperature ?? 0.2,
             maxOutputTokens: maxTokens ?? 512,
         },
-    }
-    if (systemMsg) {
-        body.systemInstruction = { parts: [{ text: systemMsg.content }] }
-    }
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${resolvedModel}:generateContent?key=${apiKey}`
-
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
     })
 
-    if (!response.ok) {
-        const err = await response.text()
-        throw new Error(`Gemini API error ${response.status}: ${err}`)
-    }
-
-    const data = await response.json() as {
-        candidates?: { content?: { parts?: { text?: string }[] } }[]
-    }
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
     return {
-        content: text.trim(),
+        content: res.text?.trim() ?? '',
         provider: 'GEMINI',
         model: resolvedModel,
     }
 }
 
 // ─── Anthropic ───────────────────────────────────────────────────────────────
-// Uses the Messages API (claude-3 and above).
 
 async function callAnthropic(options: AiRequestOptions): Promise<AiResponse> {
     const { apiKey, messages, model, temperature, maxTokens } = options
     if (!apiKey) throw new Error('Anthropic API key is required')
 
     const resolvedModel = model ?? DEFAULT_MODELS.ANTHROPIC
+    const client = new Anthropic({ apiKey })
 
-    // Anthropic separates system prompt from messages array
     const systemMsg = messages.find((m) => m.role === 'system')
     const conversationMsgs = messages
         .filter((m) => m.role !== 'system')
         .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
 
-    const body: Record<string, unknown> = {
+    const res = await client.messages.create({
         model: resolvedModel,
         max_tokens: maxTokens ?? 512,
         temperature: temperature ?? 0.2,
+        system: systemMsg?.content,
         messages: conversationMsgs,
-    }
-    if (systemMsg) body.system = systemMsg.content
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify(body),
     })
 
-    if (!response.ok) {
-        const err = await response.text()
-        throw new Error(`Anthropic API error ${response.status}: ${err}`)
-    }
-
-    const data = await response.json() as {
-        content?: { type: string; text?: string }[]
-    }
-    const text = data.content?.find((b) => b.type === 'text')?.text ?? ''
+    const text = res.content.find((b) => b.type === 'text')?.text ?? ''
     return {
         content: text.trim(),
         provider: 'ANTHROPIC',

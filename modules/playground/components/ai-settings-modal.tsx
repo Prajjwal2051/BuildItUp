@@ -7,6 +7,7 @@ import React from 'react'
 import { Settings, Eye, EyeOff, CheckCircle, AlertCircle, Loader2, ExternalLink } from 'lucide-react'
 import { saveAiSettings, getAiSettings } from '@/modules/playground/actions/ai-settings'
 import type { AiProviderType } from '@/lib/ai-providers'
+import { simplifyAiErrorMessage } from '@/lib/ai-error'
 
 // Define the props for the AiSettingsModal component
 interface AiSettingsModalProps {
@@ -106,9 +107,10 @@ const PROVIDER_MODELS: Record<AiProviderType, {
         { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo (cheapest)' },
     ],
     GEMINI: [
-        { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (default, free)' },
+        { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (default, free)' },  // ← MOVE TO TOP
+        { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite (fastest)' },  // ← optional add
+        { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
         { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (best quality)' },
-        { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
     ],
     ANTHROPIC: [
         { value: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku (default, fast)' },
@@ -213,13 +215,15 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                 setTestStatus('success')
                 setTestMessage(`Connected — ${data.model ?? data.provider}`)
             } else {
+                console.error('AI connection test failed:', data.error)
                 setTestStatus('error')
-                setTestMessage(data.error ?? 'Connection failed')
+                setTestMessage(simplifyAiErrorMessage(data.error, 'Connection failed'))
             }
 
-        } catch {
+        } catch (error) {
+            console.error('AI connection test request failed:', error)
             setTestStatus('error')
-            setTestMessage("Could not reach the server")
+            setTestMessage(simplifyAiErrorMessage(error, 'Could not reach the server'))
         }
     }
 

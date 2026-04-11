@@ -2,6 +2,7 @@
 
 import { Bot, X, Settings } from 'lucide-react'
 import React from 'react'
+import { simplifyAiErrorMessage } from '@/lib/ai-error'
 
 type ChatRole = 'user' | 'assistant'
 
@@ -92,7 +93,8 @@ function PlaygroundAiSidebar({
                 { id: crypto.randomUUID(), role: 'assistant', content: assistantContent },
             ])
         } catch (requestError) {
-            const message = requestError instanceof Error ? requestError.message : 'Failed to send message'
+            console.error('AI chat request failed:', requestError)
+            const message = simplifyAiErrorMessage(requestError, 'Failed to send message')
             setError(message)
         } finally {
             setIsSending(false)
