@@ -120,6 +120,9 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
     const [errorMessage, setErrorMessage] = React.useState('')
     const [hasExistingKey, setHasExistingKey] = React.useState(false)
     const [selectedModel, setSelectedModel] = React.useState<string>('')
+    const [testStatus,setTestStatus]= React.useState<'idle' | 'testing' | 'success' | 'error'>('idle')
+    const [testMessage,setTestMessage]= React.useState('')
+
 
     // Load existing settings when modal opens
     React.useEffect(() => {
@@ -167,6 +170,8 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
             setApiKey('') // clear the field after saving
             setHasExistingKey(currentProvider.requiresKey || selectedProvider === 'OLLAMA_REMOTE')
             setTimeout(() => setSaveStatus('idle'), 3000)
+            // auto-testing the connectionright after saving
+            void testConnection()
         } else {
             setSaveStatus('error')
             setErrorMessage(result.error ?? 'Failed to save settings')
@@ -174,6 +179,31 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
     }
 
     if (!isOpen) return null
+
+    const testConnection = async ()=>{
+        setTestStatus('testing')
+        setTestMessage('')
+        try {
+            const res=await fetch('api/api-test',{method:'POST'})
+            const data = await res.json() as {
+                ok:boolean,
+                model?:string,
+                provider?:string,
+                error?:string
+            }
+            if(data.ok){
+                setTestStatus('success')
+                setTestMessage(`Connected — ${data.model ?? data.provider}`)
+            }else{
+                setTestStatus('error')
+                setTestMessage(data.error ?? 'Connection failed')
+            }
+
+        } catch (error) {
+            setTestStatus('error')
+            setTestMessage("Could not reach the server")
+        }
+    }
 
     // Render the modal dialog with provider selection, API key input, and status messages
     return (
@@ -338,6 +368,33 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                             </div>
                         )}
 
+                        {/* Connection test status */}
+                            {testStatus !== 'idle' && (
+                                <div className={`mb-3 flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] ${testStatus === 'testing'
+                                        ? 'border-[#1e2028] bg-[#11161d] text-[#9ab0be]'
+                                        : testStatus === 'success'
+                                            ? 'border-[#0f4d40] bg-[rgba(0,212,170,0.08)] text-[#00d4aa]'
+                                            : 'border-red-900/40 bg-red-950/30 text-[#ef8d8d]'
+                                    }`}>
+                                    {testStatus === 'testing' && (
+                                        <Loader2 size={13} className="animate-spin shrink-0" />
+                                    )}
+                                    {testStatus === 'success' && (
+                                        <CheckCircle size={13} className="shrink-0" />
+                                    )}
+                                    {testStatus === 'error' && (
+                                        <AlertCircle size={13} className="shrink-0" />
+                                    )}
+                                    <span>
+                                        {testStatus === 'testing'
+                                            ? 'Testing connection…'
+                                            : testStatus === 'success'
+                                                ? `✓ ${testMessage}`
+                                                : `✗ ${testMessage}`}
+                                    </span>
+                                </div>
+                            )}
+
                         {/* Status messages */}
                         {saveStatus === 'success' && (
                             <div className="mb-3 flex items-center gap-2 rounded-lg border border-[#0f4d40] bg-[rgba(0,212,170,0.08)] px-3 py-2 text-[12px] text-[#00d4aa]">
@@ -363,6 +420,20 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                     >
                         Cancel
                     </button>
+                    
+                    {/* ← NEW: manual test button, only shows when a provider is already configured */}
+                    {hasExistingKey && (
+                        <button
+                            type="button"
+                            onClick={() => void testConnection()}
+                            disabled={testStatus === 'testing' || isSaving}
+                            className="flex items-center gap-1.5 rounded-lg border border-[#1e2028] bg-[#11161d] px-4 py-1.5 text-[12px] text-[#9ab0be] transition-colors hover:border-[#00d4aa]/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {testStatus === 'testing'
+                                ? <><Loader2 size={12} className="animate-spin" /> Testing…</>
+                                : 'Test Connection'}
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={() => void handleSave()}
