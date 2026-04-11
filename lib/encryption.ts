@@ -1,18 +1,24 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto'
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto'
 
 const ALGORITHM = 'aes-256-gcm'
 const IV_LENGTH = 12  // 96-bit IV recommended for GCM
 const TAG_LENGTH = 16 // 128-bit auth tag
 
 function getEncryptionKey(): Buffer {
-    const secret = process.env.AI_SETTINGS_SECRET
-    if (!secret || secret.length < 32) {
+    const secret =
+        process.env.AI_SETTINGS_SECRET ??
+        process.env.AUTH_SECRET ??
+        process.env.NEXTAUTH_SECRET ??
+        process.env.BETTER_AUTH_SECRET
+    if (!secret) {
         throw new Error(
-            'AI_SETTINGS_SECRET env variable must be set and at least 32 characters long',
+            'Set AI_SETTINGS_SECRET or reuse AUTH_SECRET / NEXTAUTH_SECRET / BETTER_AUTH_SECRET',
         )
     }
-    // Use first 32 bytes of the secret as the key (AES-256 requires exactly 32 bytes)
-    return Buffer.from(secret.slice(0, 32), 'utf8')
+
+    // Derive a stable 32-byte key from any non-empty secret so AES-256-GCM can
+    // be used without forcing callers to manage raw key length.
+    return createHash('sha256').update(secret, 'utf8').digest()
 }
 
 // Encrypts plaintext using AES-256-GCM. Returns a base64 string: iv:tag:ciphertext

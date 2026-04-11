@@ -2,6 +2,8 @@
 // Each provider adapter receives a prompt (system + user messages) and returns
 // a plain string response. All HTTP calls are made server-side only.
 
+import { getOllamaBaseUrl, normalizeBaseUrl } from './ai-config'
+
 export type AiProviderType =
     | 'OLLAMA_LOCAL'
     | 'OLLAMA_REMOTE'
@@ -36,8 +38,8 @@ const DEFAULT_MODELS: Record<AiProviderType, string> = {
     OLLAMA_LOCAL:  'qwen2.5-coder:7b',
     OLLAMA_REMOTE: 'qwen2.5-coder:7b',
     OPENAI:        'gpt-4o-mini',
-    GEMINI:        'gemini-1.5-flash',
-    ANTHROPIC:     'claude-3-5-haiku-20241022',
+    GEMINI:        'gemini-2.0-flash',
+    ANTHROPIC:     'claude-3-5-haiku-20251022',
 }
 
 // ─── Entry point ────────────────────────────────────────────────────────────
@@ -69,18 +71,18 @@ async function callOllama(options: AiRequestOptions): Promise<AiResponse> {
 
     let baseUrl: string
     if (provider === 'OLLAMA_LOCAL') {
-        const envUrl = process.env.OLLAMA_BASE_URL
-        if (!envUrl) {
+        try {
+            baseUrl = getOllamaBaseUrl()
+        } catch {
             throw new Error(
                 'Ollama local mode is only available in development. Please switch to a cloud provider (OpenAI, Gemini, or Anthropic) in AI Settings.'
             )
         }
-        baseUrl = new URL(envUrl).origin
     } else {
         if (!ollamaBaseUrl) {
             throw new Error('ollamaBaseUrl is required for OLLAMA_REMOTE provider')
         }
-        baseUrl = new URL(ollamaBaseUrl).origin
+        baseUrl = normalizeBaseUrl(ollamaBaseUrl, 'ollamaBaseUrl')
     }
 
     const resolvedModel = model ?? (await resolveOllamaModel(baseUrl, apiKey))

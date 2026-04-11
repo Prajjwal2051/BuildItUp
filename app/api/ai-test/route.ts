@@ -1,5 +1,3 @@
-import { AiProviderType } from './../../../lib/ai-providers';
-import { apiAuthPrefix } from './../../../route';
 // this route is for testing the ai api route
 // it is not used in production and can be deleted later
 
@@ -7,6 +5,8 @@ import { NextResponse, type NextRequest } from "next/server"
 import { auth } from "@/auth"
 import { resolveUserAiConfig } from "@/modules/playground/actions/ai-settings"
 import { callAiProvider } from "@/lib/ai-providers"
+import { AiProviderType } from './../../../lib/ai-providers';
+import { apiAuthPrefix } from './../../../route';
 
 
 export async function POST(request: NextRequest) {
