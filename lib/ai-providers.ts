@@ -72,7 +72,7 @@ async function callOllama(options: AiRequestOptions): Promise<AiResponse> {
         const envUrl = process.env.OLLAMA_BASE_URL
         if (!envUrl) {
             throw new Error(
-                'OLLAMA_BASE_URL is not set. Start Ollama locally and set the env variable.',
+                'Ollama local mode is only available in development. Please switch to a cloud provider (OpenAI, Gemini, or Anthropic) in AI Settings.'
             )
         }
         baseUrl = new URL(envUrl).origin

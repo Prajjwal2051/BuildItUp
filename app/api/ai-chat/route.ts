@@ -80,6 +80,10 @@ export async function POST(request: NextRequest) {
             messages,
             apiKey: config.apiKey ?? undefined,
             ollamaBaseUrl: config.ollamaBaseUrl ?? undefined,
+            model: config.model ?? undefined,
+            temperature: 0.2, // low temperature for more focused and deterministic responses
+            maxTokens: 512, // stable default for chat/code responses
+            
         })
 
         const assistant = sanitizeAssistantResponse(result.content)
