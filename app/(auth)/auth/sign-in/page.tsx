@@ -1,8 +1,16 @@
 import { ArrowRight, Users, Workflow } from 'lucide-react'
+import { redirect } from 'next/navigation'
+import { auth } from '@/auth'
 import SignInFormClient from '@/modules/auth/components/sign-in-form-client'
 
 // Shows a branded sign-in view that matches the landing page style.
-function Page() {
+async function Page() {
+    const session = await auth()
+
+    if (session?.user) {
+        redirect('/dashboard')
+    }
+
     const highlights = [
         {
             Icon: Users,

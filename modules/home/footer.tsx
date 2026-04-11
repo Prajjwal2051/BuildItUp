@@ -41,7 +41,6 @@ export default function HomeFooter() {
                         <span className="h-2 w-2 rounded-full bg-emerald-400" />
                         GitHub: @Prajjwal2051
                     </a>
-                    <SessionBadge className="self-center md:self-end" nameClassName="max-w-44" />
                 </div>
 
 

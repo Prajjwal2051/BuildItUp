@@ -14,9 +14,13 @@ export default auth((req) => {
     }
 
     if (isAuthRoute) {
-        // Always allow auth routes so users can explicitly open the sign-in page.
+        if (isLoggedIn) {
+            return Response.redirect(new URL('/dashboard', req.url))
+        }
+
         return null
     }
+
     if (!isLoggedIn && !isPublicRoute) {
         return Response.redirect(new URL('/auth/sign-in', req.url))
     }

@@ -5,7 +5,7 @@ import { auth } from '@/auth'
 import { ThemeProvider } from '@/components/theme-provider'
 
 export const metadata: Metadata = {
-    title: 'Orbit Code - AI Code Editor',
+    title: 'Build IT UP - AI Code Editor',
     description: 'Build, Learn, Deploy with AI-assisted code development.',
 }
 

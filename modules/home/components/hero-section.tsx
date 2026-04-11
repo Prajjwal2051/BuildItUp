@@ -1,7 +1,11 @@
 import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
+import { auth } from '@/auth'
 
-export default function HeroSection() {
+export default async function HeroSection() {
+    const session = await auth()
+    const ctaHref = session?.user ? '/dashboard' : '/auth/sign-in'
+
     return (
         <div className="home-hero-shell flex flex-col items-center text-center mb-0 relative ">
             <h1
@@ -29,7 +33,7 @@ export default function HeroSection() {
             </p>
 
             <Link
-                href="/auth/sign-in"
+                href={ctaHref}
                 className="hero-ctas home-cta-btn inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-[15px] font-semibold text-black transition-all hover:brightness-110"
                 style={{ backgroundColor: '#00d4aa' }}
             >
