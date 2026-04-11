@@ -28,7 +28,6 @@ export async function saveAiSettings(input: SaveAiSettingsInput): Promise<{ succ
     try {
         const updateData: Record<string, unknown> = {
             aiProvider: input.provider,
-            aiModel: input.model?.trim() || null, // Store model if provided, or null to clear
         }
 
         // Only update the key when the caller actually sends one.
@@ -38,6 +37,8 @@ export async function saveAiSettings(input: SaveAiSettingsInput): Promise<{ succ
                 ? encrypt(input.apiKey.trim())
                 : null
         }
+
+        updateData.aiModel = input.model?.trim() || null // Store model if provided, or null to clear
 
         if (input.provider === 'OLLAMA_REMOTE') {
             const url = input.ollamaBaseUrl?.trim() ?? ''
@@ -113,7 +114,7 @@ export async function resolveUserAiConfig(userId: string): Promise<{
             },
         })
 
-        if (!dbUser) return { provider: null, apiKey: null, ollamaBaseUrl: null, model: null}
+        if (!dbUser) return { provider: null, apiKey: null, ollamaBaseUrl: null, model: null }
 
         let apiKey: string | null = null
         if (dbUser.encryptedApiKey) {
@@ -133,6 +134,6 @@ export async function resolveUserAiConfig(userId: string): Promise<{
         }
     } catch (error) {
         console.error('resolveUserAiConfig error:', error)
-        return { provider: null, apiKey: null, ollamaBaseUrl: null, model: null}
+        return { provider: null, apiKey: null, ollamaBaseUrl: null, model: null }
     }
 }
