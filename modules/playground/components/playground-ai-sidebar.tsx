@@ -37,6 +37,12 @@ function PlaygroundAiSidebar({
     const [error, setError] = React.useState('')
     const [setupRequired, setSetupRequired] = React.useState(false)
 
+
+    const bottomRef = React.useRef<HTMLDivElement>(null)
+    React.useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, [messages])
+
     // Sends the user prompt with current file context and appends the assistant answer.
     const handleSend = React.useCallback(async () => {
         const prompt = input.trim()
@@ -174,9 +180,21 @@ function PlaygroundAiSidebar({
                                 {message.role === 'user' ? 'You' : 'AI'}
                             </div>
                             <pre className="whitespace-pre-wrap font-sans leading-5">{message.content}</pre>
+                            {message.role === 'assistant' && (
+                                <div className="mt-2 flex justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={() => onInsertInEditor(message.content)}
+                                        className="rounded-md border border-[#1e2028] bg-[#11161d] px-2 py-1 text-[10px] text-[#9ab0be] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
+                                    >
+                                        Insert ↑
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     ))
                 )}
+                <div ref={bottomRef} />
             </div>
 
             <div className="space-y-2 border-t border-[#1e2028] px-3 py-3">

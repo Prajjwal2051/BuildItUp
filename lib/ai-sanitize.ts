@@ -5,8 +5,11 @@ export function sanitizeAssistantResponse(content: string): string {
     const trimmedContent = content.trim()
     const fencedBlockMatch = trimmedContent.match(/```[\w-]*\n?([\s\S]*?)```/)
     if (fencedBlockMatch) return fencedBlockMatch[1].trim()
+
+    const PREAMBLE_RE = /^(sure|here|okay|alright|this|below|certainly|of course)\b/i
     const lines = trimmedContent.split('\n')
-    if (lines.length > 1 && /^(sure|here|okay|alright|this|below)\b/i.test(lines[0].trim()) && lines[0].includes(':')) {
+    const firstLine = lines[0]?.trim() ?? ''
+    if (lines.length > 1 && PREAMBLE_RE.test(firstLine) && !firstLine.includes('`')) {
         return lines.slice(1).join('\n').trim()
     }
     return trimmedContent

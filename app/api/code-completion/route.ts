@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
             apiKey: config.apiKey ?? undefined,
             ollamaBaseUrl: config.ollamaBaseUrl ?? undefined,
             temperature: 0.2,
-            maxTokens: 256,
+            maxTokens: suggestionType === 'comment' ? 128 : 512,
         })
 
         const suggestion = sanitizeCodeSuggestion(result.content)
@@ -297,8 +297,8 @@ function normalizePackageName(raw: string): string | null {
     return raw.split('/')[0]
 }
 
-const NODE_BUILTINS = new Set(['fs','path','os','http','https','crypto','stream','util','events','buffer','child_process','cluster','dns','net','readline','tls','url','zlib','assert','module','process','querystring','string_decoder','timers','tty','v8','vm'])
-const PYTHON_STDLIB = new Set(['os','sys','re','math','json','io','time','datetime','collections','functools','itertools','pathlib','typing','abc','copy','enum','logging','threading','multiprocessing','subprocess','socket','hashlib','base64','urllib','http','unittest','argparse','dataclasses','contextlib','string','random','struct','traceback','warnings','weakref'])
+const NODE_BUILTINS = new Set(['fs', 'path', 'os', 'http', 'https', 'crypto', 'stream', 'util', 'events', 'buffer', 'child_process', 'cluster', 'dns', 'net', 'readline', 'tls', 'url', 'zlib', 'assert', 'module', 'process', 'querystring', 'string_decoder', 'timers', 'tty', 'v8', 'vm'])
+const PYTHON_STDLIB = new Set(['os', 'sys', 're', 'math', 'json', 'io', 'time', 'datetime', 'collections', 'functools', 'itertools', 'pathlib', 'typing', 'abc', 'copy', 'enum', 'logging', 'threading', 'multiprocessing', 'subprocess', 'socket', 'hashlib', 'base64', 'urllib', 'http', 'unittest', 'argparse', 'dataclasses', 'contextlib', 'string', 'random', 'struct', 'traceback', 'warnings', 'weakref', 'csv', 'pickle', 'sqlite3', 'xml', 'html', 'shlex', 'glob', 'fnmatch', 'tempfile', 'pprint'])
 
 function detectIfInFunction(beforeCursor: string): boolean {
     const functionStartRegex = /(?:function\s*\*?\s*\w*\s*\(.*?\)|(?:(?:async|static|public|private|protected|export)\s+)*(?:function\s+\w+\s*\(.*?\)|\w+\s*(?:=\s*)?(?:async\s*)?\(.*?\)\s*=>)|(?:def|fn|func)\s+\w+\s*\(.*?\).*?[:{])/g
