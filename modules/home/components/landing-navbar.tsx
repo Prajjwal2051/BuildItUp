@@ -1,7 +1,14 @@
 import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
+import { auth } from '@/auth'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
-export default function LandingNavbar() {
+export default async function LandingNavbar() {
+    const session = await auth()
+    const user = session?.user ?? null
+    const displayName = user?.name?.trim() || user?.email?.split('@')[0] || 'Account'
+    const avatarFallback = displayName.charAt(0).toUpperCase()
+
     return (
         <header
             className="w-full sticky top-0 z-50 border-b nav-enter"
@@ -34,26 +41,57 @@ export default function LandingNavbar() {
                             />
                         </div>
                         <span className="text-[15px] font-semibold text-white tracking-tight">
-                            Orbit Code
+                            Build It Up
                         </span>
                     </a>
                 </div>
 
                 <div className="flex items-center gap-5">
                     <Link
-                        href="/auth/sign-in"
-                        className="text-[14px] text-neutral-400 hover:text-white transition-colors hidden md:block"
+                        href="/docs"
+                        className="text-[14px] text-neutral-400 transition-colors hover:text-white"
                     >
-                        Sign In
+                        Docs
                     </Link>
-                    <Link
-                        href="/auth/sign-in"
-                        className="home-nav-cta px-4 py-2 rounded-lg text-[14px] font-medium text-black flex items-center gap-1.5 group transition-all"
-                        style={{ backgroundColor: '#00d4aa' }}
-                    >
-                        Try free
-                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                    </Link>
+                    {user ? (
+                        <Link
+                            href="/dashboard"
+                            className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-1 transition-colors hover:border-[#00d4aa]/30 hover:bg-white/8"
+                        >
+                            <Avatar size="sm">
+                                <AvatarImage
+                                    src={user.image ?? undefined}
+                                    alt={displayName}
+                                />
+                                <AvatarFallback className="bg-[#163028] text-[11px] font-medium text-[#00d4aa]">
+                                    {avatarFallback}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="hidden text-left md:block">
+                                <p className="text-[12px] leading-4 text-neutral-500">Signed in as</p>
+                                <p className="max-w-36 truncate text-[13px] font-medium text-white">
+                                    {displayName}
+                                </p>
+                            </div>
+                        </Link>
+                    ) : (
+                        <>
+                            <Link
+                                href="/auth/sign-in"
+                                className="text-[14px] text-neutral-400 hover:text-white transition-colors hidden md:block"
+                            >
+                                Sign In
+                            </Link>
+                            <Link
+                                href="/auth/sign-in"
+                                className="home-nav-cta px-4 py-2 rounded-lg text-[14px] font-medium text-black flex items-center gap-1.5 group transition-all"
+                                style={{ backgroundColor: '#00d4aa' }}
+                            >
+                                Try free
+                                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                            </Link>
+                        </>
+                    )}
                 </div>
             </div>
         </header>

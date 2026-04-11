@@ -28,7 +28,7 @@ export default function NotificationBanner() {
                     >
                         New
                     </span>
-                    Orbit Code v2.0 is live — real-time collab with OT engine and Ollama AI
+                    Build It Up v2.0 is live — real-time collab with OT engine and Ollama AI and Others also
                 </div>
                 <button
                     onClick={() => setVisible(false)}

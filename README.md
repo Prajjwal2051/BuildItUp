@@ -1,7 +1,7 @@
 <div align="center">
 
 <h1>
-  Orbit Code
+  Build It Up
 </h1>
 
 <p><strong>A browser-based, full-stack coding playground.</strong><br/>
@@ -42,7 +42,7 @@ Spin up instant dev environments, edit with Monaco, preview live via WebContaine
 
 ## Overview
 
-**Orbit Code** is a full-featured, browser-based IDE and coding playground inspired by tools like StackBlitz and CodeSandbox. Users sign in via OAuth, create playgrounds from framework starter templates, and get a complete development experience — file explorer, Monaco code editor, live WebContainer preview, integrated terminal, split-pane editing, and an AI assistant — all without leaving the browser tab.
+**Build It Up** is a full-featured, browser-based IDE and coding playground inspired by tools like StackBlitz and CodeSandbox. Users sign in via OAuth, create playgrounds from framework starter templates, and get a complete development experience — file explorer, Monaco code editor, live WebContainer preview, integrated terminal, split-pane editing, and an AI assistant — all without leaving the browser tab.
 
 ---
 

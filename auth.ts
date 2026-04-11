@@ -177,6 +177,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = dbUser.id
         token.name = dbUser.name
         token.email = dbUser.email
+        token.picture = dbUser.image ?? null
         token.role = dbUser.role
         return token
       } catch (error) {
@@ -192,6 +193,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       if ((token.id || token.sub) && session.user) {
         session.user.id = (token.id as string) || token.sub!
+      }
+      if (session.user) {
+        if (typeof token.name === 'string') {
+          session.user.name = token.name
+        }
+        if (typeof token.email === 'string') {
+          session.user.email = token.email
+        }
+        if (typeof token.picture === 'string') {
+          session.user.image = token.picture
+        }
       }
       if (token.sub && session.user) {
         session.user.role = isUserRole(token.role) ? token.role : 'USER'

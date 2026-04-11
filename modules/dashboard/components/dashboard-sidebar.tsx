@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
     Code2,
     Compass,
+    FileText,
     FolderPlus,
     History,
     Home,
@@ -94,7 +95,7 @@ function DashboardSidebar({ initialPlaygroundData }: { initialPlaygroundData: Pl
                     </div>
                     <div className="flex min-w-0 flex-col">
                         <span className="text-[10px] uppercase tracking-[0.22em] text-neutral-500">
-                            Orbit Code
+                            Build It Up
                         </span>
                         <span
                             className={`${audiowide.className} block truncate text-sm tracking-wide text-white`}
@@ -130,6 +131,19 @@ function DashboardSidebar({ initialPlaygroundData }: { initialPlaygroundData: Pl
                                 <Link href="/dashboard">
                                     <LayoutDashboard className="h-4 w-4" />
                                     <span>Dashboard</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton
+                                asChild
+                                isActive={pathname === '/docs'}
+                                tooltip="Docs"
+                                className="rounded-xl text-neutral-300 hover:text-white data-[active=true]:bg-[rgba(0,212,170,0.12)] data-[active=true]:text-white data-[active=true]:shadow-[0_0_0_1px_rgba(0,212,170,0.12)]"
+                            >
+                                <Link href="/docs">
+                                    <FileText className="h-4 w-4" />
+                                    <span>Docs</span>
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
@@ -228,10 +242,16 @@ function DashboardSidebar({ initialPlaygroundData }: { initialPlaygroundData: Pl
                     <p className="text-[11px] uppercase tracking-[0.22em] text-neutral-500">
                         Workspace
                     </p>
-                    <p className="mt-1 text-sm font-medium text-white">Ship from orbit</p>
+                    <p className="mt-1 text-sm font-medium text-white">Ship from Build It Up</p>
                     <p className="mt-1 text-xs leading-5 text-neutral-500">
                         Teal accents, deep surfaces, and a cleaner command-center feel.
                     </p>
+                    <Link
+                        href="/docs"
+                        className="mt-3 inline-flex items-center gap-2 text-xs text-[#00d4aa] transition hover:text-white"
+                    >
+                        Open docs
+                    </Link>
                 </div>
             </SidebarFooter>
             <SidebarRail />

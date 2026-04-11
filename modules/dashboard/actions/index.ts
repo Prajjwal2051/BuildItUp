@@ -420,7 +420,7 @@ async function createPlaygroundFromGithubRepo(repoUrl: string) {
         }
 
         const fileJson = (await fileResponse.json()) as { content?: string; encoding?: string }
-        if (!fileJson.content || fileJson.encoding !== 'base64') {
+        if (typeof fileJson.content !== 'string' || fileJson.encoding !== 'base64') {
             continue
         }
 

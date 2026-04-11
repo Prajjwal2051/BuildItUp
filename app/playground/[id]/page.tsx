@@ -30,6 +30,7 @@ import PlaygroundAiSidebar from '@/modules/playground/components/playground-ai-s
 import AiSettingsModal from '@/modules/playground/components/ai-settings-modal'
 import useAISuggestion from '@/modules/playground/hooks/useAISuggestion'
 import { getAiSettings } from '@/modules/playground/actions/ai-settings'
+import SessionBadge from '@/modules/auth/components/session-badge'
 import {
     Dialog,
     DialogContent,
@@ -42,7 +43,6 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import {
     TerminalSquare,
     X,
-    GripHorizontal,
     House,
     Maximize2,
     Minimize2,
@@ -195,6 +195,7 @@ type EditorPreferences = {
 const EDITOR_PREFERENCES_STORAGE_KEY = 'playground-editor-preferences'
 const SPLIT_EDITOR_STORAGE_KEY = 'playground-split-preferences'
 const SIDEBAR_WIDTH_STORAGE_KEY = 'playground-sidebar-width'
+const AUTO_SAVE_INTERVAL_MS = 5 * 60 * 1000
 const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = {
     theme: 'dark',
     fontSize: 14,
@@ -345,7 +346,6 @@ function MainPlaygroundPage() {
     const { playgroundData, templateData, isLoading, error, saveTemplateData } = usePlayground(id)
 
     const [isTerminalOpen, setIsTerminalOpen] = React.useState(false)
-    const [terminalHeight, setTerminalHeight] = React.useState(220)
     const [isPreviewOpen, setIsPreviewOpen] = React.useState(true)
     const [isSplitEditorOpen, setIsSplitEditorOpen] = React.useState(false)
     const [splitFilePath, setSplitFilePath] = React.useState('')
@@ -370,6 +370,7 @@ function MainPlaygroundPage() {
     const inlineWidgetNodeRef = React.useRef<HTMLDivElement | null>(null)
     const liveSyncTimersRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
     const isResizingSidebarRef = React.useRef(false)
+    const pendingSaveRef = React.useRef<Promise<void> | null>(null)
 
     const fileTree = useFileExplorerStore((state) => state.fileTree)
     const openFiles = useFileExplorerStore((state) => state.openFiles)
@@ -394,6 +395,10 @@ function MainPlaygroundPage() {
     const activeOpenFile = React.useMemo(
         () => openFiles.find((file) => file.id === activeFilePath) ?? null,
         [activeFilePath, openFiles],
+    )
+    const hasUnsavedChanges = React.useMemo(
+        () => openFiles.some((file) => file.hasUnsavedChanges),
+        [openFiles],
     )
     const splitOpenFile = React.useMemo(
         () => openFiles.find((file) => file.id === splitFilePath) ?? null,
@@ -612,7 +617,7 @@ function MainPlaygroundPage() {
             editorInstanceRef.current?.layout()
         })
         return () => window.cancelAnimationFrame(frame)
-    }, [isPreviewOpen, isSplitEditorOpen, isTerminalOpen, terminalHeight])
+    }, [isPreviewOpen, isSplitEditorOpen, isTerminalOpen])
 
     // Saves the active file content back into the tree and clears dirty state for that file.
     const handleSave = React.useCallback(() => {
@@ -641,20 +646,36 @@ function MainPlaygroundPage() {
     // Saves all dirty tabs into the tree and persists the latest template snapshot.
     const handleSaveAll = React.useCallback(async () => {
         if (!fileTree) return
-
-        const dirtyFiles = openFiles.filter((file) => file.hasUnsavedChanges)
-        const draft = cloneTree(fileTree)
-        for (const file of dirtyFiles) {
-            updateNodeByPath(draft, file.id, (target) => {
-                target.content = file.content
-            })
+        if (!hasUnsavedChanges) return
+        if (pendingSaveRef.current) {
+            await pendingSaveRef.current
+            return
         }
 
-        const rebuilt = rebuildPaths(draft, '.')
-        setTemplateFileTree(rebuilt)
-        await saveTemplateData(rebuilt)
-        dirtyFiles.forEach((file) => saveFileChanges(file.id))
-    }, [fileTree, openFiles, saveFileChanges, saveTemplateData, setTemplateFileTree])
+        const savePromise = (async () => {
+            const dirtyFiles = openFiles.filter((file) => file.hasUnsavedChanges)
+            if (dirtyFiles.length === 0) return
+
+            const draft = cloneTree(fileTree)
+            for (const file of dirtyFiles) {
+                updateNodeByPath(draft, file.id, (target) => {
+                    target.content = file.content
+                })
+            }
+
+            const rebuilt = rebuildPaths(draft, '.')
+            setTemplateFileTree(rebuilt)
+            await saveTemplateData(rebuilt)
+            dirtyFiles.forEach((file) => saveFileChanges(file.id))
+        })()
+
+        pendingSaveRef.current = savePromise
+        try {
+            await savePromise
+        } finally {
+            pendingSaveRef.current = null
+        }
+    }, [fileTree, hasUnsavedChanges, openFiles, saveFileChanges, saveTemplateData, setTemplateFileTree])
 
     // Saves current changes and then returns the user to dashboard.
     const handleNavigateDashboard = React.useCallback(async () => {
@@ -667,6 +688,64 @@ function MainPlaygroundPage() {
             setIsNavigatingHome(false)
         }
     }, [handleSaveAll, isNavigatingHome, router])
+
+    React.useEffect(() => {
+        if (!hasUnsavedChanges) return
+
+        const intervalId = window.setInterval(() => {
+            void handleSaveAll()
+        }, AUTO_SAVE_INTERVAL_MS)
+
+        return () => {
+            window.clearInterval(intervalId)
+        }
+    }, [handleSaveAll, hasUnsavedChanges])
+
+    React.useEffect(() => {
+        async function saveBeforeInternalNavigation(anchor: HTMLAnchorElement) {
+            const href = anchor.getAttribute('href')
+            if (!href || href.startsWith('#')) return
+            if (anchor.target === '_blank' || anchor.hasAttribute('download')) return
+
+            const destination = new URL(href, window.location.origin)
+            if (destination.origin !== window.location.origin) return
+            if (destination.pathname === window.location.pathname && destination.search === window.location.search) {
+                return
+            }
+
+            if (hasUnsavedChanges) {
+                await handleSaveAll()
+            }
+
+            router.push(`${destination.pathname}${destination.search}${destination.hash}`)
+        }
+
+        function onDocumentClick(event: MouseEvent) {
+            if (event.defaultPrevented) return
+            if (event.button !== 0) return
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+
+            const target = event.target
+            if (!(target instanceof Element)) return
+
+            const anchor = target.closest('a[href]')
+            if (!(anchor instanceof HTMLAnchorElement)) return
+
+            const href = anchor.getAttribute('href')
+            if (!href || href.startsWith('#')) return
+
+            const destination = new URL(href, window.location.origin)
+            if (destination.origin !== window.location.origin) return
+
+            event.preventDefault()
+            void saveBeforeInternalNavigation(anchor)
+        }
+
+        document.addEventListener('click', onDocumentClick, true)
+        return () => {
+            document.removeEventListener('click', onDocumentClick, true)
+        }
+    }, [handleSaveAll, hasUnsavedChanges, router])
 
     React.useEffect(() => {
         function onKeyDown(event: KeyboardEvent) {
@@ -858,30 +937,6 @@ function MainPlaygroundPage() {
             appendTerminalLog('[warn] Unable to copy terminal logs.\n')
         }
     }, [appendTerminalLog, terminalLogs])
-
-    // Handles dragging to resize the terminal panel height.
-    const handleTerminalResizeStart = React.useCallback(
-        (event: React.MouseEvent<HTMLButtonElement>) => {
-            event.preventDefault()
-            const startY = event.clientY
-            const startHeight = terminalHeight
-
-            function onMouseMove(moveEvent: MouseEvent) {
-                const deltaY = startY - moveEvent.clientY
-                const nextHeight = Math.max(140, Math.min(420, startHeight + deltaY))
-                setTerminalHeight(nextHeight)
-            }
-
-            function onMouseUp() {
-                window.removeEventListener('mousemove', onMouseMove)
-                window.removeEventListener('mouseup', onMouseUp)
-            }
-
-            window.addEventListener('mousemove', onMouseMove)
-            window.addEventListener('mouseup', onMouseUp)
-        },
-        [terminalHeight],
-    )
 
     const handleEditorMount = React.useCallback(
         (editor: MonacoEditor.IStandaloneCodeEditor, monaco: Monaco) => {
@@ -1271,6 +1326,20 @@ function MainPlaygroundPage() {
 
                         <button
                             type="button"
+                            onClick={handleToggleSplitEditor}
+                            className={cn(
+                                'flex h-7 items-center gap-1.5 rounded-md border px-2.5 py-4 text-[11px] transition-colors',
+                                isSplitEditorOpen
+                                    ? 'border-[#0f4d40] bg-[rgba(0,212,170,0.12)] text-[#7ae8cc]'
+                                    : 'border-[#1e2028] bg-[#11161d] text-[#c9d4e5] hover:border-[#00d4aa]/30 hover:text-white',
+                            )}
+                            title="Toggle split editor"
+                        >
+                            <span>Split</span>
+                        </button>
+
+                        <button
+                            type="button"
                             onClick={() => {
                                 void handleToggleFullscreen()
                             }}
@@ -1557,25 +1626,11 @@ function MainPlaygroundPage() {
                                 <button
                                     type="button"
                                     onClick={() => setIsSearchDialogOpen(true)}
-                                    className="flex h-7 items-center gap-1.5 rounded-md border border-[#1e2028] bg-[#11161d] px-2.5 text-[11px] text-[#c9d4e5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
+                                    className="flex h-10 items-center gap-1.5 rounded-md border border-[#1e2028] bg-[#11161d] px-2.5 text-[11px] text-[#c9d4e5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
                                     title="Search files"
                                 >
                                     <Search size={13} />
                                     <span>Search</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={handleToggleSplitEditor}
-                                    className={cn(
-                                        'flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11px] transition-colors',
-                                        isSplitEditorOpen
-                                            ? 'border-[#0f4d40] bg-[rgba(0,212,170,0.12)] text-[#7ae8cc]'
-                                            : 'border-[#1e2028] bg-[#11161d] text-[#c9d4e5] hover:border-[#00d4aa]/30 hover:text-white',
-                                    )}
-                                    title="Toggle split editor"
-                                >
-                                    <span>Split</span>
                                 </button>
 
                                 <ToggleAi
@@ -1591,12 +1646,17 @@ function MainPlaygroundPage() {
                                 <button
                                     type="button"
                                     onClick={() => setIsSettingsDialogOpen(true)}
-                                    className="flex h-7 w-7 items-center justify-center rounded-md border border-[#1e2028] bg-[#11161d] text-[#c9d4e5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
+                                    className="flex h-10 w-10 items-center justify-center rounded-md border border-[#1e2028] bg-[#11161d] text-[#c9d4e5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
                                     title="Editor settings"
                                     aria-label="Editor settings"
                                 >
                                     <Settings size={13} />
                                 </button>
+
+                                <SessionBadge
+                                    className="h-7 bg-[#11161d] px-2.5 py-5"
+                                    avatarSize="sm"
+                                />
                             </div>
                         </div>
 
@@ -1699,57 +1759,45 @@ function MainPlaygroundPage() {
                             </DialogContent>
                         </Dialog>
 
-                        {isTerminalOpen ? (
-                            <div
-                                className="shrink-0 border-t border-[#1e2028] bg-[#0c1117]"
-                                style={{ height: `${terminalHeight}px` }}
-                            >
+                    </div>
+
+                    {isTerminalOpen ? (
+                        <div className="flex h-full w-[360px] shrink-0 flex-col border-l border-[#1e2028] bg-[#0c1117]">
+                            <div className="flex items-center justify-between border-b border-[#1e2028] px-3 py-2">
+                                <div className="flex items-center gap-2 text-[12px] text-[#c9d4e5]">
+                                    <TerminalSquare size={14} />
+                                    <span className="font-medium">Terminal</span>
+                                </div>
                                 <button
                                     type="button"
-                                    onMouseDown={handleTerminalResizeStart}
-                                    className="flex h-3 w-full items-center justify-center text-[#6a7280] hover:text-[#c9d4e5]"
-                                    aria-label="Resize terminal"
-                                    title="Drag to resize"
+                                    onClick={() => setIsTerminalOpen(false)}
+                                    className="rounded p-1 text-[#6a7280] hover:bg-[#11161d] hover:text-white"
+                                    aria-label="Close terminal"
+                                    title="Close terminal"
                                 >
-                                    <GripHorizontal size={14} />
+                                    <X size={14} />
                                 </button>
-
-                                <div className="flex items-center justify-between border-y border-[#1e2028] px-3 py-2">
-                                    <div className="flex items-center gap-2 text-[12px] text-[#c9d4e5]">
-                                        <TerminalSquare size={14} />
-                                        <span className="font-medium">Terminal</span>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsTerminalOpen(false)}
-                                        className="rounded p-1 text-[#6a7280] hover:bg-[#11161d] hover:text-white"
-                                        aria-label="Close terminal"
-                                        title="Close terminal"
-                                    >
-                                        <X size={14} />
-                                    </button>
-                                </div>
-
-                                <div className="flex items-center justify-end border-b border-[#1e2028] px-3 py-1.5">
-                                    <button
-                                        type="button"
-                                        onClick={() => void handleCopyTerminalLogs()}
-                                        className="rounded border border-[#1e2028] bg-[#11161d] px-2 py-1 text-[10px] text-[#8ea5b5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
-                                    >
-                                        Copy Logs
-                                    </button>
-                                </div>
-
-                                <div className="h-[calc(100%-76px)] min-h-0 px-3 py-2 font-mono text-xs text-[#8ea5b5]">
-                                    <PlaygroundTerminal
-                                        logs={terminalLogs}
-                                        className="h-full min-h-0"
-                                        onCommand={handleTerminalCommand}
-                                    />
-                                </div>
                             </div>
-                        ) : null}
-                    </div>
+
+                            <div className="flex items-center justify-end border-b border-[#1e2028] px-3 py-1.5">
+                                <button
+                                    type="button"
+                                    onClick={() => void handleCopyTerminalLogs()}
+                                    className="rounded border border-[#1e2028] bg-[#11161d] px-2 py-1 text-[10px] text-[#8ea5b5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
+                                >
+                                    Copy Logs
+                                </button>
+                            </div>
+
+                            <div className="min-h-0 flex-1 px-3 py-2 font-mono text-xs text-[#8ea5b5]">
+                                <PlaygroundTerminal
+                                    logs={terminalLogs}
+                                    className="h-full min-h-0"
+                                    onCommand={handleTerminalCommand}
+                                />
+                            </div>
+                        </div>
+                    ) : null}
 
                     <PlaygroundAiSidebar
                         isOpen={isAiChatOpen}

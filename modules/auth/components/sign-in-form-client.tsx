@@ -13,6 +13,7 @@ import {
 import { Chrome, Github, LockKeyhole, Sparkles, Terminal } from 'lucide-react'
 import { signIn } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 
 const IS_DEV = process.env.NODE_ENV === 'development'
 
@@ -187,6 +188,12 @@ const SignInFormClient = () => {
                         OAuth is handled securely through your selected provider. We do not store
                         your passwords.
                     </p>
+                    <Link
+                        href="/docs"
+                        className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-[#00d4aa] transition hover:text-white"
+                    >
+                        Read the docs
+                    </Link>
                 </div>
                 <p className="text-[13.5px] leading-5.5 text-neutral-400 py-2">
                     By signing in, you agree to our{' '}

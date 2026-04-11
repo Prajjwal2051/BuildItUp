@@ -17,7 +17,7 @@ function FeatureSections() {
                             Inline AI Completions
                         </h2>
                         <p className="text-[#7a7a82] text-[15.5px] leading-[1.8] mb-4">
-                            Orbit Code does not lock you into one model. It gives you the fastest
+                            Build It Up does not lock you into one model. It gives you the fastest
                             way to collaborate with any AI agent, from local Ollama to cloud-hosted
                             LLMs.
                         </p>

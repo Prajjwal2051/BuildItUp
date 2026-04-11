@@ -8,6 +8,7 @@ import { Settings, Eye, EyeOff, CheckCircle, AlertCircle, Loader2, ExternalLink 
 import { saveAiSettings, getAiSettings } from '@/modules/playground/actions/ai-settings'
 import type { AiProviderType } from '@/lib/ai-providers'
 import { simplifyAiErrorMessage } from '@/lib/ai-error'
+import Link from 'next/link'
 
 // Define the props for the AiSettingsModal component
 interface AiSettingsModalProps {
@@ -437,7 +438,14 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                 )}
 
                 {/* Footer */}
-                <div className="flex items-center justify-end gap-2 border-t border-[#1e2028] px-4 py-3">
+                <div className="flex items-center justify-between gap-2 border-t border-[#1e2028] px-4 py-3">
+                    <Link
+                        href="/docs"
+                        className="inline-flex items-center gap-1.5 text-[12px] text-[#9ab0be] transition-colors hover:text-white"
+                    >
+                        Setup docs <ExternalLink size={12} />
+                    </Link>
+                    <div className="flex items-center gap-2">
                     <button
                         type="button"
                         onClick={onClose}
@@ -464,9 +472,10 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                         onClick={() => void handleSave()}
                         disabled={isSaving || isLoading}
                         className="flex items-center gap-1.5 rounded-lg border border-[#0f4d40] bg-[#00d4aa] px-4 py-1.5 text-[12px] font-medium text-black transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                        {isSaving ? <><Loader2 size={12} className="animate-spin" /> Saving...</> : 'Save Settings'}
-                    </button>
+                        >
+                            {isSaving ? <><Loader2 size={12} className="animate-spin" /> Saving...</> : 'Save Settings'}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

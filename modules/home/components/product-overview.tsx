@@ -37,7 +37,7 @@ export default function ProductOverview() {
                     Cloud IDE, built from scratch
                 </h2>
                 <p className="text-neutral-400 text-base md:text-lg leading-[1.8] max-w-4xl">
-                    Orbit Code combines a Monaco Editor frontend, a Node.js Socket.io backend with a
+                    Build It Up combines a Monaco Editor frontend, a Node.js Socket.io backend with a
                     custom Operational Transformation engine, Docker-sandboxed multi-language
                     execution, and an AI inline completion engine powered by Ollama.
                 </p>

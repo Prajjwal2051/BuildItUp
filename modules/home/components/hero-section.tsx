@@ -12,7 +12,7 @@ export default function HeroSection() {
                     className="hero-word hero-word-1 hero-gradient-flow block text-transparent bg-clip-text"
                     style={{ backgroundImage: 'linear-gradient(to bottom right, #d8e8ff, #1f3432)' }}
                 >
-                    Orbit. Code.
+                    Build It Up
                 </span>
                 <span
                     className="hero-word hero-word-2 hero-gradient-flow block text-transparent bg-clip-text"

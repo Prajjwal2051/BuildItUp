@@ -5,6 +5,7 @@ import EmptyState from '@/modules/dashboard/components/empty-state'
 import { getAllPlaygroundForUser } from '@/modules/dashboard/actions'
 import ProjectTable from '@/modules/dashboard/components/project-table'
 import ProjectSearch from '@/modules/dashboard/components/project-search'
+import LogoutButton from '@/modules/auth/components/logout-button'
 import { currentUser } from '@/modules/auth/actions'
 
 const Page = async () => {
@@ -31,6 +32,10 @@ const Page = async () => {
                     />
                 )}
             </div>
+
+            <LogoutButton className="fixed right-6 bottom-6 z-50 inline-flex items-center gap-2 rounded-lg border border-border/60 bg-background/90 px-3 py-2 text-sm font-medium text-foreground shadow-lg backdrop-blur-md transition-colors hover:bg-background">
+                Logout
+            </LogoutButton>
         </div>
     )
 }
