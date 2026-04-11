@@ -27,7 +27,9 @@ import WebContainerPreview from '@/modules/webContainers/components/webContainer
 import PlaygroundTerminal from '@/modules/playground/components/playground-terminal'
 import ToggleAi from '@/modules/playground/components/toggle-ai'
 import PlaygroundAiSidebar from '@/modules/playground/components/playground-ai-sidebar'
+import AiSettingsModal from '@/modules/playground/components/ai-settings-modal'
 import useAISuggestion from '@/modules/playground/hooks/useAISuggestion'
+import { getAiSettings } from '@/modules/playground/actions/ai-settings'
 import {
     Dialog,
     DialogContent,
@@ -211,6 +213,14 @@ type SplitPreferences = {
     filePath: string
 }
 
+const PROVIDER_LABELS: Record<string, string> = {
+    OLLAMA_LOCAL: 'Ollama Local',
+    OLLAMA_REMOTE: 'Ollama Remote',
+    OPENAI: 'OpenAI',
+    GEMINI: 'Gemini',
+    ANTHROPIC: 'Anthropic',
+}
+
 // Reads persisted preferences and guards against malformed storage values.
 function parseEditorPreferences(raw: string | null): EditorPreferences {
     if (!raw) return DEFAULT_EDITOR_PREFERENCES
@@ -344,6 +354,7 @@ function MainPlaygroundPage() {
     const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false)
     const [isAiAutocompleteEnabled, setIsAiAutocompleteEnabled] = React.useState(true)
     const [isAiChatOpen, setIsAiChatOpen] = React.useState(false)
+    const [activeAiProvider, setActiveAiProvider] = React.useState<string | null>(null)
     const [isFullscreen, setIsFullscreen] = React.useState(false)
     const [searchQuery, setSearchQuery] = React.useState('')
     const [isNavigatingHome, setIsNavigatingHome] = React.useState(false)
@@ -445,6 +456,17 @@ function MainPlaygroundPage() {
         (typeof templateData?.name === 'string' && templateData.name.trim()) ||
         'Untitled Playground'
 
+    // Loads provider status so AI menus can show the currently configured backend.
+    const refreshAiProvider = React.useCallback(async () => {
+        try {
+            const settings = await getAiSettings()
+            const providerKey = settings?.provider ?? null
+            setActiveAiProvider(providerKey ? PROVIDER_LABELS[providerKey] ?? providerKey : null)
+        } catch {
+            setActiveAiProvider(null)
+        }
+    }, [])
+
     // Loads the current template tree into the file explorer store and opens the first file.
     React.useEffect(() => {
         setPlaygroundId(id)
@@ -464,6 +486,13 @@ function MainPlaygroundPage() {
             openFile(firstFile)
         }
     }, [closeAllFiles, id, openFile, setPlaygroundId, setTemplateFileTree, templateData])
+
+    // Refreshes provider label on mount and after settings modal closes.
+    React.useEffect(() => {
+        if (!isAiSettingsOpen) {
+            void refreshAiProvider()
+        }
+    }, [isAiSettingsOpen, refreshAiProvider])
 
     // Restores persisted editor preferences on first client render.
     React.useEffect(() => {
@@ -1205,24 +1234,10 @@ function MainPlaygroundPage() {
                     </DialogContent>
                 </Dialog>
 
-                {/* AI Provider Settings Dialog */}
-                <Dialog open={isAiSettingsOpen} onOpenChange={setIsAiSettingsOpen}>
-                    <DialogContent className="max-w-md border-[#1e2028] bg-[#11161d] text-white">
-                        <DialogHeader>
-                            <DialogTitle>AI Provider Settings</DialogTitle>
-                            <DialogDescription className="text-[#8ea5b5]">
-                                Choose how to connect to Ollama. Use a local instance for development
-                                or supply a remote base URL and API key for production.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 pt-1 text-sm text-[#c9d4e5]">
-                            <p className="rounded-md border border-[#1e2028] bg-[#0f141b] px-3 py-2 text-[#8ea5b5]">
-                                Full AI provider configuration coming soon. You will be able to
-                                choose between a local Ollama instance or a remote API key here.
-                            </p>
-                        </div>
-                    </DialogContent>
-                </Dialog>
+                <AiSettingsModal
+                    isOpen={isAiSettingsOpen}
+                    onClose={() => setIsAiSettingsOpen(false)}
+                />
 
                 <div className="flex shrink-0 items-center justify-between border-b border-[#1e2028] bg-[#080e13] px-4 py-2">
                     <div className="w-24" />
@@ -1569,6 +1584,7 @@ function MainPlaygroundPage() {
                                     onOpenChat={() => setIsAiChatOpen(true)}
                                     onCloseChat={() => setIsAiChatOpen(false)}
                                     onOpenSettings={() => setIsAiSettingsOpen(true)}
+                                    activeProvider={activeAiProvider}
                                 />
 
                                 <button
@@ -1740,6 +1756,8 @@ function MainPlaygroundPage() {
                         fileName={activeFilePath}
                         fileContent={activeEditorContent}
                         onInsertInEditor={handleInsertAiText}
+                        onOpenSettings={() => setIsAiSettingsOpen(true)}
+                        activeProvider={activeAiProvider}
                     />
                 </div>
             </SidebarInset>

@@ -120,8 +120,8 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
     const [errorMessage, setErrorMessage] = React.useState('')
     const [hasExistingKey, setHasExistingKey] = React.useState(false)
     const [selectedModel, setSelectedModel] = React.useState<string>('')
-    const [testStatus,setTestStatus]= React.useState<'idle' | 'testing' | 'success' | 'error'>('idle')
-    const [testMessage,setTestMessage]= React.useState('')
+    const [testStatus, setTestStatus] = React.useState<'idle' | 'testing' | 'success' | 'error'>('idle')
+    const [testMessage, setTestMessage] = React.useState('')
 
 
     // Load existing settings when modal opens
@@ -180,21 +180,21 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
 
     if (!isOpen) return null
 
-    const testConnection = async ()=>{
+    const testConnection = async () => {
         setTestStatus('testing')
         setTestMessage('')
         try {
-            const res=await fetch('api/api-test',{method:'POST'})
+            const res = await fetch('api/api-test', { method: 'POST' })
             const data = await res.json() as {
-                ok:boolean,
-                model?:string,
-                provider?:string,
-                error?:string
+                ok: boolean,
+                model?: string,
+                provider?: string,
+                error?: string
             }
-            if(data.ok){
+            if (data.ok) {
                 setTestStatus('success')
                 setTestMessage(`Connected — ${data.model ?? data.provider}`)
-            }else{
+            } else {
                 setTestStatus('error')
                 setTestMessage(data.error ?? 'Connection failed')
             }
@@ -214,9 +214,9 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
             aria-modal="true"
             aria-label="AI Provider Settings"
         >
-            <div className="relative flex w-full max-w-lg flex-col overflow-hidden rounded-xl border border-[#1e2028] bg-[#0c1117] text-[#c9d4e5] shadow-2xl">
+            <div className="relative mx-4 flex w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-[#1e2028] bg-[#0c1117] text-[#c9d4e5] shadow-2xl">
                 {/* Header */}
-                <div className="flex items-center justify-between border-b border-[#1e2028] px-5 py-4">
+                <div className="flex items-center justify-between border-b border-[#1e2028] px-4 py-3">
                     <div className="flex items-center gap-2">
                         <Settings size={16} className="text-[#00d4aa]" />
                         <span className="text-[13px] font-semibold text-white">AI Provider Settings</span>
@@ -236,183 +236,186 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                         <Loader2 size={20} className="animate-spin text-[#00d4aa]" />
                     </div>
                 ) : (
-                    <div className="overflow-y-auto px-5 py-4">
-                        {/* Provider selector */}
-                        <p className="mb-3 text-[11px] uppercase tracking-wider text-[#6a7280]">Choose Provider</p>
-                        <div className="mb-5 grid grid-cols-1 gap-2">
-                            {PROVIDERS.map((provider) => (
-                                <button
-                                    key={provider.value}
-                                    type="button"
-                                    onClick={() => {
-                                        setSelectedProvider(provider.value)
-                                        setApiKey('')
-                                        setHasExistingKey(false)
-                                        setSaveStatus('idle')
-                                        setErrorMessage('')
-                                        setSelectedModel('') // reset model selection when provider changes
-                                    }}
-                                    className={`flex flex-col rounded-lg border px-4 py-3 text-left transition-colors ${selectedProvider === provider.value
-                                            ? 'border-[#00d4aa]/40 bg-[rgba(0,212,170,0.08)] text-white'
-                                            : 'border-[#1e2028] bg-[#11161d] text-[#c9d4e5] hover:border-[#00d4aa]/20'
-                                        }`}
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[13px] font-medium">{provider.label}</span>
-                                        {selectedProvider === provider.value && (
-                                            <span className="rounded-full bg-[#00d4aa]/20 px-2 py-0.5 text-[10px] text-[#00d4aa]">Selected</span>
-                                        )}
+                    <div
+                        className="max-h-[70vh] overflow-y-auto px-4 py-3"
+                        style={{ scrollbarWidth: 'thin', scrollbarColor: '#2a3443 #0f141b' }}
+                    >
+                        <div className="grid gap-4 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                            <div className="space-y-3 md:sticky md:top-0 md:self-start">
+                                <p className="text-[11px] uppercase tracking-wider text-[#6a7280]">Choose Provider</p>
+                                <div className="grid grid-cols-1 gap-2">
+                                    {PROVIDERS.map((provider) => (
+                                        <button
+                                            key={provider.value}
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedProvider(provider.value)
+                                                setApiKey('')
+                                                setHasExistingKey(false)
+                                                setSaveStatus('idle')
+                                                setErrorMessage('')
+                                                setSelectedModel('')
+                                            }}
+                                            className={`flex flex-col rounded-lg border px-3 py-2.5 text-left transition-all duration-200 ease-out motion-safe:hover:-translate-y-0.5 ${selectedProvider === provider.value
+                                                ? 'border-[#00d4aa]/40 bg-[rgba(0,212,170,0.08)] text-white shadow-[0_0_0_1px_rgba(0,212,170,0.15)]'
+                                                : 'border-[#1e2028] bg-[#11161d] text-[#c9d4e5] hover:border-[#00d4aa]/20'
+                                                }`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[12px] font-medium">{provider.label}</span>
+                                                {selectedProvider === provider.value && (
+                                                    <span className="rounded-full bg-[#00d4aa]/20 px-2 py-0.5 text-[10px] text-[#00d4aa]">Selected</span>
+                                                )}
+                                            </div>
+                                            <span className="mt-1 text-[10px] text-[#6a7280]">{provider.description}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="rounded-lg border border-[#1e2028] bg-[#0f141b] p-3 transition-all duration-300 ease-out">
+                                <div key={selectedProvider} className="space-y-4 transition-all duration-300 ease-out">
+                                    {currentProvider.requiresUrl && (
+                                        <div>
+                                            <label className="mb-1.5 block text-[11px] text-[#9ab0be]">
+                                                Ollama Server URL
+                                                <a
+                                                    href={currentProvider.docsUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="ml-2 inline-flex items-center gap-1 text-[#00d4aa] hover:underline"
+                                                >
+                                                    Docs <ExternalLink size={10} />
+                                                </a>
+                                            </label>
+                                            <input
+                                                type="url"
+                                                value={ollamaBaseUrl}
+                                                onChange={(e) => setOllamaBaseUrl(e.target.value)}
+                                                placeholder="https://your-ollama-server.com"
+                                                className="w-full rounded-lg border border-[#1e2028] bg-[#11161d] px-3 py-2 text-[12px] text-[#d6e1ef] outline-none placeholder:text-[#6a7280] transition-colors focus:border-[#00d4aa]/50"
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <label className="mb-1.5 block text-[11px] text-[#9ab0be]">
+                                            Model
+                                        </label>
+                                        <select
+                                            value={selectedModel}
+                                            onChange={(e) => setSelectedModel(e.target.value)}
+                                            className="w-full rounded-lg border border-[#1e2028] bg-[#11161d] px-3 py-2 text-[12px] text-[#d6e1ef] outline-none transition-colors focus:border-[#00d4aa]/50"
+                                        >
+                                            <option value="">Use default model</option>
+                                            {PROVIDER_MODELS[selectedProvider].map((m) => (
+                                                <option key={m.value} value={m.value}>
+                                                    {m.label}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
-                                    <span className="mt-1 text-[11px] text-[#6a7280]">{provider.description}</span>
-                                </button>
-                            ))}
-                        </div>
 
-                        {/* Ollama Base URL (only for OLLAMA_REMOTE) */}
-
-                        {currentProvider.requiresUrl && (
-                            <div className="mb-4">
-                                <label className="mb-1.5 block text-[11px] text-[#9ab0be]">
-                                    Ollama Server URL
-                                    <a
-                                        href={currentProvider.docsUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="ml-2 inline-flex items-center gap-1 text-[#00d4aa] hover:underline"
-                                    >
-                                        Docs <ExternalLink size={10} />
-                                    </a>
-                                </label>
-                                <input
-                                    type="url"
-                                    value={ollamaBaseUrl}
-                                    onChange={(e) => setOllamaBaseUrl(e.target.value)}
-                                    placeholder="https://your-ollama-server.com"
-                                    className="w-full rounded-lg border border-[#1e2028] bg-[#11161d] px-3 py-2 text-[12px] text-[#d6e1ef] outline-none placeholder:text-[#6a7280] focus:border-[#00d4aa]/50"
-                                />
-                            </div>
-                        )}
-
-                        {/* Model selector */}
-                        <div className="mb-4">
-                            <label className="mb-1.5 block text-[11px] text-[#9ab0be]">
-                                Model
-                            </label>
-                            <select
-                                value={selectedModel}
-                                onChange={(e) => setSelectedModel(e.target.value)}
-                                className="w-full rounded-lg border border-[#1e2028] bg-[#11161d] px-3 py-2 text-[12px] text-[#d6e1ef] outline-none focus:border-[#00d4aa]/50"
-                            >
-                                <option value="">Use default model</option>
-                                {PROVIDER_MODELS[selectedProvider].map((m) => (
-                                    <option key={m.value} value={m.value}>
-                                        {m.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* API Key input */}
-                        {(currentProvider.requiresKey || currentProvider.value === 'OLLAMA_REMOTE') && (
-                            <div className="mb-4">
-                                <label className="mb-1.5 block text-[11px] text-[#9ab0be]">
-                                    {currentProvider.keyLabel}
-                                    <a
-                                        href={currentProvider.docsUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="ml-2 inline-flex items-center gap-1 text-[#00d4aa] hover:underline"
-                                    >
-                                        Get key <ExternalLink size={10} />
-                                    </a>
-                                </label>
-                                {hasExistingKey && !apiKey && (
-                                    <p className="mb-1.5 text-[11px] text-[#00d4aa]">
-                                        ✓ A key is already saved. Enter a new one to replace it.
-                                    </p>
-                                )}
-                                <div className="relative">
-                                    <input
-                                        type={showKey ? 'text' : 'password'}
-                                        value={apiKey}
-                                        onChange={(e) => setApiKey(e.target.value)}
-                                        placeholder={hasExistingKey ? '••••••••••••••••' : currentProvider.keyPlaceholder}
-                                        autoComplete="off"
-                                        className="w-full rounded-lg border border-[#1e2028] bg-[#11161d] px-3 py-2 pr-9 text-[12px] text-[#d6e1ef] outline-none placeholder:text-[#6a7280] focus:border-[#00d4aa]/50"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowKey((v) => !v)}
-                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#6a7280] hover:text-white"
-                                        aria-label={showKey ? 'Hide key' : 'Show key'}
-                                    >
-                                        {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
-                                    </button>
-                                </div>
-                                <p className="mt-1.5 text-[10px] text-[#6a7280]">
-                                    Your key is encrypted with AES-256-GCM before storage and never exposed in API responses.
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Local Ollama info */}
-                        {currentProvider.value === 'OLLAMA_LOCAL' && (
-                            <div className="mb-4 rounded-lg border border-[#1e2028] bg-[#11161d] px-4 py-3 text-[11px] text-[#9ab0be]">
-                                <p className="font-medium text-[#c9d4e5]">Setup checklist</p>
-                                <ol className="mt-2 list-inside list-decimal space-y-1">
-                                    <li>Install Ollama from <a href="https://ollama.com" target="_blank" rel="noopener noreferrer" className="text-[#00d4aa] hover:underline">ollama.com</a></li>
-                                    <li>Run: <code className="rounded bg-[#1e2028] px-1">ollama pull qwen2.5-coder:7b</code></li>
-                                    <li>Set <code className="rounded bg-[#1e2028] px-1">OLLAMA_BASE_URL=http://localhost:11434</code> in your <code className="rounded bg-[#1e2028] px-1">.env</code></li>
-                                </ol>
-                                <p className="mt-2 text-[#6a7280]">⚠ Local mode only works in development — not on deployed apps.</p>
-                            </div>
-                        )}
-
-                        {/* Connection test status */}
-                            {testStatus !== 'idle' && (
-                                <div className={`mb-3 flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] ${testStatus === 'testing'
-                                        ? 'border-[#1e2028] bg-[#11161d] text-[#9ab0be]'
-                                        : testStatus === 'success'
-                                            ? 'border-[#0f4d40] bg-[rgba(0,212,170,0.08)] text-[#00d4aa]'
-                                            : 'border-red-900/40 bg-red-950/30 text-[#ef8d8d]'
-                                    }`}>
-                                    {testStatus === 'testing' && (
-                                        <Loader2 size={13} className="animate-spin shrink-0" />
+                                    {(currentProvider.requiresKey || currentProvider.value === 'OLLAMA_REMOTE') && (
+                                        <div>
+                                            <label className="mb-1.5 block text-[11px] text-[#9ab0be]">
+                                                {currentProvider.keyLabel}
+                                                <a
+                                                    href={currentProvider.docsUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="ml-2 inline-flex items-center gap-1 text-[#00d4aa] hover:underline"
+                                                >
+                                                    Get key <ExternalLink size={10} />
+                                                </a>
+                                            </label>
+                                            {hasExistingKey && !apiKey && (
+                                                <p className="mb-1.5 text-[11px] text-[#00d4aa]">
+                                                    ✓ A key is already saved. Enter a new one to replace it.
+                                                </p>
+                                            )}
+                                            <div className="relative">
+                                                <input
+                                                    type={showKey ? 'text' : 'password'}
+                                                    value={apiKey}
+                                                    onChange={(e) => setApiKey(e.target.value)}
+                                                    placeholder={hasExistingKey ? '••••••••••••••••' : currentProvider.keyPlaceholder}
+                                                    autoComplete="off"
+                                                    className="w-full rounded-lg border border-[#1e2028] bg-[#11161d] px-3 py-2 pr-9 text-[12px] text-[#d6e1ef] outline-none placeholder:text-[#6a7280] transition-colors focus:border-[#00d4aa]/50"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowKey((v) => !v)}
+                                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#6a7280] hover:text-white"
+                                                    aria-label={showKey ? 'Hide key' : 'Show key'}
+                                                >
+                                                    {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                                                </button>
+                                            </div>
+                                            <p className="mt-1.5 text-[10px] text-[#6a7280]">
+                                                Your key is encrypted with AES-256-GCM before storage and never exposed in API responses.
+                                            </p>
+                                        </div>
                                     )}
-                                    {testStatus === 'success' && (
-                                        <CheckCircle size={13} className="shrink-0" />
+
+                                    {currentProvider.value === 'OLLAMA_LOCAL' && (
+                                        <div className="rounded-lg border border-[#1e2028] bg-[#11161d] px-4 py-3 text-[11px] text-[#9ab0be] transition-all duration-200">
+                                            <p className="font-medium text-[#c9d4e5]">Setup checklist</p>
+                                            <ol className="mt-2 list-inside list-decimal space-y-1">
+                                                <li>Install Ollama from <a href="https://ollama.com" target="_blank" rel="noopener noreferrer" className="text-[#00d4aa] hover:underline">ollama.com</a></li>
+                                                <li>Run: <code className="rounded bg-[#1e2028] px-1">ollama pull qwen2.5-coder:7b</code></li>
+                                                <li>Set <code className="rounded bg-[#1e2028] px-1">OLLAMA_BASE_URL=http://localhost:11434</code> in your <code className="rounded bg-[#1e2028] px-1">.env</code></li>
+                                            </ol>
+                                            <p className="mt-2 text-[#6a7280]">⚠ Local mode only works in development — not on deployed apps.</p>
+                                        </div>
                                     )}
-                                    {testStatus === 'error' && (
-                                        <AlertCircle size={13} className="shrink-0" />
-                                    )}
-                                    <span>
-                                        {testStatus === 'testing'
-                                            ? 'Testing connection…'
+
+                                    {testStatus !== 'idle' && (
+                                        <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] transition-all duration-200 ${testStatus === 'testing'
+                                            ? 'border-[#1e2028] bg-[#11161d] text-[#9ab0be]'
                                             : testStatus === 'success'
-                                                ? `✓ ${testMessage}`
-                                                : `✗ ${testMessage}`}
-                                    </span>
-                                </div>
-                            )}
+                                                ? 'border-[#0f4d40] bg-[rgba(0,212,170,0.08)] text-[#00d4aa]'
+                                                : 'border-red-900/40 bg-red-950/30 text-[#ef8d8d]'
+                                            }`}>
+                                            {testStatus === 'testing' && (
+                                                <Loader2 size={13} className="animate-spin shrink-0" />
+                                            )}
+                                            {testStatus === 'success' && (
+                                                <CheckCircle size={13} className="shrink-0" />
+                                            )}
+                                            {testStatus === 'error' && (
+                                                <AlertCircle size={13} className="shrink-0" />
+                                            )}
+                                            <span>
+                                                {testStatus === 'testing'
+                                                    ? 'Testing connection…'
+                                                    : testStatus === 'success'
+                                                        ? `✓ ${testMessage}`
+                                                        : `✗ ${testMessage}`}
+                                            </span>
+                                        </div>
+                                    )}
 
-                        {/* Status messages */}
-                        {saveStatus === 'success' && (
-                            <div className="mb-3 flex items-center gap-2 rounded-lg border border-[#0f4d40] bg-[rgba(0,212,170,0.08)] px-3 py-2 text-[12px] text-[#00d4aa]">
-                                <CheckCircle size={14} />
-                                Settings saved successfully!
+                                    {saveStatus === 'success' && (
+                                        <div className="flex items-center gap-2 rounded-lg border border-[#0f4d40] bg-[rgba(0,212,170,0.08)] px-3 py-2 text-[12px] text-[#00d4aa] transition-all duration-200">
+                                            <CheckCircle size={14} />
+                                            Settings saved successfully!
+                                        </div>
+                                    )}
+                                    {saveStatus === 'error' && (
+                                        <div className="flex items-center gap-2 rounded-lg border border-red-900/40 bg-red-950/30 px-3 py-2 text-[12px] text-[#ef8d8d] transition-all duration-200">
+                                            <AlertCircle size={14} />
+                                            {errorMessage}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        )}
-                        {saveStatus === 'error' && (
-                            <div className="mb-3 flex items-center gap-2 rounded-lg border border-red-900/40 bg-red-950/30 px-3 py-2 text-[12px] text-[#ef8d8d]">
-                                <AlertCircle size={14} />
-                                {errorMessage}
-                            </div>
-                        )}
+                        </div>
                     </div>
                 )}
 
                 {/* Footer */}
-                <div className="flex items-center justify-end gap-2 border-t border-[#1e2028] px-5 py-3">
+                <div className="flex items-center justify-end gap-2 border-t border-[#1e2028] px-4 py-3">
                     <button
                         type="button"
                         onClick={onClose}
@@ -420,7 +423,7 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                     >
                         Cancel
                     </button>
-                    
+
                     {/* ← NEW: manual test button, only shows when a provider is already configured */}
                     {hasExistingKey && (
                         <button
