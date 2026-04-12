@@ -4,6 +4,7 @@ import EditorMockup from '../modules/home/components/editor-mockup'
 import HeroSection from '@/modules/home/components/hero-section'
 import FeatureSections from '@/modules/home/components/feature-sections'
 import ProductOverview from '@/modules/home/components/product-overview'
+import EditorGallery from '@/modules/home/components/editor-gallery'
 import { MouseGlow } from '@/components/ui/mouse-glow'
 import { FloatingOrbs, MotionCard, ScrollReveal } from '@/components/animations/scroll-effects'
 
@@ -71,7 +72,6 @@ function Home() {
                                         <p className="text-2xl font-semibold tracking-tight text-white">
                                             {item.value}
                                         </p>
-                                        
                                     </div>
                                     <p className="mt-3 text-sm leading-6 text-neutral-400">
                                         {item.detail}
@@ -83,6 +83,9 @@ function Home() {
 
                     <ScrollReveal scrub y={60}>
                         <EditorMockup />
+                    </ScrollReveal>
+                    <ScrollReveal y={46}>
+                        <EditorGallery />
                     </ScrollReveal>
                     <ScrollReveal y={54}>
                         <ProductOverview />

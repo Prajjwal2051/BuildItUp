@@ -6,7 +6,7 @@ import { Sparkles } from 'lucide-react'
 
 function EmptyState() {
     return (
-        <div className="flex min-h-[50vh] w-full items-center justify-center">
+        <div className="flex min-h-[75vh] w-full items-center justify-center">
             <motion.div
                 initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
