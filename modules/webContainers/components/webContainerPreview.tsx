@@ -12,6 +12,7 @@ import { transformToWebContainerFormat } from '../hooks/transformer'
 const ANSI_ESCAPE_REGEX = /\u001b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g
 const SPINNER_LINE_REGEX = /^[\\|\/-]{1,120}$/
 type TerminalTone = 'info' | 'warn' | 'error' | 'success' | 'neutral'
+type SpawnedProcess = Awaited<ReturnType<WebContainer['spawn']>>
 
 // This removes terminal control characters so logs stay readable in the browser terminal panel.
 function normalizeTerminalOutput(raw: string): string {
@@ -149,8 +150,42 @@ function WebContainerPreview({
     const [isAwaitingServerReady, setIsAwaitingServerReady] = React.useState(false)
     const [isTerminalOpen, setIsTerminalOpen] = React.useState(false)
     const [terminalLogs, setTerminalLogs] = React.useState<string[]>([])
+    const initialTemplateRef = React.useRef(tempateData)
+    const installProcessRef = React.useRef<SpawnedProcess | null>(null)
+    const startProcessRef = React.useRef<SpawnedProcess | null>(null)
+    const installStreamAbortRef = React.useRef<AbortController | null>(null)
+    const startStreamAbortRef = React.useRef<AbortController | null>(null)
+    const isUnmountedRef = React.useRef(false)
     const activeError = error || setupError
     const normalizedPreviewUrl = previewUrl ? normalizePreviewUrl(previewUrl) : null
+
+    // Releases running preview processes on unmount so hidden preview tabs do not keep consuming RAM.
+    React.useEffect(() => {
+        isUnmountedRef.current = false
+        return () => {
+            isUnmountedRef.current = true
+
+            installStreamAbortRef.current?.abort()
+            startStreamAbortRef.current?.abort()
+
+            try {
+                installProcessRef.current?.kill?.()
+            } catch {
+                // Process may already be closed.
+            }
+
+            try {
+                startProcessRef.current?.kill?.()
+            } catch {
+                // Process may already be closed.
+            }
+
+            installProcessRef.current = null
+            startProcessRef.current = null
+            installStreamAbortRef.current = null
+            startStreamAbortRef.current = null
+        }
+    }, [])
 
     // This keeps terminal logs small and readable while still showing the latest output.
     const appendTerminalLog = React.useCallback(
@@ -161,7 +196,7 @@ function WebContainerPreview({
             onTerminalLog?.(text)
             setTerminalLogs((prev) => {
                 const nextLogs = [...prev, text]
-                return nextLogs.length > 300 ? nextLogs.slice(-300) : nextLogs
+                return nextLogs.length > 120 ? nextLogs.slice(-120) : nextLogs
             })
         },
         [onTerminalLog],
@@ -209,6 +244,7 @@ function WebContainerPreview({
     useEffect(() => {
         if (!instance) return
         const unsubscribe = instance.on('server-ready', (_port, url) => {
+            if (isUnmountedRef.current) return
             setPreviewUrl(normalizePreviewUrl(url))
             setCurrentStep(4)
             setLoadingState((prev) => ({ ...prev, starting: false, ready: true }))
@@ -223,6 +259,8 @@ function WebContainerPreview({
     }, [instance, appendTerminalLog])
 
     useEffect(() => {
+        let cancelled = false
+
         async function setUpContainer() {
             if (
                 !instance ||
@@ -231,6 +269,7 @@ function WebContainerPreview({
             )
                 return
             try {
+                if (cancelled || isUnmountedRef.current) return
                 setIsSetupInProgress(true)
                 setSetupError(null)
                 setTerminalLogs([])
@@ -240,11 +279,12 @@ function WebContainerPreview({
                 setLoadingState((prev) => ({ ...prev, transforming: true }))
                 setCurrentStep(1)
                 // @ts-expect-error transform helper returns the mountable file tree shape.
-                const files = transformToWebContainerFormat(tempateData)
+                const files = transformToWebContainerFormat(initialTemplateRef.current)
                 setLoadingState((prev) => ({ ...prev, transforming: false, mounting: true }))
                 setCurrentStep(2)
 
                 await withTimeout(instance.mount(files), 20000, 'Mounting project files')
+                if (cancelled || isUnmountedRef.current) return
 
                 // todo: terminal logic
 
@@ -268,21 +308,30 @@ function WebContainerPreview({
                     const installProcess = await instance.spawn('npm', ['install'], {
                         cwd: '/',
                         env: {
-                            ...process.env,
                             NODE_ENV: 'development',
                         },
                     })
+                    installProcessRef.current = installProcess
 
-                    installProcess.output.pipeTo(
+                    const installAbortController = new AbortController()
+                    installStreamAbortRef.current = installAbortController
+
+                    void installProcess.output.pipeTo(
                         new WritableStream({
                             write(data) {
                                 // terminal logic here for install output
                                 appendTerminalLog(data)
                             },
                         }),
-                    )
+                        { signal: installAbortController.signal },
+                    ).catch(() => {
+                        // Expected when stream is aborted during cleanup.
+                    })
 
                     const installExitCode = await installProcess.exit
+                    installProcessRef.current = null
+                    installStreamAbortRef.current = null
+                    if (cancelled || isUnmountedRef.current) return
                     if (installExitCode !== 0) {
                         throw new Error(`npm install failed with exit code ${installExitCode}`)
                     }
@@ -307,24 +356,31 @@ function WebContainerPreview({
                 const startProcess = await instance.spawn('npm', startCommand, {
                     cwd: '/',
                     env: {
-                        ...process.env,
                         NODE_ENV: 'development',
                     },
                 })
+                startProcessRef.current = startProcess
 
-                startProcess.output.pipeTo(
+                const startAbortController = new AbortController()
+                startStreamAbortRef.current = startAbortController
+
+                void startProcess.output.pipeTo(
                     new WritableStream({
                         write(data) {
                             // terminal logic here for start output
                             appendTerminalLog(data)
                         },
                     }),
-                )
+                    { signal: startAbortController.signal },
+                ).catch(() => {
+                    // Expected when stream is aborted during cleanup.
+                })
 
                 // Marks that setup is done and we are now only waiting for the running server signal.
                 setIsAwaitingServerReady(true)
 
                 void startProcess.exit.then((exitCode) => {
+                    if (isUnmountedRef.current) return
                     if (exitCode !== 0) {
                         setIsAwaitingServerReady(false)
                         setSetupError(new Error(`Dev server exited with code ${exitCode}`))
@@ -332,18 +388,23 @@ function WebContainerPreview({
                     }
                 })
             } catch (error) {
+                if (cancelled || isUnmountedRef.current) return
                 setSetupError(error as Error)
                 setIsAwaitingServerReady(false)
                 appendTerminalLog(`[error] ${(error as Error).message}\n`)
             } finally {
-                setIsSetupInProgress(false)
+                if (!isUnmountedRef.current) {
+                    setIsSetupInProgress(false)
+                }
             }
         }
 
         setUpContainer()
+        return () => {
+            cancelled = true
+        }
     }, [
         instance,
-        tempateData,
         isSetupComplete,
         isAwaitingServerReady,
         isSetupInProgress,
@@ -362,17 +423,17 @@ function WebContainerPreview({
                     <pre className="wrap-break-word whitespace-pre-wrap p-3 text-xs text-[#c9d4e5]">
                         {terminalLogs.length > 0
                             ? terminalLogs
-                                  .join('')
-                                  .split('\n')
-                                  .map((line, index) => (
-                                      <span
-                                          key={`${index}-${line.slice(0, 24)}`}
-                                          className={getTerminalToneClass(getTerminalTone(line))}
-                                      >
-                                          {line}
-                                          {'\n'}
-                                      </span>
-                                  ))
+                                .join('')
+                                .split('\n')
+                                .map((line, index) => (
+                                    <span
+                                        key={`${index}-${line.slice(0, 24)}`}
+                                        className={getTerminalToneClass(getTerminalTone(line))}
+                                    >
+                                        {line}
+                                        {'\n'}
+                                    </span>
+                                ))
                             : 'No logs yet.'}
                     </pre>
                 </ScrollArea>

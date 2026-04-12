@@ -31,10 +31,10 @@ function PlaygroundTerminal({ logs, className, onCommand }: PlaygroundTerminalPr
             cursorBlink: true,
             convertEol: true,
             fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace',
-            fontSize: 12,
+            fontSize: 14,
             lineHeight: 1.35,
             letterSpacing: 0.2,
-            scrollback: 5000,
+            scrollback: 2000,
             theme: {
                 background: '#0b1016',
                 foreground: '#c9d4e5',

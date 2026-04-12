@@ -196,6 +196,8 @@ const EDITOR_PREFERENCES_STORAGE_KEY = 'playground-editor-preferences'
 const SPLIT_EDITOR_STORAGE_KEY = 'playground-split-preferences'
 const SIDEBAR_WIDTH_STORAGE_KEY = 'playground-sidebar-width'
 const AUTO_SAVE_INTERVAL_MS = 5 * 60 * 1000
+const LIVE_SYNC_DEBOUNCE_MS = 350
+const SYNC_LOG_INTERVAL_MS = 15_000
 const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = {
     theme: 'dark',
     fontSize: 14,
@@ -369,6 +371,8 @@ function MainPlaygroundPage() {
     const inlineWidgetRef = React.useRef<MonacoEditor.IContentWidget | null>(null)
     const inlineWidgetNodeRef = React.useRef<HTMLDivElement | null>(null)
     const liveSyncTimersRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+    const lastSyncedContentRef = React.useRef<Map<string, string>>(new Map())
+    const lastSyncLogAtRef = React.useRef<Map<string, number>>(new Map())
     const isResizingSidebarRef = React.useRef(false)
     const pendingSaveRef = React.useRef<Promise<void> | null>(null)
 
@@ -591,6 +595,8 @@ function MainPlaygroundPage() {
                 clearTimeout(timer)
             }
             timers.clear()
+            lastSyncedContentRef.current.clear()
+            lastSyncLogAtRef.current.clear()
         }
     }, [])
 
@@ -775,7 +781,7 @@ function MainPlaygroundPage() {
         if (!message) return
         setTerminalLogs((previous) => {
             const next = [...previous, message]
-            return next.length > 400 ? next.slice(-400) : next
+            return next.length > 200 ? next.slice(-200) : next
         })
     }, [])
 
@@ -790,18 +796,35 @@ function MainPlaygroundPage() {
             }
 
             const timer = setTimeout(() => {
+                // Skip writes when content has not changed since the last successful sync.
+                if (lastSyncedContentRef.current.get(filePath) === newContent) {
+                    liveSyncTimersRef.current.delete(filePath)
+                    return
+                }
+
                 void writeFileSync(filePath, newContent)
                     .then(() => {
-                        appendTerminalLog(
-                            `[info] Synced ${getFileName(filePath)} to the live preview.\n`,
-                        )
+                        lastSyncedContentRef.current.set(filePath, newContent)
+
+                        // Keep logs useful by emitting sync info at a low cadence per file.
+                        const now = Date.now()
+                        const lastLoggedAt = lastSyncLogAtRef.current.get(filePath) ?? 0
+                        if (now - lastLoggedAt >= SYNC_LOG_INTERVAL_MS) {
+                            appendTerminalLog(
+                                `[info] Synced ${getFileName(filePath)} to the live preview.\n`,
+                            )
+                            lastSyncLogAtRef.current.set(filePath, now)
+                        }
                     })
                     .catch((syncError) => {
                         const message =
                             syncError instanceof Error ? syncError.message : 'Unknown sync error'
                         appendTerminalLog(`[error] Failed to sync ${filePath}: ${message}\n`)
                     })
-            }, 150)
+                    .finally(() => {
+                        liveSyncTimersRef.current.delete(filePath)
+                    })
+            }, LIVE_SYNC_DEBOUNCE_MS)
 
             liveSyncTimersRef.current.set(filePath, timer)
         },
@@ -1604,16 +1627,18 @@ function MainPlaygroundPage() {
                                     )}
                                     aria-hidden={!isPreviewOpen}
                                 >
-                                    <WebContainerPreview
-                                        tempateData={runtimeTemplate as never}
-                                        sercverUrl={serverUrl}
-                                        isLoading={isWebContainerLoading}
-                                        error={webContainerError}
-                                        instance={instance}
-                                        destroy={destroy}
-                                        onTerminalLog={appendTerminalLog}
-                                        showInternalTerminal={false}
-                                    />
+                                    {isPreviewOpen ? (
+                                        <WebContainerPreview
+                                            tempateData={runtimeTemplate as never}
+                                            sercverUrl={serverUrl}
+                                            isLoading={isWebContainerLoading}
+                                            error={webContainerError}
+                                            instance={instance}
+                                            destroy={destroy}
+                                            onTerminalLog={appendTerminalLog}
+                                            showInternalTerminal={false}
+                                        />
+                                    ) : null}
                                 </div>
                             ) : null}
                         </div>
