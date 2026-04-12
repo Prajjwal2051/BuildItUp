@@ -42,7 +42,7 @@ export function TypewriterText() {
     }, [text, isDeleting, phraseIndex])
 
     return (
-        <span className="inline-block relative min-h-[4.5rem] md:min-h-[3.5rem] text-neutral-400 text-[17px] leading-[1.7] max-w-xl mx-auto w-full">
+        <span className="inline-block relative min-h-[4.5rem] md:min-h-[3.5rem] text-[17px] leading-[1.7] max-w-xl mx-auto w-full">
             {text}
             <span className="animate-pulse border-r-[3px] border-neutral-400 ml-1 inline-block h-[1.1em] align-middle -mt-1"></span>
         </span>

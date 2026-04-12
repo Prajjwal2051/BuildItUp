@@ -55,15 +55,15 @@ function EditorGallery() {
                         Multiple code editor scenes on one page
                     </h2>
                 </div>
-                <p className="max-w-xl text-sm leading-7 text-neutral-400 md:text-[15px]">
+                <p className="max-w-xl text-sm leading-7  md:text-[15px]">
                     These extra editor frames make the homepage feel more like a living product
                     walkthrough, with AI, source control, and runtime feedback all in motion.
                 </p>
             </div>
 
-            <div className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="grid  gap-5 lg:grid-cols-[1.15fr_0.85fr]">
                 <MotionCard
-                    className="relative overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(17,20,24,0.96),rgba(12,14,18,0.92))] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.28)]"
+                    className="relative overflow-hidden h-[581px] rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(17,20,24,0.96),rgba(12,14,18,0.92))] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.28)]"
                 >
                     <div
                         data-parallax="1.4"

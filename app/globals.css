@@ -424,6 +424,120 @@ body::after {
     box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
 }
 
+.home-earth-bg {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 72% 50%, rgba(64, 145, 255, 0.14), transparent 52%);
+    filter: saturate(1.05);
+}
+
+.home-earth-planet-wrap {
+    position: absolute;
+    top: 50%;
+    right: -18vw;
+    width: clamp(520px, 58vw, 1020px);
+    aspect-ratio: 1;
+    transform-origin: center;
+    will-change: transform, opacity;
+}
+
+.home-earth-planet-scene {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    will-change: transform;
+}
+
+.home-earth-planet {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 9999px;
+    background-image: url('/earth-texture.jpg');
+    background-size: 220% 100%;
+    background-position: 0% 50%;
+    background-repeat: no-repeat;
+    box-shadow:
+        inset -130px -30px 150px rgba(0, 0, 0, 0.64),
+        inset 44px 18px 68px rgba(255, 255, 255, 0.12),
+        0 0 120px rgba(68, 148, 255, 0.22);
+    filter: saturate(1.2) contrast(1.07);
+    will-change: transform;
+    animation: earth-rotate 66s linear infinite;
+}
+
+.home-earth-clouds {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background-image:
+        radial-gradient(
+            circle at 25% 28%,
+            rgba(255, 255, 255, 0.28) 0%,
+            rgba(255, 255, 255, 0) 46%
+        ),
+        radial-gradient(
+            circle at 60% 55%,
+            rgba(255, 255, 255, 0.22) 0%,
+            rgba(255, 255, 255, 0) 48%
+        ),
+        url('/earth-texture.jpg');
+    background-size:
+        100% 100%,
+        100% 100%,
+        230% 100%;
+    background-position:
+        center,
+        center,
+        30% 50%;
+    mix-blend-mode: screen;
+    opacity: 0.22;
+    filter: blur(0.7px);
+    animation: earth-cloud-drift 80s linear infinite;
+}
+
+.home-earth-specular {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background:
+        radial-gradient(
+            circle at 30% 26%,
+            rgba(255, 255, 255, 0.44) 0%,
+            rgba(255, 255, 255, 0) 30%
+        ),
+        radial-gradient(circle at 37% 34%, rgba(120, 214, 255, 0.18) 0%, rgba(120, 214, 255, 0) 40%);
+    transform: translateZ(14px);
+}
+
+.home-earth-shadow {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: radial-gradient(circle at 74% 50%, rgba(0, 0, 0, 0) 34%, rgba(0, 0, 0, 0.78) 94%);
+    transform: translateZ(10px);
+}
+
+.home-earth-atmosphere {
+    position: absolute;
+    inset: -2.2%;
+    border-radius: 9999px;
+    border: 1px solid rgba(137, 198, 255, 0.34);
+    box-shadow:
+        0 0 24px rgba(92, 169, 255, 0.36),
+        inset 0 0 22px rgba(118, 202, 255, 0.24);
+    transform: translateZ(18px);
+}
+
+@media (max-width: 1024px) {
+    .home-earth-planet-wrap {
+        right: -34vw;
+        width: clamp(440px, 96vw, 760px);
+    }
+}
+
 .home-footer-link:hover {
     transform: translateY(-2px);
 }
@@ -773,6 +887,32 @@ body::after {
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+@keyframes earth-rotate {
+    from {
+        background-position: 0% 50%;
+    }
+
+    to {
+        background-position: 220% 50%;
+    }
+}
+
+@keyframes earth-cloud-drift {
+    from {
+        background-position:
+            center,
+            center,
+            30% 50%;
+    }
+
+    to {
+        background-position:
+            center,
+            center,
+            -220% 50%;
     }
 }
 

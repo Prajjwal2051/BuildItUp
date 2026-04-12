@@ -1,7 +1,7 @@
 <div align="center">
 
 <h1>
-  Build It Up
+  Orbit Code
 </h1>
 
 <p><strong>A browser-based, full-stack coding playground.</strong><br/>
@@ -42,7 +42,7 @@ Spin up instant dev environments, edit with Monaco, preview live via WebContaine
 
 ## Overview
 
-**Build It Up** is a full-featured, browser-based IDE and coding playground inspired by tools like StackBlitz and CodeSandbox. Users sign in via OAuth, create playgrounds from framework starter templates, and get a complete development experience — file explorer, Monaco code editor, live WebContainer preview, integrated terminal, split-pane editing, and an AI assistant — all without leaving the browser tab.
+**Orbit Code** is a full-featured, browser-based IDE and coding playground inspired by tools like StackBlitz and CodeSandbox. Users sign in via OAuth, create playgrounds from framework starter templates, and get a complete development experience — file explorer, Monaco code editor, live WebContainer preview, integrated terminal, split-pane editing, and an AI assistant — all without leaving the browser tab.
 
 ---
 
@@ -93,7 +93,7 @@ Spin up instant dev environments, edit with Monaco, preview live via WebContaine
 
 ## Tech Stack
 
-| Category      | Technology                                               mn  ,               | Purpose                                  |
+| Category      | Technology mn ,                                                        | Purpose                                  |
 | ------------- | ---------------------------------------------------------------------- | ---------------------------------------- |
 | Framework     | [Next.js 16](https://nextjs.org) (App Router)                          | SSR, routing, API routes, server actions |
 | Language      | TypeScript 5                                                           | Type safety across the full stack        |
@@ -147,7 +147,7 @@ Spin up instant dev environments, edit with Monaco, preview live via WebContaine
 ## Project Structure
 
 ```
-BuildItUp/
+OrbitCode/
 ├── app/                            # Next.js App Router
 │   ├── (auth)/                     # Sign-in / sign-up pages
 │   ├── (root)/                     # Public landing page
@@ -266,7 +266,7 @@ Create a `.env.local` file at the project root:
 
 ```env
 # ── Database ─────────────────────────────────────────────────
-DATABASE_URL="mongodb+srv://<user>:<password>@cluster.mongodb.net/builditup"
+DATABASE_URL="mongodb+srv://<user>:<password>@cluster.mongodb.net/orbitcode"
 
 # ── NextAuth ─────────────────────────────────────────────────
 AUTH_SECRET="a-long-random-secret"          # openssl rand -base64 32
@@ -301,8 +301,8 @@ PRISMA_ACCELERATE_URL="prisma://accelerate.prisma-data.net/?api_key=..."
 
 ```bash
 # 1. Clone
-git clone https://github.com/Prajjwal2051/BuildItUp.git
-cd BuildItUp
+git clone https://github.com/Prajjwal2051/OrbitCode.git
+cd OrbitCode
 
 # 2. Install dependencies
 npm install

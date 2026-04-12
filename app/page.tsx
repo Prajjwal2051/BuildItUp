@@ -5,6 +5,7 @@ import HeroSection from '@/modules/home/components/hero-section'
 import FeatureSections from '@/modules/home/components/feature-sections'
 import ProductOverview from '@/modules/home/components/product-overview'
 import EditorGallery from '@/modules/home/components/editor-gallery'
+import { SpaceBackground } from '@/modules/home/components/space-background'
 import { MouseGlow } from '@/components/ui/mouse-glow'
 import { FloatingOrbs, MotionCard, ScrollReveal } from '@/components/animations/scroll-effects'
 
@@ -34,20 +35,8 @@ function Home() {
             style={{ backgroundColor: '#0a0d12' }}
         >
             <MouseGlow />
-            <FloatingOrbs className="z-0" />
-            <div
-                className="fixed inset-0 pointer-events-none z-0"
-                style={{
-                    background: `
-      radial-gradient(ellipse 60% 40% at 50% 0%, rgba(0,212,170,0.04) 0%, transparent 70%),
-      radial-gradient(ellipse 100% 50% at 50% 100%, rgba(0,60,40,0.15) 0%, transparent 60%)
-    `,
-                }}
-            />
-            <div
-                className="fixed inset-0 pointer-events-none z-0 bg-dot-pattern bg-dot-drift"
-                style={{ opacity: 0.6 }}
-            />
+            <SpaceBackground />
+            
 
             <div className="relative z-10 flex flex-col min-h-screen">
                 <HomeHeader />
@@ -63,9 +52,9 @@ function Home() {
                                 <MotionCard
                                     key={item.label}
                                     delay={0.08 * index}
-                                    className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl"
+                                    className="rounded-[24px] border border-white/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.06))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.24)] backdrop-blur-xl"
                                 >
-                                    <p className="text-[11px] uppercase tracking-[0.22em] text-[#00d4aa]">
+                                    <p className="text-[11px] uppercase tracking-[0.22em] text-[#4affff] font-semibold">
                                         {item.label}
                                     </p>
                                     <div className="mt-4 flex items-end justify-between gap-4">
@@ -73,7 +62,7 @@ function Home() {
                                             {item.value}
                                         </p>
                                     </div>
-                                    <p className="mt-3 text-sm leading-6 text-neutral-400">
+                                    <p className="mt-3 text-sm leading-6 text-white/80">
                                         {item.detail}
                                     </p>
                                 </MotionCard>

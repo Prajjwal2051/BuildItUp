@@ -41,7 +41,7 @@ export default async function LandingNavbar() {
                             />
                         </div>
                         <span className="text-[15px] font-semibold text-white tracking-tight">
-                            Build It Up
+                            Orbit Code
                         </span>
                     </a>
                 </div>

@@ -136,7 +136,7 @@ function EditorMockup() {
                             </div>
                             <div>
                                 <span className="text-[#7fb7ff]">const</span> room ={' '}
-                                <span className="text-yellow-500">&quot;builditup&quot;</span>
+                                <span className="text-yellow-500">&quot;orbitcode&quot;</span>
                             </div>
                             <div>
                                 <span className="text-[#7fb7ff]">await</span> socket.

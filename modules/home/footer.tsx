@@ -12,7 +12,7 @@ export default function HomeFooter() {
                         <div className="bg-white rounded-bl-[4px]" />
                         <div className="rounded-br-[4px]" style={{ backgroundColor: '#00d4aa' }} />
                     </div>
-                    <span className="text-[14px] font-semibold text-white">Build It Up</span>
+                    <span className="text-[14px] font-semibold text-white">Orbit Code</span>
                 </div>
 
                 <div className="flex flex-col items-center md:items-end gap-2 text-center md:text-right">

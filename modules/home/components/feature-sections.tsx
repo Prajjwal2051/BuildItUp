@@ -16,12 +16,12 @@ function FeatureSections() {
                         <h2 className="text-[clamp(1.5rem,2.5vw,2.1rem)] font-semibold tracking-tight text-white mb-4">
                             Inline AI Completions
                         </h2>
-                        <p className="text-[#7a7a82] text-[15.5px] leading-[1.8] mb-4">
-                            Build It Up does not lock you into one model. It gives you the fastest
+                        <p className=" text-[15.5px] leading-[1.8] mb-4">
+                            Orbit Code does not lock you into one model. It gives you the fastest
                             way to collaborate with any AI agent, from local Ollama to cloud-hosted
                             LLMs.
                         </p>
-                        <p className="text-[#7a7a82] text-[15.5px] leading-[1.8] mb-2">
+                        <p className=" text-[15.5px] leading-[1.8] mb-2">
                             Suggestions use current file context and active OT state, so output
                             stays consistent with what your teammates are writing.
                         </p>
@@ -146,12 +146,12 @@ function FeatureSections() {
                         <h2 className="text-[clamp(1.5rem,2.5vw,2.1rem)] font-semibold tracking-tight text-white mb-4">
                             Real-Time Collaboration
                         </h2>
-                        <p className="text-[#7a7a82] text-[15.5px] leading-[1.8] mb-4">
+                        <p className=" text-[15.5px] leading-[1.8] mb-4">
                             Share your workspace with teammates and see their cursors live. Orbit
                             Code uses a custom OT engine so edits from multiple users merge without
                             conflicts.
                         </p>
-                        <p className="text-[#7a7a82] text-[15.5px] leading-[1.8] mb-2">
+                        <p className=" text-[15.5px] leading-[1.8] mb-2">
                             Chat, comment with threads, and see who is working on each file from the
                             same editor tab.
                         </p>

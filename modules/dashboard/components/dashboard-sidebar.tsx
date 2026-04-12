@@ -95,7 +95,7 @@ function DashboardSidebar({ initialPlaygroundData }: { initialPlaygroundData: Pl
                     </div>
                     <div className="flex min-w-0 flex-col">
                         <span className="text-[10px] uppercase tracking-[0.22em] text-neutral-500">
-                            Build It Up
+                            Orbit Code
                         </span>
                         <span
                             className={`${audiowide.className} block truncate text-sm tracking-wide text-white`}
@@ -242,7 +242,7 @@ function DashboardSidebar({ initialPlaygroundData }: { initialPlaygroundData: Pl
                     <p className="text-[11px] uppercase tracking-[0.22em] text-neutral-500">
                         Workspace
                     </p>
-                    <p className="mt-1 text-sm font-medium text-white">Ship from Build It Up</p>
+                    <p className="mt-1 text-sm font-medium text-white">Ship from Orbit Code</p>
                     <p className="mt-1 text-xs leading-5 text-neutral-500">
                         Teal accents, deep surfaces, and a cleaner command-center feel.
                     </p>
