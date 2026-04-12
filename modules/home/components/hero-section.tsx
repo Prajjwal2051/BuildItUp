@@ -1,6 +1,7 @@
 import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { auth } from '@/auth'
+import { TypewriterText } from './typewriter-text'
 
 export default async function HeroSection() {
     const session = await auth()
@@ -8,8 +9,9 @@ export default async function HeroSection() {
 
     return (
         <div className="home-hero-shell flex flex-col items-center text-center mb-0 relative ">
+            
             <h1
-                className="font-bold leading-[1.0] tracking-tighter mb-6"
+                className="font-bold leading-[1.0] tracking-tighter mb-3"
                 style={{ fontSize: 'clamp(3rem, 1rem + 7vw, 7rem)' }}
             >
                 <span
@@ -26,11 +28,25 @@ export default async function HeroSection() {
                 </span>
             </h1>
 
-            <p className="hero-desc text-neutral-400 text-[17px] leading-[1.7] max-w-xl mb-8">
-                The cloud-based collaborative IDE for real-time development.
-                <br />
-                Code, run, and debug together from any browser.
-            </p>
+            <div className="hero-desc mb-8 py-2 flex justify-center w-full">
+                <TypewriterText />
+            </div>
+
+            <div className="hero-desc mb-8 py-2 flex flex-wrap items-center justify-center gap-3 text-[13px] text-neutral-400">
+                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
+                    Local or hosted AI providers
+                </div>
+                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
+                    
+                    Multiplayer IDE with AI-native workflows
+                </div>
+                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
+                    Shared editing sessions
+                </div>
+                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
+                    In-browser execution sandbox
+                </div>
+            </div>
 
             <Link
                 href={ctaHref}

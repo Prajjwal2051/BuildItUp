@@ -1,4 +1,5 @@
 import React from 'react'
+import { MouseGlow } from '@/components/ui/mouse-glow'
 
 // Wraps auth pages with the same dark visual language used on the landing page.
 const AuthLayout = ({ children }: { children: React.ReactNode }) => {
@@ -7,6 +8,7 @@ const AuthLayout = ({ children }: { children: React.ReactNode }) => {
             className="relative min-h-screen overflow-hidden"
             style={{ backgroundColor: '#0a0d12' }}
         >
+            <MouseGlow />
             <div
                 className="fixed inset-0 pointer-events-none z-0"
                 style={{

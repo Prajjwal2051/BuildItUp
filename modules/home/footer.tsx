@@ -1,6 +1,3 @@
-import Link from 'next/link'
-import SessionBadge from '@/modules/auth/components/session-badge'
-
 export default function HomeFooter() {
     return (
         <footer
@@ -19,14 +16,6 @@ export default function HomeFooter() {
                 </div>
 
                 <div className="flex flex-col items-center md:items-end gap-2 text-center md:text-right">
-                    <div className="flex items-center gap-3 text-[13px] text-neutral-400">
-                        <Link href="/docs" className="transition hover:text-white">
-                            Docs
-                        </Link>
-                        <Link href="/auth/sign-in" className="transition hover:text-white">
-                            Sign In
-                        </Link>
-                    </div>
                     <p className="text-[13px] text-neutral-400">
                         Crafted with <span className="text-white">love</span> by{' '}
                         <span className="font-semibold text-white">Prajjwal Sahu</span>

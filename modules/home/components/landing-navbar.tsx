@@ -46,7 +46,7 @@ export default async function LandingNavbar() {
                     </a>
                 </div>
 
-                <div className="flex items-center gap-5">
+                <div className="flex items-center gap-13">
                     <Link
                         href="/docs"
                         className="text-[14px] text-neutral-400 transition-colors hover:text-white"
