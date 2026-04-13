@@ -2,17 +2,17 @@
 
 import React from 'react'
 import { SidebarInset } from '@/components/ui/sidebar'
-import { FileCode2, Users } from 'lucide-react'
+import { FileCode2, Lock } from 'lucide-react'
 import Link from 'next/link'
 
-interface PlaygroundEditorProps {
+interface PlaygroundViewerProps {
     playgroundId: string
-    collab?: { token: string }
+    readOnly?: boolean
 }
 
-export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps) {
+export function PlaygroundViewer({ playgroundId, readOnly = true }: PlaygroundViewerProps) {
     // In a full implementation, you would fetch the playground data using the shared token
-    // and initialize the WebContainer along with real-time collaboration (Yjs/WebSockets).
+    // or a dedicated API endpoint that doesn't check user ownership for shared links.
     // For now, this is a placeholder UI for the shared view.
 
     return (
@@ -24,13 +24,13 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
                         <div className="flex items-center justify-center gap-2 rounded-xl border border-[#1e2028] bg-[#11161d] px-3 py-1.5">
                             <FileCode2 size={16} className="text-[#00d4aa]" />
                             <span className="font-mono text-[13px] font-medium text-[#c9d4e5]">
-                                Collaborative Playground
+                                Shared Playground
                             </span>
                         </div>
-                        {collab && (
-                            <div className="flex items-center gap-1.5 rounded-full bg-[#00d4aa]/10 px-2.5 py-1 text-xs text-[#00d4aa] border border-[#00d4aa]/20">
-                                <Users size={12} />
-                                <span>Collab Active</span>
+                        {readOnly && (
+                            <div className="flex items-center gap-1.5 rounded-full bg-[#1e2028]/50 px-2.5 py-1 text-xs text-[#8ea5b5]">
+                                <Lock size={12} />
+                                <span>Read Only</span>
                             </div>
                         )}
                     </div>
@@ -48,15 +48,15 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
                 <div className="flex flex-1 items-center justify-center">
                     <div className="text-center">
                         <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#11161d] text-[#00d4aa]">
-                            <Users size={24} />
+                            <Lock size={24} />
                         </div>
                         <h2 className="mb-2 text-xl font-semibold text-white">
-                            Collaborative Editing Session
+                            Shared View Active
                         </h2>
                         <p className="max-w-md text-sm text-[#8ea5b5]">
-                            You are connected to a collaborative session (ID: {playgroundId}). 
-                            In a complete implementation, this page will run a Yjs-synced 
-                            Monaco Editor to allow multiple users to edit code in real time.
+                            You are viewing a shared playground (ID: {playgroundId}). 
+                            In a complete implementation, this page will render the read-only editor 
+                            and WebContainer preview using a public access token.
                         </p>
                     </div>
                 </div>

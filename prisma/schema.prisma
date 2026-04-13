@@ -40,16 +40,17 @@ model User {
   role     UserRole  @default(USER)
 
   // AI provider settings — key is stored AES-256-GCM encrypted, never in plaintext
-  aiProvider     AiProvider? // which provider the user has configured
-  encryptedApiKey String?    // encrypted API key (OpenAI / Gemini / Anthropic / Ollama remote)
-  ollamaBaseUrl   String?    // only used when aiProvider = OLLAMA_REMOTE
-  aiModel        String?    // which model the user has configured (e.g., "gpt-4", "gemini-1.5", "claude-2")
+  aiProvider      AiProvider? // which provider the user has configured
+  encryptedApiKey String? // encrypted API key (OpenAI / Gemini / Anthropic / Ollama remote)
+  ollamaBaseUrl   String? // only used when aiProvider = OLLAMA_REMOTE
+  aiModel         String? // which model the user has configured (e.g., "gpt-4", "gemini-1.5", "claude-2")
 
   myplaground        Playground[]
   starMarkPlayground StarMark[]
 
-  creratedAt DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  creratedAt DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  shareLinks shareLink[]
 }
 
 // defining the schema for the accounts, which will be used for authentication and authorization in our app. It includes fields for the account type, provider, and tokens, as well as a relation to the User model.
@@ -100,6 +101,7 @@ model Playground {
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   templateFile TemplateFile[]
+  shareLinks   shareLink[]
 }
 
 // defining the schema for the star marks, which will allow users to mark their favorite playgrounds. It includes fields for the user ID, playground ID, and a boolean to indicate whether the playground is marked or not. It also includes relations to the User and Playground models, and unique constraints to ensure that a user can only mark a playground once.
@@ -129,3 +131,40 @@ model TemplateFile {
   playgroundId String     @unique
   playground   Playground @relation(fields: [playgroundId], references: [id], onDelete: Cascade)
 }
+
+// defining the schema for the share links, which will allow users to share their playgrounds with others. It includes fields for the token, playground ID, permission level, creator ID, expiration date, revocation status, access count, and relations to the Playground and User models. The token field is unique to ensure that each share link has a unique identifier.
+enum SharePermission {
+  VIEW_ONLY
+  VIEW_AND_EDIT
+}
+
+model shareLink {
+  id          String          @id @default(cuid()) @map("_id")
+  token       String          @unique
+  playgroundId String
+  permission  SharePermission @default(VIEW_ONLY)
+  createdById String
+  expiresAt   DateTime?
+  isRevoked   Boolean         @default(false)
+  accessCount Int             @default(0)
+  createdAt   DateTime        @default(now())
+
+  playground Playground      @relation(fields: [playgroundId], references: [id], onDelete: Cascade)
+  createdBy  User            @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  accesses   ShareLinkAccess[]
+
+  @@index([playgroundId])
+  @@index([createdById])
+}
+
+model ShareLinkAccess {
+  id          String    @id @default(cuid()) @map("_id")
+  shareLink   shareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+  shareLinkId String
+  userId      String
+  createdAt   DateTime  @default(now())
+
+  @@unique([shareLinkId, userId])
+}
+
+
