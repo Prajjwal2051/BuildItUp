@@ -51,8 +51,11 @@ import {
     Search,
     Share2,
     Loader2,
+    Copy,
+    Check,
 } from 'lucide-react'
 import useFileExplorerStore, { type OpenFile } from '@/modules/playground/hooks/useFileExplorer'
+import { ShareLinkDialog } from '@/modules/playground/components/dialogs/share-link-dialog'
 import { toast } from 'sonner'
 
 // Clones the full tree so updates remain immutable.
@@ -358,6 +361,7 @@ function MainPlaygroundPage() {
     const [isSettingsDialogOpen, setIsSettingsDialogOpen] = React.useState(false)
     const [isAiSettingsOpen, setIsAiSettingsOpen] = React.useState(false)
     const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false)
+    const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false)
     const [isAiAutocompleteEnabled, setIsAiAutocompleteEnabled] = React.useState(true)
     const [isAiChatOpen, setIsAiChatOpen] = React.useState(false)
     const [activeAiProvider, setActiveAiProvider] = React.useState<string | null>(null)
@@ -1035,64 +1039,10 @@ function MainPlaygroundPage() {
         [clearAiSuggestion],
     )
 
-    // Creates a new share link for this playground and copies the URL for quick sharing.
-    const handleCreateShareLink = React.useCallback(async () => {
-        if (!id) {
-            toast.error('Missing playground id for sharing')
-            return
-        }
-
-        setIsCreatingShareLink(true)
-        try {
-            const response = await fetch('/api/share/create', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    playgroundId: id,
-                    permission: 'VIEW_ONLY',
-                }),
-            })
-
-            const payload = (await response.json().catch(() => null)) as
-                | {
-                    shareUrl?: string
-                    token?: string
-                    error?: string
-                }
-                | null
-
-            if (!response.ok) {
-                throw new Error(payload?.error ?? 'Unable to create share link')
-            }
-
-            // Uses the returned URL when available, with an API-route fallback built from token.
-            const apiShareUrl =
-                typeof payload?.token === 'string' && payload.token.trim().length > 0
-                    ? `${window.location.origin}/api/share/${payload.token}`
-                    : ''
-            const finalShareUrl =
-                typeof payload?.shareUrl === 'string' && payload.shareUrl.trim().length > 0
-                    ? payload.shareUrl
-                    : apiShareUrl
-
-            if (!finalShareUrl) {
-                throw new Error('Share URL was not returned by the server')
-            }
-
-            await navigator.clipboard.writeText(finalShareUrl)
-            appendTerminalLog(`[info] Share link copied: ${finalShareUrl}\n`)
-            toast.success('Share link copied to clipboard')
-        } catch (error) {
-            const message =
-                error instanceof Error ? error.message : 'Failed to create share link'
-            toast.error(message)
-            appendTerminalLog(`[error] ${message}\n`)
-        } finally {
-            setIsCreatingShareLink(false)
-        }
-    }, [appendTerminalLog, id])
+    // Opens the share link dialog modal.
+    const handleOpenShareDialog = React.useCallback(() => {
+        setIsShareDialogOpen(true)
+    }, [])
 
     // Registers inline completions so Monaco renders AI output as grey ghost text.
     React.useEffect(() => {
@@ -1723,22 +1673,18 @@ function MainPlaygroundPage() {
 
                                 <button
                                     type="button"
-                                    onClick={() => void handleCreateShareLink()}
-                                    disabled={isCreatingShareLink || !id}
+                                    onClick={handleOpenShareDialog}
+                                    disabled={!id}
                                     className={cn(
                                         'flex h-10 items-center gap-1.5 rounded-md border border-[#1e2028] bg-[#11161d] px-2.5 text-[11px] transition-colors',
-                                        isCreatingShareLink || !id
+                                        !id
                                             ? 'cursor-not-allowed text-[#6a7280]'
                                             : 'text-[#c9d4e5] hover:border-[#00d4aa]/30 hover:text-white',
                                     )}
-                                    title="Create and copy share link"
+                                    title="Share playground"
                                 >
-                                    {isCreatingShareLink ? (
-                                        <Loader2 size={13} className="animate-spin" />
-                                    ) : (
-                                        <Share2 size={13} />
-                                    )}
-                                    <span>{isCreatingShareLink ? 'Sharing...' : 'Share Link'}</span>
+                                    <Share2 size={13} />
+                                    <span>Share Link</span>
                                 </button>
 
                                 <ToggleAi
@@ -1866,6 +1812,13 @@ function MainPlaygroundPage() {
                                 </div>
                             </DialogContent>
                         </Dialog>
+
+                        <ShareLinkDialog
+                            isOpen={isShareDialogOpen}
+                            onClose={() => setIsShareDialogOpen(false)}
+                            playgroundId={id}
+                            onLogTerminal={appendTerminalLog}
+                        />
 
                     </div>
 

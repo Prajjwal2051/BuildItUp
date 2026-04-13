@@ -5,8 +5,9 @@ import { ExpiredLinkPage } from "@/modules/playground/components/expired-link-pa
 
 export default async function SharedPlaygroundPage({
     params,
-}: { params: { token: string } }) {
-    const meta = await getSharedPlaygroundMeta(params.token)
+}: { params: Promise<{ token: string }> }) {
+    const { token } = await params
+    const meta = await getSharedPlaygroundMeta(token)
     if (!meta) return <ExpiredLinkPage />
 
     if (meta.permission === "VIEW_ONLY") {
@@ -17,7 +18,7 @@ export default async function SharedPlaygroundPage({
         return (
             <PlaygroundEditor
                 playgroundId={meta.playgroundId}
-                collab={{ token: params.token }}
+                collab={{ token }}
             />
         )
     }
