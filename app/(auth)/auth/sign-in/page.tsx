@@ -74,7 +74,10 @@ async function Page() {
                                         className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
                                         style={{ backgroundColor: 'rgba(0,212,170,0.1)' }}
                                     >
-                                        <Icon className="h-4.5 w-4.5" style={{ color: '#00d4aa' }} />
+                                        <Icon
+                                            className="h-4.5 w-4.5"
+                                            style={{ color: '#00d4aa' }}
+                                        />
                                     </div>
                                     <div>
                                         <h2 className="text-[15px] font-semibold text-white mb-1">

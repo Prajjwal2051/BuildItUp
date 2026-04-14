@@ -44,7 +44,9 @@ function SessionBadge({
                     <p className={`text-[12px] leading-4 text-neutral-500 ${labelClassName}`}>
                         Signed in as
                     </p>
-                    <p className={`max-w-40 truncate text-[13px] font-medium text-white ${nameClassName}`}>
+                    <p
+                        className={`max-w-40 truncate text-[13px] font-medium text-white ${nameClassName}`}
+                    >
                         {displayName}
                     </p>
                 </div>

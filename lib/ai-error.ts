@@ -86,13 +86,12 @@ function matchFriendlyMessage(message: string): string | null {
     return null
 }
 
-export function simplifyAiErrorMessage(error: unknown, fallback = 'Something went wrong with the AI provider.'): string {
+export function simplifyAiErrorMessage(
+    error: unknown,
+    fallback = 'Something went wrong with the AI provider.',
+): string {
     const raw =
-        typeof error === 'string'
-            ? error
-            : error instanceof Error
-                ? error.message
-                : fallback
+        typeof error === 'string' ? error : error instanceof Error ? error.message : fallback
 
     const directMatch = matchFriendlyMessage(raw)
     if (directMatch) return directMatch

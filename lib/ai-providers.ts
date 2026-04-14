@@ -23,9 +23,9 @@ export interface AiMessage {
 export interface AiRequestOptions {
     provider: AiProviderType
     messages: AiMessage[]
-    apiKey?: string        // required for OPENAI, GEMINI, ANTHROPIC, OLLAMA_REMOTE
+    apiKey?: string // required for OPENAI, GEMINI, ANTHROPIC, OLLAMA_REMOTE
     ollamaBaseUrl?: string // required for OLLAMA_REMOTE; uses env for OLLAMA_LOCAL
-    model?: string         // optional override — each provider has a sensible default
+    model?: string // optional override — each provider has a sensible default
     temperature?: number
     maxTokens?: number
 }
@@ -39,13 +39,12 @@ export interface AiResponse {
 // ─── Default models per provider ───────────────────────────────────────────
 
 const DEFAULT_MODELS: Record<AiProviderType, string> = {
-    OLLAMA_LOCAL:  'qwen2.5-coder:7b',
+    OLLAMA_LOCAL: 'qwen2.5-coder:7b',
     OLLAMA_REMOTE: 'qwen2.5-coder:7b',
-    OPENAI:        'gpt-4o-mini',
-    GEMINI:        'gemini-2.0-flash',
-    ANTHROPIC:     'claude-3-5-haiku-20251022',
-    OPEN_ROUTER: 'openai/gpt-4o-mini', 
-
+    OPENAI: 'gpt-4o-mini',
+    GEMINI: 'gemini-2.0-flash',
+    ANTHROPIC: 'claude-3-5-haiku-20251022',
+    OPEN_ROUTER: 'openai/gpt-4o-mini',
 }
 
 // ─── Entry point ────────────────────────────────────────────────────────────
@@ -82,7 +81,7 @@ async function callOpenRouter(options: AiRequestOptions): Promise<AiResponse> {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
+            Authorization: `Bearer ${apiKey}`,
             'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL ?? 'https://builditup.app',
             'X-Title': 'BuildItUp',
         },
@@ -99,7 +98,7 @@ async function callOpenRouter(options: AiRequestOptions): Promise<AiResponse> {
         throw new Error(`OpenRouter API error ${response.status}: ${err}`)
     }
 
-    const data = await response.json() as {
+    const data = (await response.json()) as {
         choices?: { message?: { content?: string } }[]
     }
     return {
@@ -108,7 +107,6 @@ async function callOpenRouter(options: AiRequestOptions): Promise<AiResponse> {
         model: resolvedModel,
     }
 }
-
 
 // ─── Ollama ──────────────────────────────────────────────────────────────────
 
@@ -121,7 +119,7 @@ async function callOllama(options: AiRequestOptions): Promise<AiResponse> {
             baseUrl = getOllamaBaseUrl()
         } catch {
             throw new Error(
-                'Ollama local mode is only available in development. Please switch to a cloud provider (OpenAI, Gemini, or Anthropic) in AI Settings.'
+                'Ollama local mode is only available in development. Please switch to a cloud provider (OpenAI, Gemini, or Anthropic) in AI Settings.',
             )
         }
     } else {
@@ -154,7 +152,7 @@ async function callOllama(options: AiRequestOptions): Promise<AiResponse> {
         throw new Error(`Ollama API error ${response.status}: ${err}`)
     }
 
-    const data = await response.json() as { message?: { content?: string } }
+    const data = (await response.json()) as { message?: { content?: string } }
     return {
         content: (data.message?.content ?? '').trim(),
         provider,
@@ -178,7 +176,7 @@ async function resolveOllamaModel(baseUrl: string, apiKey?: string): Promise<str
         const res = await fetch(`${baseUrl}/api/tags`, { cache: 'no-store', headers })
         if (!res.ok) return preferred[0]
 
-        const data = await res.json() as { models?: { name?: string }[] }
+        const data = (await res.json()) as { models?: { name?: string }[] }
         const installed = (data.models ?? []).map((m) => m.name?.trim()).filter(Boolean) as string[]
         if (installed.length === 0) return preferred[0]
 

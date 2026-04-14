@@ -5,13 +5,7 @@
 import { db } from '../../../lib/db'
 import { currentUser } from '@/modules/auth/actions'
 
-type JsonValue =
-    | string
-    | number
-    | boolean
-    | null
-    | { [key: string]: JsonValue }
-    | JsonValue[]
+type JsonValue = string | number | boolean | null | { [key: string]: JsonValue } | JsonValue[]
 
 // Loads one playground only if it belongs to the authenticated user.
 async function findOwnedPlayground(playgroundId: string, userId: string) {

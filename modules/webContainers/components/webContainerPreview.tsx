@@ -316,17 +316,19 @@ function WebContainerPreview({
                     const installAbortController = new AbortController()
                     installStreamAbortRef.current = installAbortController
 
-                    void installProcess.output.pipeTo(
-                        new WritableStream({
-                            write(data) {
-                                // terminal logic here for install output
-                                appendTerminalLog(data)
-                            },
-                        }),
-                        { signal: installAbortController.signal },
-                    ).catch(() => {
-                        // Expected when stream is aborted during cleanup.
-                    })
+                    void installProcess.output
+                        .pipeTo(
+                            new WritableStream({
+                                write(data) {
+                                    // terminal logic here for install output
+                                    appendTerminalLog(data)
+                                },
+                            }),
+                            { signal: installAbortController.signal },
+                        )
+                        .catch(() => {
+                            // Expected when stream is aborted during cleanup.
+                        })
 
                     const installExitCode = await installProcess.exit
                     installProcessRef.current = null
@@ -364,17 +366,19 @@ function WebContainerPreview({
                 const startAbortController = new AbortController()
                 startStreamAbortRef.current = startAbortController
 
-                void startProcess.output.pipeTo(
-                    new WritableStream({
-                        write(data) {
-                            // terminal logic here for start output
-                            appendTerminalLog(data)
-                        },
-                    }),
-                    { signal: startAbortController.signal },
-                ).catch(() => {
-                    // Expected when stream is aborted during cleanup.
-                })
+                void startProcess.output
+                    .pipeTo(
+                        new WritableStream({
+                            write(data) {
+                                // terminal logic here for start output
+                                appendTerminalLog(data)
+                            },
+                        }),
+                        { signal: startAbortController.signal },
+                    )
+                    .catch(() => {
+                        // Expected when stream is aborted during cleanup.
+                    })
 
                 // Marks that setup is done and we are now only waiting for the running server signal.
                 setIsAwaitingServerReady(true)
@@ -423,17 +427,17 @@ function WebContainerPreview({
                     <pre className="wrap-break-word whitespace-pre-wrap p-3 text-xs text-[#c9d4e5]">
                         {terminalLogs.length > 0
                             ? terminalLogs
-                                .join('')
-                                .split('\n')
-                                .map((line, index) => (
-                                    <span
-                                        key={`${index}-${line.slice(0, 24)}`}
-                                        className={getTerminalToneClass(getTerminalTone(line))}
-                                    >
-                                        {line}
-                                        {'\n'}
-                                    </span>
-                                ))
+                                  .join('')
+                                  .split('\n')
+                                  .map((line, index) => (
+                                      <span
+                                          key={`${index}-${line.slice(0, 24)}`}
+                                          className={getTerminalToneClass(getTerminalTone(line))}
+                                      >
+                                          {line}
+                                          {'\n'}
+                                      </span>
+                                  ))
                             : 'No logs yet.'}
                     </pre>
                 </ScrollArea>

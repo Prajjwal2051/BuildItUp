@@ -3,9 +3,7 @@ import { getAllPlaygroundForUser } from '@/modules/dashboard/actions'
 import { DashboardSidebar } from '@/modules/dashboard/components/dashboard-sidebar'
 import { Toaster } from '@/components/ui/sonner'
 
-type PlaygroundListItem = NonNullable<
-    Awaited<ReturnType<typeof getAllPlaygroundForUser>>
->[number]
+type PlaygroundListItem = NonNullable<Awaited<ReturnType<typeof getAllPlaygroundForUser>>>[number]
 
 async function DashboardLayout({
     children,

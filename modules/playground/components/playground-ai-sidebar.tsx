@@ -38,7 +38,6 @@ function PlaygroundAiSidebar({
     const [error, setError] = React.useState('')
     const [setupRequired, setSetupRequired] = React.useState(false)
 
-
     const bottomRef = React.useRef<HTMLDivElement>(null)
     React.useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -70,7 +69,9 @@ function PlaygroundAiSidebar({
                     message: prompt,
                     fileName,
                     fileContent,
-                    history: nextMessages.slice(-8).map((m) => ({ role: m.role, content: m.content })),
+                    history: nextMessages
+                        .slice(-8)
+                        .map((m) => ({ role: m.role, content: m.content })),
                 }),
             })
 
@@ -150,8 +151,12 @@ function PlaygroundAiSidebar({
                 {messages.length === 0 ? (
                     !activeProvider ? (
                         <div className="rounded-lg border border-[#1e2028] bg-[#11161d] px-3 py-3 text-[11px] text-[#9ab0be]">
-                            <p className="mb-2 font-medium text-[#c9d4e5]">No AI provider configured</p>
-                            <p className="mb-3 text-[#6a7280]">Set up a provider to start using AI features.</p>
+                            <p className="mb-2 font-medium text-[#c9d4e5]">
+                                No AI provider configured
+                            </p>
+                            <p className="mb-3 text-[#6a7280]">
+                                Set up a provider to start using AI features.
+                            </p>
                             {onOpenSettings && (
                                 <button
                                     type="button"
@@ -181,7 +186,9 @@ function PlaygroundAiSidebar({
                             <div className="mb-1 text-[10px] uppercase tracking-wide text-[#6a7280]">
                                 {message.role === 'user' ? 'You' : 'AI'}
                             </div>
-                            <pre className="whitespace-pre-wrap font-sans leading-5">{message.content}</pre>
+                            <pre className="whitespace-pre-wrap font-sans leading-5">
+                                {message.content}
+                            </pre>
                             {message.role === 'assistant' && (
                                 <div className="mt-2 flex justify-end">
                                     <button

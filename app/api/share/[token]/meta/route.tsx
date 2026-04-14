@@ -1,16 +1,18 @@
 // here we will fetch the shareable link for the user
 
-import { db } from "@/lib/db";
-import { auth } from "@/auth"
-import { NextResponse, NextRequest } from "next/server";
+import { db } from '@/lib/db'
+import { auth } from '@/auth'
+import { NextResponse, NextRequest } from 'next/server'
 
-
-export async function GET(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+export async function GET(
+    request: NextRequest,
+    { params }: { params: Promise<{ token: string }> },
+) {
     // check for the session
     const session = await auth()
     const userId = session?.user?.id ?? null
     if (!session?.user?.id) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
     // get the token from route params
@@ -24,22 +26,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         include: {
             createdBy: {
                 select: {
-                    name: true
-                }
-            }
-        }
+                    name: true,
+                },
+            },
+        },
     })
     if (!link) {
-        return NextResponse.json({ error: "Link Not found" }, { status: 404 })
+        return NextResponse.json({ error: 'Link Not found' }, { status: 404 })
     }
     if (!link.isRevoked) {
-        return NextResponse.json({ error: "Link Revoked" }, { status: 410 })
+        return NextResponse.json({ error: 'Link Revoked' }, { status: 410 })
     }
     if (link.expiresAt && link.expiresAt < new Date()) {
-        return NextResponse.json({ error: "Link Expired" }, { status: 410 })
+        return NextResponse.json({ error: 'Link Expired' }, { status: 410 })
     }
 
-    // now if all is good then we will increment the accessCount 
+    // now if all is good then we will increment the accessCount
     if (userId) {
         try {
             // Try to create a unique access row; if it already exists, do nothing
@@ -68,6 +70,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         permission: link.permission,
         playgroundId: link.playgroundId,
         expiresAt: link.expiresAt,
-        ownerName: link.createdBy?.name ?? null
+        ownerName: link.createdBy?.name ?? null,
     })
 }

@@ -4,7 +4,15 @@
 
 // import necessary libraries and components
 import React from 'react'
-import { Settings, Eye, EyeOff, CheckCircle, AlertCircle, Loader2, ExternalLink } from 'lucide-react'
+import {
+    Settings,
+    Eye,
+    EyeOff,
+    CheckCircle,
+    AlertCircle,
+    Loader2,
+    ExternalLink,
+} from 'lucide-react'
 import { saveAiSettings, getAiSettings } from '@/modules/playground/actions/ai-settings'
 import type { AiProviderType } from '@/lib/ai-providers'
 import { simplifyAiErrorMessage } from '@/lib/ai-error'
@@ -17,7 +25,16 @@ interface AiSettingsModalProps {
 }
 
 // Define the supported AI providers and their configurations
-const PROVIDERS: { value: AiProviderType; label: string; requiresKey: boolean; requiresUrl: boolean; keyLabel: string; keyPlaceholder: string; docsUrl: string; description: string }[] = [
+const PROVIDERS: {
+    value: AiProviderType
+    label: string
+    requiresKey: boolean
+    requiresUrl: boolean
+    keyLabel: string
+    keyPlaceholder: string
+    docsUrl: string
+    description: string
+}[] = [
     {
         value: 'OLLAMA_LOCAL',
         label: 'Ollama (Local)',
@@ -36,7 +53,8 @@ const PROVIDERS: { value: AiProviderType; label: string; requiresKey: boolean; r
         keyLabel: 'Bearer Token (optional)',
         keyPlaceholder: 'Bearer token if your server requires auth',
         docsUrl: 'https://ollama.com/blog/openai-compatibility',
-        description: 'Your own Ollama server (e.g. a VPS, ngrok tunnel, or RunPod). Works in deployment.',
+        description:
+            'Your own Ollama server (e.g. a VPS, ngrok tunnel, or RunPod). Works in deployment.',
     },
     {
         value: 'OPENAI',
@@ -81,19 +99,20 @@ const PROVIDERS: { value: AiProviderType; label: string; requiresKey: boolean; r
 ]
 
 // Define the available models for each provider
-const PROVIDER_MODELS: Record<AiProviderType, {
-    value: string;
-    label: string
-}[]> = {
+const PROVIDER_MODELS: Record<
+    AiProviderType,
+    {
+        value: string
+        label: string
+    }[]
+> = {
     // this are my defaiult supported ai models for the ai models- local or cloud
     OLLAMA_LOCAL: [
-
         { value: 'qwen2.5-coder:7b', label: 'Qwen 2.5 Coder 7B (default)' },
         { value: 'qwen2.5-coder:3b', label: 'Qwen 2.5 Coder 3B (faster)' },
         { value: 'codellama:7b', label: 'CodeLlama 7B' },
         { value: 'llama3.1:8b', label: 'Llama 3.1 8B' },
         { value: 'deepseek-coder:6.7b', label: 'DeepSeek Coder 6.7B' },
-
     ],
     OLLAMA_REMOTE: [
         { value: 'qwen2.5-coder:7b', label: 'Qwen 2.5 Coder 7B (default)' },
@@ -108,8 +127,8 @@ const PROVIDER_MODELS: Record<AiProviderType, {
         { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo (cheapest)' },
     ],
     GEMINI: [
-        { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (default, free)' },  // ← MOVE TO TOP
-        { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite (fastest)' },  // ← optional add
+        { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (default, free)' }, // ← MOVE TO TOP
+        { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite (fastest)' }, // ← optional add
         { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
         { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (best quality)' },
     ],
@@ -126,7 +145,6 @@ const PROVIDER_MODELS: Record<AiProviderType, {
         { value: 'meta-llama/llama-3.1-8b-instruct', label: 'Llama 3.1 8B (free)' },
         { value: 'deepseek/deepseek-chat-v3-0324', label: 'DeepSeek V3 (cheap)' },
     ],
-
 }
 
 // Main component for the AI Settings Modal
@@ -141,9 +159,10 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
     const [errorMessage, setErrorMessage] = React.useState('')
     const [hasExistingKey, setHasExistingKey] = React.useState(false)
     const [selectedModel, setSelectedModel] = React.useState<string>('')
-    const [testStatus, setTestStatus] = React.useState<'idle' | 'testing' | 'success' | 'error'>('idle')
+    const [testStatus, setTestStatus] = React.useState<'idle' | 'testing' | 'success' | 'error'>(
+        'idle',
+    )
     const [testMessage, setTestMessage] = React.useState('')
-
 
     // Load existing settings when modal opens
     React.useEffect(() => {
@@ -206,10 +225,10 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
         setTestMessage('')
         try {
             const res = await fetch('/api/ai-test', { method: 'POST' })
-            const data = await res.json() as {
-                ok: boolean,
-                model?: string,
-                provider?: string,
+            const data = (await res.json()) as {
+                ok: boolean
+                model?: string
+                provider?: string
                 error?: string
             }
             if (data.ok) {
@@ -220,7 +239,6 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                 setTestStatus('error')
                 setTestMessage(simplifyAiErrorMessage(data.error, 'Connection failed'))
             }
-
         } catch (error) {
             console.error('AI connection test request failed:', error)
             setTestStatus('error')
@@ -232,7 +250,9 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-            onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+            onClick={(e) => {
+                if (e.target === e.currentTarget) onClose()
+            }}
             role="dialog"
             aria-modal="true"
             aria-label="AI Provider Settings"
@@ -242,7 +262,9 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                 <div className="flex items-center justify-between border-b border-[#1e2028] px-4 py-3">
                     <div className="flex items-center gap-2">
                         <Settings size={16} className="text-[#00d4aa]" />
-                        <span className="text-[13px] font-semibold text-white">AI Provider Settings</span>
+                        <span className="text-[13px] font-semibold text-white">
+                            AI Provider Settings
+                        </span>
                     </div>
                     <button
                         type="button"
@@ -265,7 +287,9 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                     >
                         <div className="grid gap-4 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
                             <div className="space-y-3 md:sticky md:top-0 md:self-start">
-                                <p className="text-[11px] uppercase tracking-wider text-[#6a7280]">Choose Provider</p>
+                                <p className="text-[11px] uppercase tracking-wider text-[#6a7280]">
+                                    Choose Provider
+                                </p>
                                 <div className="grid grid-cols-1 gap-2">
                                     {PROVIDERS.map((provider) => (
                                         <button
@@ -279,25 +303,35 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                                                 setErrorMessage('')
                                                 setSelectedModel('')
                                             }}
-                                            className={`flex flex-col rounded-lg border px-3 py-2.5 text-left transition-all duration-200 ease-out motion-safe:hover:-translate-y-0.5 ${selectedProvider === provider.value
-                                                ? 'border-[#00d4aa]/40 bg-[rgba(0,212,170,0.08)] text-white shadow-[0_0_0_1px_rgba(0,212,170,0.15)]'
-                                                : 'border-[#1e2028] bg-[#11161d] text-[#c9d4e5] hover:border-[#00d4aa]/20'
-                                                }`}
+                                            className={`flex flex-col rounded-lg border px-3 py-2.5 text-left transition-all duration-200 ease-out motion-safe:hover:-translate-y-0.5 ${
+                                                selectedProvider === provider.value
+                                                    ? 'border-[#00d4aa]/40 bg-[rgba(0,212,170,0.08)] text-white shadow-[0_0_0_1px_rgba(0,212,170,0.15)]'
+                                                    : 'border-[#1e2028] bg-[#11161d] text-[#c9d4e5] hover:border-[#00d4aa]/20'
+                                            }`}
                                         >
                                             <div className="flex items-center justify-between">
-                                                <span className="text-[12px] font-medium">{provider.label}</span>
+                                                <span className="text-[12px] font-medium">
+                                                    {provider.label}
+                                                </span>
                                                 {selectedProvider === provider.value && (
-                                                    <span className="rounded-full bg-[#00d4aa]/20 px-2 py-0.5 text-[10px] text-[#00d4aa]">Selected</span>
+                                                    <span className="rounded-full bg-[#00d4aa]/20 px-2 py-0.5 text-[10px] text-[#00d4aa]">
+                                                        Selected
+                                                    </span>
                                                 )}
                                             </div>
-                                            <span className="mt-1 text-[10px] text-[#6a7280]">{provider.description}</span>
+                                            <span className="mt-1 text-[10px] text-[#6a7280]">
+                                                {provider.description}
+                                            </span>
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
                             <div className="rounded-lg border border-[#1e2028] bg-[#0f141b] p-3 transition-all duration-300 ease-out">
-                                <div key={selectedProvider} className="space-y-4 transition-all duration-300 ease-out">
+                                <div
+                                    key={selectedProvider}
+                                    className="space-y-4 transition-all duration-300 ease-out"
+                                >
                                     {currentProvider.requiresUrl && (
                                         <div>
                                             <label className="mb-1.5 block text-[11px] text-[#9ab0be]">
@@ -339,7 +373,8 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                                         </select>
                                     </div>
 
-                                    {(currentProvider.requiresKey || currentProvider.value === 'OLLAMA_REMOTE') && (
+                                    {(currentProvider.requiresKey ||
+                                        currentProvider.value === 'OLLAMA_REMOTE') && (
                                         <div>
                                             <label className="mb-1.5 block text-[11px] text-[#9ab0be]">
                                                 {currentProvider.keyLabel}
@@ -354,7 +389,8 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                                             </label>
                                             {hasExistingKey && !apiKey && (
                                                 <p className="mb-1.5 text-[11px] text-[#00d4aa]">
-                                                    ✓ A key is already saved. Enter a new one to replace it.
+                                                    ✓ A key is already saved. Enter a new one to
+                                                    replace it.
                                                 </p>
                                             )}
                                             <div className="relative">
@@ -362,7 +398,11 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                                                     type={showKey ? 'text' : 'password'}
                                                     value={apiKey}
                                                     onChange={(e) => setApiKey(e.target.value)}
-                                                    placeholder={hasExistingKey ? '••••••••••••••••' : currentProvider.keyPlaceholder}
+                                                    placeholder={
+                                                        hasExistingKey
+                                                            ? '••••••••••••••••'
+                                                            : currentProvider.keyPlaceholder
+                                                    }
                                                     autoComplete="off"
                                                     className="w-full rounded-lg border border-[#1e2028] bg-[#11161d] px-3 py-2 pr-9 text-[12px] text-[#d6e1ef] outline-none placeholder:text-[#6a7280] transition-colors focus:border-[#00d4aa]/50"
                                                 />
@@ -372,36 +412,76 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                                                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#6a7280] hover:text-white"
                                                     aria-label={showKey ? 'Hide key' : 'Show key'}
                                                 >
-                                                    {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                                                    {showKey ? (
+                                                        <EyeOff size={14} />
+                                                    ) : (
+                                                        <Eye size={14} />
+                                                    )}
                                                 </button>
                                             </div>
                                             <p className="mt-1.5 text-[10px] text-[#6a7280]">
-                                                Your key is encrypted with AES-256-GCM before storage and never exposed in API responses.
+                                                Your key is encrypted with AES-256-GCM before
+                                                storage and never exposed in API responses.
                                             </p>
                                         </div>
                                     )}
 
                                     {currentProvider.value === 'OLLAMA_LOCAL' && (
                                         <div className="rounded-lg border border-[#1e2028] bg-[#11161d] px-4 py-3 text-[11px] text-[#9ab0be] transition-all duration-200">
-                                            <p className="font-medium text-[#c9d4e5]">Setup checklist</p>
+                                            <p className="font-medium text-[#c9d4e5]">
+                                                Setup checklist
+                                            </p>
                                             <ol className="mt-2 list-inside list-decimal space-y-1">
-                                                <li>Install Ollama from <a href="https://ollama.com" target="_blank" rel="noopener noreferrer" className="text-[#00d4aa] hover:underline">ollama.com</a></li>
-                                                <li>Run: <code className="rounded bg-[#1e2028] px-1">ollama pull qwen2.5-coder:7b</code></li>
-                                                <li>Set <code className="rounded bg-[#1e2028] px-1">OLLAMA_BASE_URL=http://localhost:11434</code> in your <code className="rounded bg-[#1e2028] px-1">.env</code></li>
+                                                <li>
+                                                    Install Ollama from{' '}
+                                                    <a
+                                                        href="https://ollama.com"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-[#00d4aa] hover:underline"
+                                                    >
+                                                        ollama.com
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    Run:{' '}
+                                                    <code className="rounded bg-[#1e2028] px-1">
+                                                        ollama pull qwen2.5-coder:7b
+                                                    </code>
+                                                </li>
+                                                <li>
+                                                    Set{' '}
+                                                    <code className="rounded bg-[#1e2028] px-1">
+                                                        OLLAMA_BASE_URL=http://localhost:11434
+                                                    </code>{' '}
+                                                    in your{' '}
+                                                    <code className="rounded bg-[#1e2028] px-1">
+                                                        .env
+                                                    </code>
+                                                </li>
                                             </ol>
-                                            <p className="mt-2 text-[#6a7280]">⚠ Local mode only works in development — not on deployed apps.</p>
+                                            <p className="mt-2 text-[#6a7280]">
+                                                ⚠ Local mode only works in development — not on
+                                                deployed apps.
+                                            </p>
                                         </div>
                                     )}
 
                                     {testStatus !== 'idle' && (
-                                        <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] transition-all duration-200 ${testStatus === 'testing'
-                                            ? 'border-[#1e2028] bg-[#11161d] text-[#9ab0be]'
-                                            : testStatus === 'success'
-                                                ? 'border-[#0f4d40] bg-[rgba(0,212,170,0.08)] text-[#00d4aa]'
-                                                : 'border-red-900/40 bg-red-950/30 text-[#ef8d8d]'
-                                            }`}>
+                                        <div
+                                            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] transition-all duration-200 ${
+                                                testStatus === 'testing'
+                                                    ? 'border-[#1e2028] bg-[#11161d] text-[#9ab0be]'
+                                                    : testStatus === 'success'
+                                                      ? 'border-[#0f4d40] bg-[rgba(0,212,170,0.08)] text-[#00d4aa]'
+                                                      : 'border-red-900/40 bg-red-950/30 text-[#ef8d8d]'
+                                            }`}
+                                        >
                                             {testStatus === 'testing' && (
-                                                <Loader2 size={13} className="animate-spin shrink-0" />
+                                                <Loader2
+                                                    size={13}
+                                                    className="animate-spin shrink-0"
+                                                />
                                             )}
                                             {testStatus === 'success' && (
                                                 <CheckCircle size={13} className="shrink-0" />
@@ -413,8 +493,8 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                                                 {testStatus === 'testing'
                                                     ? 'Testing connection…'
                                                     : testStatus === 'success'
-                                                        ? `✓ ${testMessage}`
-                                                        : `✗ ${testMessage}`}
+                                                      ? `✓ ${testMessage}`
+                                                      : `✗ ${testMessage}`}
                                             </span>
                                         </div>
                                     )}
@@ -446,34 +526,44 @@ function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                         Setup docs <ExternalLink size={12} />
                     </Link>
                     <div className="flex items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="rounded-lg border border-[#1e2028] bg-[#11161d] px-4 py-1.5 text-[12px] text-[#c9d4e5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
-                    >
-                        Cancel
-                    </button>
-
-                    {/* ← NEW: manual test button, only shows when a provider is already configured */}
-                    {hasExistingKey && (
                         <button
                             type="button"
-                            onClick={() => void testConnection()}
-                            disabled={testStatus === 'testing' || isSaving}
-                            className="flex items-center gap-1.5 rounded-lg border border-[#1e2028] bg-[#11161d] px-4 py-1.5 text-[12px] text-[#9ab0be] transition-colors hover:border-[#00d4aa]/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                            onClick={onClose}
+                            className="rounded-lg border border-[#1e2028] bg-[#11161d] px-4 py-1.5 text-[12px] text-[#c9d4e5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
                         >
-                            {testStatus === 'testing'
-                                ? <><Loader2 size={12} className="animate-spin" /> Testing…</>
-                                : 'Test Connection'}
+                            Cancel
                         </button>
-                    )}
-                    <button
-                        type="button"
-                        onClick={() => void handleSave()}
-                        disabled={isSaving || isLoading}
-                        className="flex items-center gap-1.5 rounded-lg border border-[#0f4d40] bg-[#00d4aa] px-4 py-1.5 text-[12px] font-medium text-black transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+
+                        {/* ← NEW: manual test button, only shows when a provider is already configured */}
+                        {hasExistingKey && (
+                            <button
+                                type="button"
+                                onClick={() => void testConnection()}
+                                disabled={testStatus === 'testing' || isSaving}
+                                className="flex items-center gap-1.5 rounded-lg border border-[#1e2028] bg-[#11161d] px-4 py-1.5 text-[12px] text-[#9ab0be] transition-colors hover:border-[#00d4aa]/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {testStatus === 'testing' ? (
+                                    <>
+                                        <Loader2 size={12} className="animate-spin" /> Testing…
+                                    </>
+                                ) : (
+                                    'Test Connection'
+                                )}
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => void handleSave()}
+                            disabled={isSaving || isLoading}
+                            className="flex items-center gap-1.5 rounded-lg border border-[#0f4d40] bg-[#00d4aa] px-4 py-1.5 text-[12px] font-medium text-black transition-colors hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                            {isSaving ? <><Loader2 size={12} className="animate-spin" /> Saving...</> : 'Save Settings'}
+                            {isSaving ? (
+                                <>
+                                    <Loader2 size={12} className="animate-spin" /> Saving...
+                                </>
+                            ) : (
+                                'Save Settings'
+                            )}
                         </button>
                     </div>
                 </div>

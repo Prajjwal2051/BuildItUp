@@ -30,7 +30,11 @@ export default async function LandingNavbar() {
 
             <div className="w-full flex items-center justify-between px-6 md:px-10 h-15 max-w-360 mx-auto relative z-10">
                 <div className="flex items-center">
-                    <a href="#home-logo" id="nav-logo" className="home-nav-logo flex items-center gap-3 group">
+                    <a
+                        href="#home-logo"
+                        id="nav-logo"
+                        className="home-nav-logo flex items-center gap-3 group"
+                    >
                         <div className="w-7 h-7 grid grid-cols-2 gap-0.75">
                             <div className="bg-white rounded-tl-[5px] transition-colors group-hover:bg-[#a8d5ff]" />
                             <div className="bg-white rounded-tr-[5px]" />
@@ -59,16 +63,15 @@ export default async function LandingNavbar() {
                             className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-1 transition-colors hover:border-[#00d4aa]/30 hover:bg-white/8"
                         >
                             <Avatar size="sm">
-                                <AvatarImage
-                                    src={user.image ?? undefined}
-                                    alt={displayName}
-                                />
+                                <AvatarImage src={user.image ?? undefined} alt={displayName} />
                                 <AvatarFallback className="bg-[#163028] text-[11px] font-medium text-[#00d4aa]">
                                     {avatarFallback}
                                 </AvatarFallback>
                             </Avatar>
                             <div className="hidden text-left md:block">
-                                <p className="text-[12px] leading-4 text-neutral-500">Signed in as</p>
+                                <p className="text-[12px] leading-4 text-neutral-500">
+                                    Signed in as
+                                </p>
                                 <p className="max-w-36 truncate text-[13px] font-medium text-white">
                                     {displayName}
                                 </p>

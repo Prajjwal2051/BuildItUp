@@ -125,7 +125,10 @@ function useAISuggestion({ enabled }: UseAISuggestionOptions): UseAISuggestionRe
                 }
 
                 console.error('AI autocomplete request failed:', requestError)
-                const message = simplifyAiErrorMessage(requestError, 'Failed to fetch AI suggestion')
+                const message = simplifyAiErrorMessage(
+                    requestError,
+                    'Failed to fetch AI suggestion',
+                )
                 setError(message)
                 setSuggestion('')
                 return ''

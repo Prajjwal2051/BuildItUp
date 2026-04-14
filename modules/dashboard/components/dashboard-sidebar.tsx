@@ -211,28 +211,27 @@ function DashboardSidebar({ initialPlaygroundData }: { initialPlaygroundData: Pl
                             {starredPlaygrounds.length === 0 && recentPlaygrounds.length === 0
                                 ? null
                                 : recentPlaygrounds.map((playground) => {
-                                    const IconComponent = lucideIconMap[playground.icon] || Code2
-                                    return (
-                                        <SidebarMenuItem key={playground.id}>
-                                            <SidebarMenuButton
-                                                asChild
-                                                isActive={
-                                                    pathname === `/playground/${playground.id}`
-                                                }
-                                                tooltip={playground.name}
-                                                className="rounded-xl text-neutral-300 hover:text-white data-[active=true]:bg-[rgba(0,212,170,0.12)] data-[active=true]:text-white data-[active=true]:shadow-[0_0_0_1px_rgba(0,212,170,0.12)]"
-                                            >
-                                                <Link href={`/playground/${playground.id}`}>
-                                                    {IconComponent && (
-                                                        <IconComponent className="h-4 w-4" />
-                                                    )}
-                                                    <span>{playground.name}</span>
-                                                </Link>
-                                            </SidebarMenuButton>
-                                        </SidebarMenuItem>
-                                    )
-                                })}
-
+                                      const IconComponent = lucideIconMap[playground.icon] || Code2
+                                      return (
+                                          <SidebarMenuItem key={playground.id}>
+                                              <SidebarMenuButton
+                                                  asChild
+                                                  isActive={
+                                                      pathname === `/playground/${playground.id}`
+                                                  }
+                                                  tooltip={playground.name}
+                                                  className="rounded-xl text-neutral-300 hover:text-white data-[active=true]:bg-[rgba(0,212,170,0.12)] data-[active=true]:text-white data-[active=true]:shadow-[0_0_0_1px_rgba(0,212,170,0.12)]"
+                                              >
+                                                  <Link href={`/playground/${playground.id}`}>
+                                                      {IconComponent && (
+                                                          <IconComponent className="h-4 w-4" />
+                                                      )}
+                                                      <span>{playground.name}</span>
+                                                  </Link>
+                                              </SidebarMenuButton>
+                                          </SidebarMenuItem>
+                                      )
+                                  })}
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>

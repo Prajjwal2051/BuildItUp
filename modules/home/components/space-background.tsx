@@ -22,7 +22,6 @@ export function SpaceBackground() {
                         'radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 35%, rgba(0,0,0,0.38) 72%, rgba(0,0,0,0.82) 100%)',
                 }}
             />
-
         </div>
     )
 }

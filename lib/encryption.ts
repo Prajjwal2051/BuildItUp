@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto'
 
 const ALGORITHM = 'aes-256-gcm'
-const IV_LENGTH = 12  // 96-bit IV recommended for GCM
+const IV_LENGTH = 12 // 96-bit IV recommended for GCM
 const TAG_LENGTH = 16 // 128-bit auth tag
 
 function getEncryptionKey(): Buffer {
@@ -27,17 +27,10 @@ export function encrypt(plaintext: string): string {
     const iv = randomBytes(IV_LENGTH)
     const cipher = createCipheriv(ALGORITHM, key, iv)
 
-    const encrypted = Buffer.concat([
-        cipher.update(plaintext, 'utf8'),
-        cipher.final(),
-    ])
+    const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()])
     const tag = cipher.getAuthTag()
 
-    return [
-        iv.toString('base64'),
-        tag.toString('base64'),
-        encrypted.toString('base64'),
-    ].join(':')
+    return [iv.toString('base64'), tag.toString('base64'), encrypted.toString('base64')].join(':')
 }
 
 // Decrypts a base64 string produced by encrypt(). Throws if tampered.
@@ -59,8 +52,5 @@ export function decrypt(ciphertext: string): string {
     const decipher = createDecipheriv(ALGORITHM, key, iv)
     decipher.setAuthTag(tag)
 
-    return Buffer.concat([
-        decipher.update(encryptedData),
-        decipher.final(),
-    ]).toString('utf8')
+    return Buffer.concat([decipher.update(encryptedData), decipher.final()]).toString('utf8')
 }

@@ -14,9 +14,12 @@ const LogoutButton = ({ children, className }: LogoutButtonProps) => {
     }
 
     if (React.isValidElement(children)) {
-        return React.cloneElement(children as React.ReactElement<{ onClick?: React.MouseEventHandler }>, {
-            onClick: onLogout,
-        })
+        return React.cloneElement(
+            children as React.ReactElement<{ onClick?: React.MouseEventHandler }>,
+            {
+                onClick: onLogout,
+            },
+        )
     }
 
     return (

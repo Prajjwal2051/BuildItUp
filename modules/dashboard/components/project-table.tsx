@@ -179,11 +179,21 @@ function ProjectTable({ projects, currentUserName, currentUserImage }: ProjectTa
                 <Table>
                     <TableHeader>
                         <TableRow className="border-slate-200 hover:bg-transparent dark:border-[#1e2028]">
-                            <TableHead className="p-4 text-slate-600 dark:text-neutral-400">Project</TableHead>
-                            <TableHead className="text-slate-600 dark:text-neutral-400">Template</TableHead>
-                            <TableHead className="text-slate-600 dark:text-neutral-400">Created</TableHead>
-                            <TableHead className="text-slate-600 dark:text-neutral-400">User</TableHead>
-                            <TableHead className="text-slate-600 dark:text-neutral-400">Status</TableHead>
+                            <TableHead className="p-4 text-slate-600 dark:text-neutral-400">
+                                Project
+                            </TableHead>
+                            <TableHead className="text-slate-600 dark:text-neutral-400">
+                                Template
+                            </TableHead>
+                            <TableHead className="text-slate-600 dark:text-neutral-400">
+                                Created
+                            </TableHead>
+                            <TableHead className="text-slate-600 dark:text-neutral-400">
+                                User
+                            </TableHead>
+                            <TableHead className="text-slate-600 dark:text-neutral-400">
+                                Status
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -208,7 +218,9 @@ function ProjectTable({ projects, currentUserName, currentUserImage }: ProjectTa
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge className={`border ${templateBadgeStyle[project.template] ?? 'border-slate-300 bg-slate-100 text-slate-700 dark:border-zinc-600/40 dark:bg-zinc-800 dark:text-zinc-300'}`}>
+                                    <Badge
+                                        className={`border ${templateBadgeStyle[project.template] ?? 'border-slate-300 bg-slate-100 text-slate-700 dark:border-zinc-600/40 dark:bg-zinc-800 dark:text-zinc-300'}`}
+                                    >
                                         {project.template}
                                     </Badge>
                                 </TableCell>
@@ -246,10 +258,13 @@ function ProjectTable({ projects, currentUserName, currentUserImage }: ProjectTa
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex items-center gap-1">
-
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 dark:hover:bg-[rgba(0,212,170,0.08)] dark:hover:text-white">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-7 w-7 dark:hover:bg-[rgba(0,212,170,0.08)] dark:hover:text-white"
+                                                >
                                                     <MoreHorizontal className="h-4 w-4" />
                                                     <span className="sr-only">Open menu</span>
                                                 </Button>

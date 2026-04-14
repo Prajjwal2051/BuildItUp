@@ -54,9 +54,9 @@ export function PlaygroundViewer({ playgroundId, readOnly = true }: PlaygroundVi
                             Shared View Active
                         </h2>
                         <p className="max-w-md text-sm text-[#8ea5b5]">
-                            You are viewing a shared playground (ID: {playgroundId}). 
-                            In a complete implementation, this page will render the read-only editor 
-                            and WebContainer preview using a public access token.
+                            You are viewing a shared playground (ID: {playgroundId}). In a complete
+                            implementation, this page will render the read-only editor and
+                            WebContainer preview using a public access token.
                         </p>
                     </div>
                 </div>

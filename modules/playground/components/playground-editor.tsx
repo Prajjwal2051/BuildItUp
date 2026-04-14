@@ -54,9 +54,9 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
                             Collaborative Editing Session
                         </h2>
                         <p className="max-w-md text-sm text-[#8ea5b5]">
-                            You are connected to a collaborative session (ID: {playgroundId}). 
-                            In a complete implementation, this page will run a Yjs-synced 
-                            Monaco Editor to allow multiple users to edit code in real time.
+                            You are connected to a collaborative session (ID: {playgroundId}). In a
+                            complete implementation, this page will run a Yjs-synced Monaco Editor
+                            to allow multiple users to edit code in real time.
                         </p>
                     </div>
                 </div>

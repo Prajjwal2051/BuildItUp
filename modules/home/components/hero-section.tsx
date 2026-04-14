@@ -9,20 +9,23 @@ export default async function HeroSection() {
 
     return (
         <div className="home-hero-shell flex flex-col items-center text-center mb-0 relative ">
-
             <h1
                 className="font-bold leading-[1.0] tracking-tighter mb-3"
                 style={{ fontSize: 'clamp(3rem, 1rem + 7vw, 7rem)' }}
             >
                 <span
                     className="hero-word hero-word-1 hero-gradient-flow block text-transparent bg-clip-text"
-                    style={{ backgroundImage: 'linear-gradient(to bottom right, #1d2d2b, #1d2d2b)' }}
+                    style={{
+                        backgroundImage: 'linear-gradient(to bottom right, #1d2d2b, #1d2d2b)',
+                    }}
                 >
                     Orbit Code
                 </span>
                 <span
                     className="hero-word hero-word-2 hero-gradient-flow block text-transparent bg-clip-text"
-                    style={{ backgroundImage: 'linear-gradient(to bottom right, #00436b, #00436b)' }}
+                    style={{
+                        backgroundImage: 'linear-gradient(to bottom right, #00436b, #00436b)',
+                    }}
                 >
                     Together.
                 </span>
@@ -37,7 +40,6 @@ export default async function HeroSection() {
                     Local or hosted AI providers
                 </div>
                 <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2">
-
                     Multiplayer IDE with AI-native workflows
                 </div>
                 <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2">

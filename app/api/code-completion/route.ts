@@ -82,8 +82,10 @@ export async function POST(req: NextRequest) {
         }
 
         if (
-            cursorLine < 0 || !Number.isInteger(cursorLine) ||
-            cursorColumn < 0 || !Number.isInteger(cursorColumn)
+            cursorLine < 0 ||
+            !Number.isInteger(cursorLine) ||
+            cursorColumn < 0 ||
+            !Number.isInteger(cursorColumn)
         ) {
             return NextResponse.json(
                 { error: 'cursorLine and cursorColumn must be non-negative integers' },
@@ -214,11 +216,11 @@ function extractCodeContext(
         selectedText: typeof selection?.selectedText === 'string' ? selection.selectedText : '',
         selectionRange: hasValidSelection
             ? {
-                startLine: selection.selectionStartLine as number,
-                startColumn: selection.selectionStartColumn as number,
-                endLine: selection.selectionEndLine as number,
-                endColumn: selection.selectionEndColumn as number,
-            }
+                  startLine: selection.selectionStartLine as number,
+                  startColumn: selection.selectionStartColumn as number,
+                  endLine: selection.selectionEndLine as number,
+                  endColumn: selection.selectionEndColumn as number,
+              }
             : undefined,
         cursorPosition: { line: cursorLine, column: cursorColumn },
         isInFunction,
@@ -233,18 +235,43 @@ function detectLanguage(fileName?: string, fileContent?: string): string {
         if (extMatch) {
             const ext = extMatch[1].toLowerCase()
             const extMap: Record<string, string> = {
-                ts: 'typescript', tsx: 'typescript', js: 'javascript', jsx: 'javascript',
-                py: 'python', rb: 'ruby', java: 'java', cs: 'csharp', cpp: 'cpp', c: 'c',
-                go: 'go', rs: 'rust', php: 'php', swift: 'swift', kt: 'kotlin',
-                html: 'html', css: 'css', scss: 'scss', json: 'json', md: 'markdown',
-                yaml: 'yaml', yml: 'yaml', sh: 'bash', sql: 'sql',
+                ts: 'typescript',
+                tsx: 'typescript',
+                js: 'javascript',
+                jsx: 'javascript',
+                py: 'python',
+                rb: 'ruby',
+                java: 'java',
+                cs: 'csharp',
+                cpp: 'cpp',
+                c: 'c',
+                go: 'go',
+                rs: 'rust',
+                php: 'php',
+                swift: 'swift',
+                kt: 'kotlin',
+                html: 'html',
+                css: 'css',
+                scss: 'scss',
+                json: 'json',
+                md: 'markdown',
+                yaml: 'yaml',
+                yml: 'yaml',
+                sh: 'bash',
+                sql: 'sql',
             }
             if (extMap[ext]) return extMap[ext]
         }
     }
     if (fileContent) {
-        if (/^\s*def\s+\w+\s*\(/m.test(fileContent) || /^import\s+\w+$/m.test(fileContent)) return 'python'
-        if (/:\s*(string|number|boolean|void|any|never|unknown)\b/.test(fileContent) || /\binterface\s+\w+/.test(fileContent) || /\btype\s+\w+\s*=/.test(fileContent)) return 'typescript'
+        if (/^\s*def\s+\w+\s*\(/m.test(fileContent) || /^import\s+\w+$/m.test(fileContent))
+            return 'python'
+        if (
+            /:\s*(string|number|boolean|void|any|never|unknown)\b/.test(fileContent) ||
+            /\binterface\s+\w+/.test(fileContent) ||
+            /\btype\s+\w+\s*=/.test(fileContent)
+        )
+            return 'typescript'
         if (/\b(public|private|protected)\s+(class|static|void)\b/.test(fileContent)) return 'java'
         if (/^package\s+\w+/m.test(fileContent)) return 'go'
         if (/\bfn\s+\w+\s*\(/.test(fileContent)) return 'rust'
@@ -255,12 +282,31 @@ function detectLanguage(fileName?: string, fileContent?: string): string {
 
 function detectFramework(fileName?: string, fileContent?: string): string {
     const content = fileContent ?? ''
-    if (/["']next\//.test(content) || /\b(NextRequest|NextResponse|getServerSideProps|getStaticProps)\b/.test(content) || (fileName && /\/(app|pages)\/.*\.(tsx?|jsx?)$/.test(fileName))) return 'nextjs'
-    if (/["']react["']/.test(content) || /from\s+["']react["']/.test(content) || /<[A-Z][A-Za-z]+[\s/>]/.test(content)) return 'react'
+    if (
+        /["']next\//.test(content) ||
+        /\b(NextRequest|NextResponse|getServerSideProps|getStaticProps)\b/.test(content) ||
+        (fileName && /\/(app|pages)\/.*\.(tsx?|jsx?)$/.test(fileName))
+    )
+        return 'nextjs'
+    if (
+        /["']react["']/.test(content) ||
+        /from\s+["']react["']/.test(content) ||
+        /<[A-Z][A-Za-z]+[\s/>]/.test(content)
+    )
+        return 'react'
     if (/<template>/.test(content) || /from\s+["']vue["']/.test(content)) return 'vue'
-    if (/@(Component|NgModule|Injectable|Directive)\s*\(/.test(content) || /from\s+["']@angular\//.test(content)) return 'angular'
+    if (
+        /@(Component|NgModule|Injectable|Directive)\s*\(/.test(content) ||
+        /from\s+["']@angular\//.test(content)
+    )
+        return 'angular'
     if (fileName && /\.svelte$/.test(fileName)) return 'svelte'
-    if (/require\(["']express["']\)/.test(content) || /from\s+["']express["']/.test(content) || /app\.(get|post|put|delete|use)\s*\(/.test(content)) return 'express'
+    if (
+        /require\(["']express["']\)/.test(content) ||
+        /from\s+["']express["']/.test(content) ||
+        /app\.(get|post|put|delete|use)\s*\(/.test(content)
+    )
+        return 'express'
     if (/from\s+["']@nestjs\//.test(content)) return 'nestjs'
     if (/from\s+django\./.test(content)) return 'django'
     if (/from\s+flask\s+import/.test(content)) return 'flask'
@@ -298,21 +344,97 @@ function normalizePackageName(raw: string): string | null {
     return raw.split('/')[0]
 }
 
-const NODE_BUILTINS = new Set(['fs', 'path', 'os', 'http', 'https', 'crypto', 'stream', 'util', 'events', 'buffer', 'child_process', 'cluster', 'dns', 'net', 'readline', 'tls', 'url', 'zlib', 'assert', 'module', 'process', 'querystring', 'string_decoder', 'timers', 'tty', 'v8', 'vm'])
-const PYTHON_STDLIB = new Set(['os', 'sys', 're', 'math', 'json', 'io', 'time', 'datetime', 'collections', 'functools', 'itertools', 'pathlib', 'typing', 'abc', 'copy', 'enum', 'logging', 'threading', 'multiprocessing', 'subprocess', 'socket', 'hashlib', 'base64', 'urllib', 'http', 'unittest', 'argparse', 'dataclasses', 'contextlib', 'string', 'random', 'struct', 'traceback', 'warnings', 'weakref', 'csv', 'pickle', 'sqlite3', 'xml', 'html', 'shlex', 'glob', 'fnmatch', 'tempfile', 'pprint'])
+const NODE_BUILTINS = new Set([
+    'fs',
+    'path',
+    'os',
+    'http',
+    'https',
+    'crypto',
+    'stream',
+    'util',
+    'events',
+    'buffer',
+    'child_process',
+    'cluster',
+    'dns',
+    'net',
+    'readline',
+    'tls',
+    'url',
+    'zlib',
+    'assert',
+    'module',
+    'process',
+    'querystring',
+    'string_decoder',
+    'timers',
+    'tty',
+    'v8',
+    'vm',
+])
+const PYTHON_STDLIB = new Set([
+    'os',
+    'sys',
+    're',
+    'math',
+    'json',
+    'io',
+    'time',
+    'datetime',
+    'collections',
+    'functools',
+    'itertools',
+    'pathlib',
+    'typing',
+    'abc',
+    'copy',
+    'enum',
+    'logging',
+    'threading',
+    'multiprocessing',
+    'subprocess',
+    'socket',
+    'hashlib',
+    'base64',
+    'urllib',
+    'http',
+    'unittest',
+    'argparse',
+    'dataclasses',
+    'contextlib',
+    'string',
+    'random',
+    'struct',
+    'traceback',
+    'warnings',
+    'weakref',
+    'csv',
+    'pickle',
+    'sqlite3',
+    'xml',
+    'html',
+    'shlex',
+    'glob',
+    'fnmatch',
+    'tempfile',
+    'pprint',
+])
 
 function detectIfInFunction(beforeCursor: string): boolean {
-    const functionStartRegex = /(?:function\s*\*?\s*\w*\s*\(.*?\)|(?:(?:async|static|public|private|protected|export)\s+)*(?:function\s+\w+\s*\(.*?\)|\w+\s*(?:=\s*)?(?:async\s*)?\(.*?\)\s*=>)|(?:def|fn|func)\s+\w+\s*\(.*?\).*?[:{])/g
+    const functionStartRegex =
+        /(?:function\s*\*?\s*\w*\s*\(.*?\)|(?:(?:async|static|public|private|protected|export)\s+)*(?:function\s+\w+\s*\(.*?\)|\w+\s*(?:=\s*)?(?:async\s*)?\(.*?\)\s*=>)|(?:def|fn|func)\s+\w+\s*\(.*?\).*?[:{])/g
     const openBraces = (beforeCursor.match(/\{/g) ?? []).length
     const closeBraces = (beforeCursor.match(/\}/g) ?? []).length
-    return functionStartRegex.test(beforeCursor) && (openBraces - closeBraces) > 0
+    return functionStartRegex.test(beforeCursor) && openBraces - closeBraces > 0
 }
 
 function detectIfInClass(beforeCursor: string): boolean {
-    const classRegex = /(?:export\s+)?(?:abstract\s+)?class\s+\w+(?:\s+extends\s+[\w<>, ]+)?(?:\s+implements\s+[\w<>, ]+)?\s*\{/g
+    const classRegex =
+        /(?:export\s+)?(?:abstract\s+)?class\s+\w+(?:\s+extends\s+[\w<>, ]+)?(?:\s+implements\s+[\w<>, ]+)?\s*\{/g
     const openBraces = (beforeCursor.match(/\{/g) ?? []).length
     const closeBraces = (beforeCursor.match(/\}/g) ?? []).length
-    return classRegex.test(beforeCursor) && (openBraces - closeBraces) > 0
+    return classRegex.test(beforeCursor) && openBraces - closeBraces > 0
 }
 
 function detectIfInComment(beforeCursor: string): boolean {
@@ -324,15 +446,36 @@ function detectIfInComment(beforeCursor: string): boolean {
 }
 
 function generatePrompt(context: CodeContext, suggestionType: 'code' | 'comment'): string {
-    const { language, framework, libraries, fileName, beforeCursorContent, afterCursorContent, selectedText, selectionRange, isInFunction, isInClass, isInComment, cursorPosition } = context
+    const {
+        language,
+        framework,
+        libraries,
+        fileName,
+        beforeCursorContent,
+        afterCursorContent,
+        selectedText,
+        selectionRange,
+        isInFunction,
+        isInClass,
+        isInComment,
+        cursorPosition,
+    } = context
     const libList = libraries.length > 0 ? libraries.join(', ') : 'none detected'
-    const locationHints = [isInFunction && 'inside a function', isInClass && 'inside a class', isInComment && 'inside a comment block'].filter(Boolean).join(', ') || 'top-level scope'
+    const locationHints =
+        [
+            isInFunction && 'inside a function',
+            isInClass && 'inside a class',
+            isInComment && 'inside a comment block',
+        ]
+            .filter(Boolean)
+            .join(', ') || 'top-level scope'
     const hasSelectedCode = Boolean(selectedText && selectedText.trim().length > 0)
-    const task = suggestionType === 'comment'
-        ? 'Write a concise, accurate JSDoc/docstring comment for the code at the cursor.'
-        : hasSelectedCode
-            ? 'Rewrite the selected code to improve it. You may remove, reorder, or refactor lines if needed. Return only replacement code for the selected range.'
-            : 'Complete the code at the cursor position. Return only the inserted text, no explanations.'
+    const task =
+        suggestionType === 'comment'
+            ? 'Write a concise, accurate JSDoc/docstring comment for the code at the cursor.'
+            : hasSelectedCode
+              ? 'Rewrite the selected code to improve it. You may remove, reorder, or refactor lines if needed. Return only replacement code for the selected range.'
+              : 'Complete the code at the cursor position. Return only the inserted text, no explanations.'
     return `
 You are an expert ${language} developer${framework !== 'unknown' ? ` using ${framework}` : ''}.
 File: ${fileName ?? 'unknown'}

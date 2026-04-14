@@ -39,12 +39,12 @@ export function getOllamaBaseUrl(): string {
 // Returns a human-readable label for each provider.
 export function providerLabel(provider: AiProviderType): string {
     const labels: Record<AiProviderType, string> = {
-        OLLAMA_LOCAL:  'Ollama (Local)',
+        OLLAMA_LOCAL: 'Ollama (Local)',
         OLLAMA_REMOTE: 'Ollama (Remote)',
-        OPENAI:        'OpenAI',
-        GEMINI:        'Google Gemini',
-        ANTHROPIC:     'Anthropic Claude',
-        OPEN_ROUTER:   'OpenRouter',
+        OPENAI: 'OpenAI',
+        GEMINI: 'Google Gemini',
+        ANTHROPIC: 'Anthropic Claude',
+        OPEN_ROUTER: 'OpenRouter',
     }
     return labels[provider]
 }
@@ -52,12 +52,12 @@ export function providerLabel(provider: AiProviderType): string {
 // Returns placeholder text for the API key input per provider.
 export function providerKeyPlaceholder(provider: AiProviderType): string {
     const placeholders: Record<AiProviderType, string> = {
-        OLLAMA_LOCAL:  'No key needed',
+        OLLAMA_LOCAL: 'No key needed',
         OLLAMA_REMOTE: 'Bearer token (optional)',
-        OPENAI:        'sk-...',
-        GEMINI:        'AIza...',
-        ANTHROPIC:     'sk-ant-...',
-        OPEN_ROUTER:   'sk-or-...',
+        OPENAI: 'sk-...',
+        GEMINI: 'AIza...',
+        ANTHROPIC: 'sk-ant-...',
+        OPEN_ROUTER: 'sk-or-...',
     }
     return placeholders[provider]
 }

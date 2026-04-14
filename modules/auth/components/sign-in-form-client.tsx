@@ -197,11 +197,17 @@ const SignInFormClient = () => {
                 </div>
                 <p className="text-[13.5px] leading-5.5 text-neutral-400 py-2">
                     By signing in, you agree to our{' '}
-                    <a href="#" className="underline underline-offset-4 text-neutral-300 hover:text-white">
+                    <a
+                        href="#"
+                        className="underline underline-offset-4 text-neutral-300 hover:text-white"
+                    >
                         Terms of Service
                     </a>{' '}
                     and{' '}
-                    <a href="#" className="underline underline-offset-4 text-neutral-300 hover:text-white">
+                    <a
+                        href="#"
+                        className="underline underline-offset-4 text-neutral-300 hover:text-white"
+                    >
                         Privacy Policy
                     </a>
                     .

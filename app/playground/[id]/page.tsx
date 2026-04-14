@@ -479,7 +479,7 @@ function MainPlaygroundPage() {
         try {
             const settings = await getAiSettings()
             const providerKey = settings?.provider ?? null
-            setActiveAiProvider(providerKey ? PROVIDER_LABELS[providerKey] ?? providerKey : null)
+            setActiveAiProvider(providerKey ? (PROVIDER_LABELS[providerKey] ?? providerKey) : null)
         } catch {
             setActiveAiProvider(null)
         }
@@ -689,7 +689,14 @@ function MainPlaygroundPage() {
         } finally {
             pendingSaveRef.current = null
         }
-    }, [fileTree, hasUnsavedChanges, openFiles, saveFileChanges, saveTemplateData, setTemplateFileTree])
+    }, [
+        fileTree,
+        hasUnsavedChanges,
+        openFiles,
+        saveFileChanges,
+        saveTemplateData,
+        setTemplateFileTree,
+    ])
 
     // Saves current changes and then returns the user to dashboard.
     const handleNavigateDashboard = React.useCallback(async () => {
@@ -723,7 +730,10 @@ function MainPlaygroundPage() {
 
             const destination = new URL(href, window.location.origin)
             if (destination.origin !== window.location.origin) return
-            if (destination.pathname === window.location.pathname && destination.search === window.location.search) {
+            if (
+                destination.pathname === window.location.pathname &&
+                destination.search === window.location.search
+            ) {
                 return
             }
 
@@ -1090,17 +1100,17 @@ function MainPlaygroundPage() {
 
                 const replaceRange = hasSelection
                     ? new monaco.Range(
-                        selection!.startLineNumber,
-                        selection!.startColumn,
-                        selection!.endLineNumber,
-                        selection!.endColumn,
-                    )
+                          selection!.startLineNumber,
+                          selection!.startColumn,
+                          selection!.endLineNumber,
+                          selection!.endColumn,
+                      )
                     : new monaco.Range(
-                        position.lineNumber,
-                        position.column,
-                        position.lineNumber,
-                        position.column,
-                    )
+                          position.lineNumber,
+                          position.column,
+                          position.lineNumber,
+                          position.column,
+                      )
 
                 return {
                     items: [
@@ -1470,14 +1480,18 @@ function MainPlaygroundPage() {
                                             <button
                                                 type="button"
                                                 onClick={handleRequestAiSuggestion}
-                                                disabled={!isAiAutocompleteEnabled || aiSuggestionLoading}
+                                                disabled={
+                                                    !isAiAutocompleteEnabled || aiSuggestionLoading
+                                                }
                                                 className="rounded border border-[#1e2028] bg-[#11161d] px-2 py-1 text-[10px] text-[#8ea5b5] transition-colors hover:border-[#00d4aa]/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                                                 title="Trigger inline AI suggestion"
                                             >
                                                 {aiSuggestionLoading ? 'Thinking' : 'Trigger AI'}
                                             </button>
 
-                                            <span className="text-[10px] text-[#00d4aa]">Primary</span>
+                                            <span className="text-[10px] text-[#00d4aa]">
+                                                Primary
+                                            </span>
                                         </div>
                                     </div>
 
@@ -1819,7 +1833,6 @@ function MainPlaygroundPage() {
                             playgroundId={id}
                             onLogTerminal={appendTerminalLog}
                         />
-
                     </div>
 
                     {isTerminalOpen ? (

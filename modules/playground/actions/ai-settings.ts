@@ -7,21 +7,23 @@ import type { AiProviderType } from '@/lib/ai-providers'
 
 export type SaveAiSettingsInput = {
     provider: AiProviderType
-    apiKey?: string       // raw key from the user — we encrypt before storing
+    apiKey?: string // raw key from the user — we encrypt before storing
     ollamaBaseUrl?: string
     model?: string
 }
 
 export type AiSettingsResult = {
     provider: AiProviderType | null
-    hasKey: boolean          // true when an encrypted key exists — never exposes the raw key
+    hasKey: boolean // true when an encrypted key exists — never exposes the raw key
     ollamaBaseUrl: string | null
     model: string | null
 }
 
 // Saves the user's chosen AI provider and (optionally) an API key.
 // The key is AES-256-GCM encrypted before writing to the database.
-export async function saveAiSettings(input: SaveAiSettingsInput): Promise<{ success: boolean; error?: string }> {
+export async function saveAiSettings(
+    input: SaveAiSettingsInput,
+): Promise<{ success: boolean; error?: string }> {
     const user = await currentUser()
     if (!user?.id) return { success: false, error: 'Unauthorized' }
 
@@ -33,18 +35,19 @@ export async function saveAiSettings(input: SaveAiSettingsInput): Promise<{ succ
         // Only update the key when the caller actually sends one.
         // Sending an empty string clears the stored key.
         if (typeof input.apiKey === 'string') {
-            updateData.encryptedApiKey = input.apiKey.trim()
-                ? encrypt(input.apiKey.trim())
-                : null
+            updateData.encryptedApiKey = input.apiKey.trim() ? encrypt(input.apiKey.trim()) : null
         }
 
         updateData.aiModel = input.model?.trim() || null // Store model if provided, or null to clear
 
         if (input.provider === 'OLLAMA_REMOTE') {
             const url = input.ollamaBaseUrl?.trim() ?? ''
-            if (!url) return { success: false, error: 'Ollama base URL is required for remote mode' }
+            if (!url)
+                return { success: false, error: 'Ollama base URL is required for remote mode' }
             // Basic URL validation before persisting
-            try { new URL(url) } catch {
+            try {
+                new URL(url)
+            } catch {
                 return { success: false, error: 'Ollama base URL is not a valid URL' }
             }
             updateData.ollamaBaseUrl = url
@@ -78,13 +81,13 @@ export async function getAiSettings(): Promise<AiSettingsResult | null> {
                 aiProvider: true,
                 encryptedApiKey: true,
                 ollamaBaseUrl: true,
-                aiModel: true,  // Include aiModel in the selection for future use, even if it's not returned in the result yet
+                aiModel: true, // Include aiModel in the selection for future use, even if it's not returned in the result yet
             },
         })
         if (!dbUser) return null
 
         return {
-            provider: (dbUser.aiProvider as AiProviderType | null),
+            provider: dbUser.aiProvider as AiProviderType | null,
             hasKey: Boolean(dbUser.encryptedApiKey),
             ollamaBaseUrl: dbUser.ollamaBaseUrl ?? null,
             model: dbUser.aiModel ?? null, // Placeholder for future model-specific settings
@@ -127,7 +130,7 @@ export async function resolveUserAiConfig(userId: string): Promise<{
         }
 
         return {
-            provider: (dbUser.aiProvider as AiProviderType | null),
+            provider: dbUser.aiProvider as AiProviderType | null,
             apiKey,
             ollamaBaseUrl: dbUser.ollamaBaseUrl ?? null,
             model: dbUser.aiModel ?? null,

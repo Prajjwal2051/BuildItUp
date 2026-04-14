@@ -31,8 +31,6 @@ export default function HomeFooter() {
                         GitHub: @Prajjwal2051
                     </a>
                 </div>
-
-
             </div>
         </footer>
     )

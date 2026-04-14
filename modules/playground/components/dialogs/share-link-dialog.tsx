@@ -67,13 +67,11 @@ export function ShareLinkDialog({
                 }),
             })
 
-            const payload = (await response.json().catch(() => null)) as
-                | {
-                    shareUrl?: string
-                    token?: string
-                    error?: string
-                }
-                | null
+            const payload = (await response.json().catch(() => null)) as {
+                shareUrl?: string
+                token?: string
+                error?: string
+            } | null
 
             if (!response.ok) {
                 throw new Error(payload?.error ?? 'Unable to create share link')
@@ -97,8 +95,7 @@ export function ShareLinkDialog({
             onLogTerminal(`[info] Share link created: ${finalShareUrl}\n`)
             toast.success('Share link generated')
         } catch (error) {
-            const message =
-                error instanceof Error ? error.message : 'Failed to create share link'
+            const message = error instanceof Error ? error.message : 'Failed to create share link'
             toast.error(message)
             onLogTerminal(`[error] ${message}\n`)
         } finally {

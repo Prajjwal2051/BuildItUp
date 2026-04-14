@@ -8,3 +8,15 @@ coverage
 package-lock.json
 pnpm-lock.yaml
 yarn.lock
+.env
+.env.local
+.env.example
+.vscode
+/OrbitalCode-starters
+./OrbitalCode-starters
+./references
+.codex
+.gitignore
+.npmrc
+.prettierignore
+

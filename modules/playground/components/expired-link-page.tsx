@@ -1,4 +1,4 @@
-import Link from "next/link"
+import Link from 'next/link'
 
 export function ExpiredLinkPage() {
     return (
@@ -23,7 +23,8 @@ export function ExpiredLinkPage() {
                 </div>
                 <h1 className="mb-2 text-2xl font-bold text-white">Link Expired or Invalid</h1>
                 <p className="mb-8 text-sm text-[#8ea5b5]">
-                    The shared playground link you are trying to access is no longer valid, has been revoked, or has expired.
+                    The shared playground link you are trying to access is no longer valid, has been
+                    revoked, or has expired.
                 </p>
                 <Link
                     href="/dashboard"

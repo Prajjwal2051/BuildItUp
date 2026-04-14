@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 
 const phrases = [
-    "Build together with Docker-isolated sandboxes and this AI-driven completions, and zero-latency syncing.",
-    "The cloud-based collaborative IDE for real-time development. Code, run, and debug together from any browser."
+    'Build together with Docker-isolated sandboxes and this AI-driven completions, and zero-latency syncing.',
+    'The cloud-based collaborative IDE for real-time development. Code, run, and debug together from any browser.',
 ]
 
 export function TypewriterText() {
@@ -14,7 +14,7 @@ export function TypewriterText() {
 
     useEffect(() => {
         const currentPhrase = phrases[phraseIndex]
-        
+
         let typingSpeed = 50
 
         if (isDeleting) {

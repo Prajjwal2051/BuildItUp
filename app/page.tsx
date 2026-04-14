@@ -36,7 +36,6 @@ function Home() {
         >
             <MouseGlow />
             <SpaceBackground />
-            
 
             <div className="relative z-10 flex flex-col min-h-screen">
                 <HomeHeader />

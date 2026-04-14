@@ -58,11 +58,13 @@ function FeatureSections() {
                                     &nbsp;&nbsp;<span className="text-[#7fb7ff]">await</span>{' '}
                                     <span className="text-white">socket</span>.
                                     <span className="text-[#00d4aa]">emit</span>(
-                                    <span className="text-[#f5c76e]">&quot;code:update&quot;</span>, {'{'}
+                                    <span className="text-[#f5c76e]">&quot;code:update&quot;</span>,{' '}
+                                    {'{'}
                                 </div>
                                 <div>
-                                    &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-white">delta</span>
-                                    , <span className="text-white">revision</span>:{' '}
+                                    &nbsp;&nbsp;&nbsp;&nbsp;
+                                    <span className="text-white">delta</span>,{' '}
+                                    <span className="text-white">revision</span>:{' '}
                                     <span className="text-[#00d4aa]">++</span>
                                     <span className="text-white">rev</span>
                                 </div>

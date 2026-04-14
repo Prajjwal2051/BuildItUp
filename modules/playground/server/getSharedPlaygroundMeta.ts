@@ -1,4 +1,4 @@
-import { db } from "@/lib/db"
+import { db } from '@/lib/db'
 
 export async function getSharedPlaygroundMeta(token: string) {
     try {
@@ -9,7 +9,7 @@ export async function getSharedPlaygroundMeta(token: string) {
                 permission: true,
                 isRevoked: true,
                 expiresAt: true,
-            }
+            },
         })
 
         if (!link || link.isRevoked) {
@@ -25,7 +25,7 @@ export async function getSharedPlaygroundMeta(token: string) {
             permission: link.permission,
         }
     } catch (error) {
-        console.error("Error fetching shared playground meta:", error)
+        console.error('Error fetching shared playground meta:', error)
         return null
     }
 }
