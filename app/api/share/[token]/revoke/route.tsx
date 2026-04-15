@@ -1,14 +1,18 @@
-// here we will revoke the link means make the link invalid id the user requested
+// ─────────────────────────────────────────────────────────────────
+// SHARE LINK REVOKE API
+// DELETE /api/share/[token]/revoke
+// Owner-only endpoint that invalidates an existing share token.
+// ─────────────────────────────────────────────────────────────────
 
 import { auth } from '@/auth'
-import { NextResponse, NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 export async function DELETE(
-    request: NextRequest,
-    { params }: { params: Promise<{ token: string }> },
+    _request: Request,
+    { params }: { params: { token: string } },
 ) {
-    // first we will verify the authentication of the user
+    // 1) Verify session.
     const session = await auth()
     if (!session?.user?.id) {
         return NextResponse.json(
@@ -21,8 +25,8 @@ export async function DELETE(
         )
     }
 
-    // now we will extract the token from routes.params
-    const { token } = await params
+    // 2) Resolve token and enforce ownership.
+    const { token } = params
 
     const link = await db.shareLink.findFirst({
         where: {
@@ -35,6 +39,8 @@ export async function DELETE(
     if (session.user.id !== link.createdById) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
+
+    // 3) Revoke token.
     try {
         await db.shareLink.update({
             where: {
@@ -44,7 +50,7 @@ export async function DELETE(
                 isRevoked: true,
             },
         })
-    } catch (error) {
+    } catch {
         return NextResponse.json(
             {
                 error: 'Failed to Revoke Permissions',
@@ -55,5 +61,6 @@ export async function DELETE(
         )
     }
 
+    // 4) Return success response.
     return NextResponse.json({ ok: true })
 }

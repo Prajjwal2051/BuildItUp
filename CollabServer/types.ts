@@ -84,6 +84,7 @@ export type ServerMessage =
         rev: number           // Current document revision (e.g. 42)
         content: string       // Full document text at that revision
         users: User[]         // Other users currently in the room
+        selfUserId: string    // User ID assigned to this client
     }
     // Initialize: Sent once after "auth" succeeds. Client loads editor with this content.
 
@@ -129,6 +130,18 @@ export type ServerMessage =
         message: string // Human-readable error message
     }
     // Error: Sent when something fails (bad token, revoked link, etc.).
+
+    | {
+        type: "conflict"
+        authorAId: string   // First author involved in the overlap
+        authorBId: string   // Second author involved in the overlap
+        opA: TextOperations // First operation that touched the region
+        opB: TextOperations // Second operation that touched the region
+        baseContent: string  // Shared base content both ops were compared against
+        contentA: string     // Result after applying opA to baseContent
+        contentB: string     // Result after applying opB to baseContent
+    }
+    // Conflict: Sent to both clients when overlapping edits land close together in time.
 
     | { type: "pong" }
 // Keep-alive reply: Response to client's "ping" message.

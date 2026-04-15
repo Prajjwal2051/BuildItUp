@@ -8,10 +8,21 @@ import { TextOperations } from "../types"
 export interface DocumentState {
     content: string,  // Current document content
     revision: number,  // Current document revision number
-    operations: Array<{ rev: number, op: TextOperations, authorId: string, timestamp: number }> // History of all operations applied to this document (for OT transformation)
+    operations: Array<{
+        rev: number
+        op: TextOperations
+        authorId: string
+        timestamp: number
+        beforeContent: string
+    }> // History of all operations applied to this document (for OT transformation)
 }
 
 const sessions = new Map<string, DocumentState>()  // here string -> playgroundId   document state-> above
+
+// Lists active playground IDs currently present in in-memory session state.
+export function listDocumentStates(): string[] {
+    return Array.from(sessions.keys())
+}
 
 // Reads current document state for a playground, if present in memory.
 export function getDocumentState(playgroundId: string): DocumentState | null {
@@ -31,7 +42,7 @@ export function deleteDocumentState(playgroundId: string): void {
 // Appends one applied op to memory history and keeps only the newest 500 entries.
 export function appendOperation(
     playgroundId: string,
-    entry: { rev: number; op: TextOperations; authorId: string }): void {
+    entry: { rev: number; op: TextOperations; authorId: string; beforeContent: string }): void {
 
     // Skip safely if the room/session was already cleaned up.
     const state = sessions.get(playgroundId)

@@ -5,12 +5,14 @@
 
 import redis from "@/lib/redis"
 import { db } from "@/lib/db"
-import { getDocumentState, setDocumentState, deleteDocumentState } from "./ot/sessions"
+import { getDocumentState, setDocumentState, deleteDocumentState, listDocumentStates } from "./ot/sessions"
 import type { DocumentState } from "./ot/sessions"
 import type { TextOperations } from "./types"
 
 // Keep Redis-backed live sessions warm for two hours.
 const session_TTL_seconds = 2 * 60 * 60
+const idle_flush_ms = 30 * 1000
+const idleTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 // Redis key for the latest full session snapshot.
 function sessionKey(playgroundId: string) {
@@ -20,6 +22,26 @@ function sessionKey(playgroundId: string) {
 // Redis key for the rolling operation history buffer.
 function opsKey(playgroundId: string) {
     return `collab:ops:${playgroundId}`
+}
+
+// Resets a per-playground idle timer; when it fires, session state is flushed to DB.
+export function markSessionActivity(playgroundId: string): void {
+    const existing = idleTimers.get(playgroundId)
+    if (existing) {
+        clearTimeout(existing)
+    }
+
+    const timer = setTimeout(() => {
+        void flushToDB(playgroundId)
+    }, idle_flush_ms)
+
+    idleTimers.set(playgroundId, timer)
+}
+
+// Flushes every active in-memory session (used for graceful process shutdown).
+export async function flushAllSessions(): Promise<void> {
+    const roomIds = new Set<string>([...listDocumentStates(), ...idleTimers.keys()])
+    await Promise.all(Array.from(roomIds, (roomId) => flushToDB(roomId)))
 }
 
 /**
@@ -47,6 +69,7 @@ export async function loadSession(playgroundId: string): Promise<DocumentState> 
     }
 
     setDocumentState(playgroundId, initial)
+    markSessionActivity(playgroundId)
     await redis.set(sessionKey(playgroundId), JSON.stringify(initial), "EX", session_TTL_seconds)
     return initial
 
@@ -67,6 +90,8 @@ export async function saveSession(playgroundId: string): Promise<void> {
         session_TTL_seconds
     )
 
+    markSessionActivity(playgroundId)
+
 }
 
 /**
@@ -74,7 +99,7 @@ export async function saveSession(playgroundId: string): Promise<void> {
  */
 export async function pushOpToHistory(
     playgroundId: string,
-    entry: { rev: number; op: TextOperations; authorId: string }
+    entry: { rev: number; op: TextOperations; authorId: string; beforeContent: string }
 ): Promise<void> {
     await redis.lpush(opsKey(playgroundId), JSON.stringify(entry))
     await redis.ltrim(opsKey(playgroundId), 0, 499)
@@ -84,6 +109,12 @@ export async function pushOpToHistory(
  * Flush final state to MongoDB when session ends.
  */
 export async function flushToDB(playgroundId: string): Promise<void> {
+    const existingTimer = idleTimers.get(playgroundId)
+    if (existingTimer) {
+        clearTimeout(existingTimer)
+        idleTimers.delete(playgroundId)
+    }
+
     const state = getDocumentState(playgroundId)
     if (!state) return
 

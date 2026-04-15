@@ -3,6 +3,9 @@
 // this is the public routes which can be accessed by anyone without authentication
 export const publicRoutes: string[] = ['/']
 
+// NEW — dynamic share routes bypass auth (token is the credential)
+export const publicRoutePrefixes: string[] = ['/s', '/api/share']
+
 // this is the protected routes which can only be accessed by authenticated users
 export const protectedRoutes: string[] = ['/dashboard', '/profile', '/settings', '/admin']
 

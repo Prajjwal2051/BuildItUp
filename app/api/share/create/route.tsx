@@ -1,11 +1,26 @@
+// ─────────────────────────────────────────────────────────────────
+// SHARE LINK CREATION API
+// POST /api/share/create
+// Creates a new share link for a playground owned by the authenticated user.
+// ─────────────────────────────────────────────────────────────────
+
 import { auth } from '@/auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { generateShareToken } from '@/lib/share-token'
 import { db } from '@/lib/db'
 
-// first we will make the post route to create a shareable link for the playground
+type CreateShareBody = {
+    playgroundId?: string
+    permission?: 'VIEW_ONLY' | 'VIEW_AND_EDIT'
+    expiresIn?: number // hours
+}
+
+// POST body: { playgroundId, permission, expiresIn? }
+// 1) Verify authenticated session
+// 2) Verify playground ownership
+// 3) Generate token and persist share link
+// 4) Return share URL and token
 export async function POST(request: NextRequest) {
-    // first we will resolve the session- reject if the user is not authenticated
     const session = await auth()
     if (!session?.user?.id) {
         return NextResponse.json(
@@ -17,12 +32,23 @@ export async function POST(request: NextRequest) {
             },
         )
     }
-    // now we will fgetch thew playgroundid, permission and expiry date
-    const { playgroundId, permission = 'VIEWONLY', expiresIn } = await request.json()
+
+    const { playgroundId, permission = 'VIEW_ONLY', expiresIn } =
+        (await request.json()) as CreateShareBody
+
     if (!playgroundId) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 400 })
+        return NextResponse.json({ error: 'playgroundId is required' }, { status: 400 })
     }
-    // now we will also check the ownership
+
+    if (permission !== 'VIEW_ONLY' && permission !== 'VIEW_AND_EDIT') {
+        return NextResponse.json({ error: 'Invalid permission' }, { status: 400 })
+    }
+
+    if (expiresIn !== undefined && (!Number.isFinite(expiresIn) || expiresIn <= 0)) {
+        return NextResponse.json({ error: 'expiresIn must be a positive number of hours' }, { status: 400 })
+    }
+
+    // Owner-only: user must own this playground.
     const playground = await db.playground.findFirst({
         where: {
             id: playgroundId,
@@ -33,12 +59,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    // now we will generate a shareable link
+    // Token format/signature is handled in lib/share-token.
     const token = generateShareToken(playgroundId)
-    const expiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000) : null
+    const expiresAt = expiresIn ? new Date(Date.now() + expiresIn * 60 * 60 * 1000) : null
 
-    // now just update it in database
-    const shareLink = await db.shareLink.create({
+    await db.shareLink.create({
         data: {
             token,
             playgroundId,
@@ -47,10 +72,11 @@ export async function POST(request: NextRequest) {
             expiresAt,
         },
     })
-    const shareUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/share/${shareLink.token}`
+
+    const shareUrl = `${request.nextUrl.origin}/s/${token}`
+
     return NextResponse.json({
         shareUrl,
         token,
-        id: shareLink.id,
     })
 }

@@ -3,8 +3,8 @@
 // Handles socket auth, room membership, operations, cursors, and cleanup.
 // ─────────────────────────────────────────────────────────────────
 
-import { createHmac, timingSafeEqual } from "crypto"
 import { db } from "@/lib/db"
+import { verifyShareToken } from "@/lib/share-token"
 import { userColor } from "@/lib/user-color"
 import type WebSocket from "ws"
 import type { RawData } from "ws"
@@ -17,7 +17,7 @@ import type {
 } from "./types"
 import { getDocumentState, setDocumentState, appendOperation } from "./ot/sessions"
 import { apply, transform } from "./ot/engine"
-import { loadSession, saveSession, pushOpToHistory, flushToDB } from "./persistence"
+import { loadSession, saveSession, pushOpToHistory, flushToDB, markSessionActivity } from "./persistence"
 import { broadCastCursor, broadCastJoin, broadcastLeave, Room, RoomClient } from "./presence"
 
 // In-memory room index: playgroundId -> connected room members.
@@ -28,9 +28,6 @@ const clientToRoom = new Map<WebSocket, {
     roomId: string,
     client: RoomClient
 }>()
-
-// Shared secret used to verify signed share tokens.
-const SHARE_LINK_SECRET = process.env.SHARE_LINK_SECRET ?? ""
 
 // Routes incoming websocket payloads to the right handler after basic JSON decoding.
 export async function handleMessage(ws: WebSocket, raw: RawData) {
@@ -72,8 +69,53 @@ function send(ws: WebSocket, msg: ServerMessage) {
     ws.send(JSON.stringify(msg))
 }
 
+function getClientByUserId(room: Room, userId: string): RoomClient | null {
+    for (const client of room) {
+        if (client.userId === userId) {
+            return client
+        }
+    }
+    return null
+}
+
+function toRange(op: TextOperations) {
+    if (op.type === 'insert') {
+        return { start: op.position, end: op.position }
+    }
+
+    if (op.type === 'delete') {
+        return { start: op.position, end: op.position + op.length }
+    }
+
+    return { start: 0, end: 0 }
+}
+
+function rangesOverlap(a: TextOperations, b: TextOperations): boolean {
+    if (a.type === 'retain' || b.type === 'retain') return false
+
+    const rangeA = toRange(a)
+    const rangeB = toRange(b)
+    return rangeA.start <= rangeB.end && rangeB.start <= rangeA.end
+}
+
 // Validates a share token against the DB and signature and returns its playground mapping.
 async function resolvePlaygroundIdFromToken(token: string): Promise<{ playgroundId: string | null }> {
+    if (!verifyShareToken(token)) {
+        return { playgroundId: null }
+    }
+
+    let tokenPlaygroundId: string | null = null
+    try {
+        const decoded = Buffer.from(token, "base64url").toString("utf8")
+        const parts = decoded.split(":")
+        if (parts.length !== 3) {
+            return { playgroundId: null }
+        }
+        tokenPlaygroundId = parts[0]
+    } catch {
+        return { playgroundId: null }
+    }
+
     const link = await db.shareLink.findUnique({ where: { token } })
     if (!link || link.isRevoked) {
         return { playgroundId: null }
@@ -83,32 +125,11 @@ async function resolvePlaygroundIdFromToken(token: string): Promise<{ playground
         return { playgroundId: null }
     }
 
-    // If signature checks are not configured, still allow DB-backed token validation.
-    if (!SHARE_LINK_SECRET) {
-        return { playgroundId: link.playgroundId }
-    }
-
-    try {
-        const decoded = Buffer.from(token, "base64url").toString("utf8")
-        const parts = decoded.split(":")
-        if (parts.length !== 3) {
-            return { playgroundId: null }
-        }
-
-        const [playgroundId, nonce, providedSig] = parts
-        const payload = `${playgroundId}:${nonce}`
-        const expectedSig = createHmac("sha256", SHARE_LINK_SECRET).update(payload).digest("hex")
-
-        // Timing-safe equality helps avoid leaking signature validity by timing differences.
-        const isValid = timingSafeEqual(Buffer.from(providedSig), Buffer.from(expectedSig))
-        if (!isValid || playgroundId !== link.playgroundId) {
-            return { playgroundId: null }
-        }
-
-        return { playgroundId }
-    } catch {
+    if (!tokenPlaygroundId || tokenPlaygroundId !== link.playgroundId) {
         return { playgroundId: null }
     }
+
+    return { playgroundId: link.playgroundId }
 }
 
 // Authenticates a socket, joins it to a room, and sends initial document state.
@@ -130,6 +151,7 @@ async function handleAuth(ws: WebSocket, token: string, userId?: string) {
         state = await loadSession(playgroundId)
         setDocumentState(playgroundId, state)
     }
+    markSessionActivity(playgroundId)
 
     // Ensure a room exists for this playground.
     let room = rooms.get(playgroundId)
@@ -172,6 +194,7 @@ async function handleAuth(ws: WebSocket, token: string, userId?: string) {
         rev: state.revision,
         content: state.content,
         users,
+        selfUserId: id,
     })
 
     // Notify everyone else that a new collaborator joined.
@@ -189,6 +212,8 @@ async function handleOperation(ws: WebSocket, rev: number, op: TextOperations) {
         state = await loadSession(roomId)
     }
 
+    const beforeContent = state.content
+
     // If client is behind, shift the incoming op over all unseen server-side ops.
     let transformedOp = op
     if (rev < state.revision) {
@@ -204,9 +229,20 @@ async function handleOperation(ws: WebSocket, rev: number, op: TextOperations) {
 
     state.content = newContent
     state.revision = newRev
-    appendOperation(roomId, { rev: newRev, op: transformedOp, authorId: client.userId })
-    await pushOpToHistory(roomId, { rev: newRev, op: transformedOp, authorId: client.userId })
+    appendOperation(roomId, {
+        rev: newRev,
+        op: transformedOp,
+        authorId: client.userId,
+        beforeContent,
+    })
+    await pushOpToHistory(roomId, {
+        rev: newRev,
+        op: transformedOp,
+        authorId: client.userId,
+        beforeContent,
+    })
     await saveSession(roomId)
+    markSessionActivity(roomId)
 
     // Ack only to the sender so client can advance its local revision.
     send(ws, { type: "acknowledgment", rev: newRev })
@@ -223,6 +259,32 @@ async function handleOperation(ws: WebSocket, rev: number, op: TextOperations) {
     for (const c of room) {
         if (c === client) continue
         c.ws.send(JSON.stringify(msg))
+    }
+
+    // If a recent edit touched the same range, send a conflict payload to both clients.
+    const recentConflicts = state.operations.filter((entry) => {
+        if (entry.authorId === client.userId) return false
+        return Date.now() - entry.timestamp <= 500 && rangesOverlap(entry.op, transformedOp)
+    })
+
+    for (const entry of recentConflicts) {
+        const firstClient = getClientByUserId(room, entry.authorId)
+        const secondClient = getClientByUserId(room, client.userId)
+        if (!firstClient || !secondClient) continue
+
+        const conflictMsg: ServerMessage = {
+            type: 'conflict',
+            authorAId: entry.authorId,
+            authorBId: client.userId,
+            opA: entry.op,
+            opB: transformedOp,
+            baseContent: entry.beforeContent,
+            contentA: apply(entry.beforeContent, entry.op),
+            contentB: apply(entry.beforeContent, transformedOp),
+        }
+
+        firstClient.ws.send(JSON.stringify(conflictMsg))
+        secondClient.ws.send(JSON.stringify(conflictMsg))
     }
 }
 

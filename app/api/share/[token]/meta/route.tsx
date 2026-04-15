@@ -1,24 +1,20 @@
-// here we will fetch the shareable link for the user
+// ─────────────────────────────────────────────────────────────────
+// SHARE LINK METADATA API
+// GET /api/share/[token]/meta
+// Public endpoint that validates token status and returns share metadata.
+// ─────────────────────────────────────────────────────────────────
 
 import { db } from '@/lib/db'
-import { auth } from '@/auth'
-import { NextResponse, NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 
 export async function GET(
-    request: NextRequest,
-    { params }: { params: Promise<{ token: string }> },
+    _request: Request,
+    { params }: { params: { token: string } },
 ) {
-    // check for the session
-    const session = await auth()
-    const userId = session?.user?.id ?? null
-    if (!session?.user?.id) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
-    }
+    // 1) Resolve token metadata.
+    const { token } = params
 
-    // get the token from route params
-    const { token } = await params
-
-    // fetching the sharelink from db and checking is Revoked and expires at and perfoming some op and then return
+    // Fetch link and owner display details.
     const link = await db.shareLink.findFirst({
         where: {
             token,
@@ -34,38 +30,25 @@ export async function GET(
     if (!link) {
         return NextResponse.json({ error: 'Link Not found' }, { status: 404 })
     }
-    if (!link.isRevoked) {
+
+    // 2) Validate token state.
+    if (link.isRevoked) {
         return NextResponse.json({ error: 'Link Revoked' }, { status: 410 })
     }
+
     if (link.expiresAt && link.expiresAt < new Date()) {
         return NextResponse.json({ error: 'Link Expired' }, { status: 410 })
     }
 
-    // now if all is good then we will increment the accessCount
-    if (userId) {
-        try {
-            // Try to create a unique access row; if it already exists, do nothing
-            await db.$transaction(async (tx) => {
-                await tx.shareLinkAccess.create({
-                    data: {
-                        shareLinkId: link.id,
-                        userId,
-                    },
-                })
+    // 3) Increment access counter for successful metadata reads.
+    await db.shareLink.update({
+        where: { id: link.id },
+        data: {
+            accessCount: { increment: 1 },
+        },
+    })
 
-                await tx.shareLink.update({
-                    where: { id: link.id },
-                    data: {
-                        accessCount: { increment: 1 },
-                    },
-                })
-            })
-        } catch (error) {
-            // If unique constraint fails, we just ignore (user already counted)
-            // You can check for specific error codes if you want
-        }
-    }
-
+    // 4) Return public metadata used by shared page/clients.
     return NextResponse.json({
         permission: link.permission,
         playgroundId: link.playgroundId,

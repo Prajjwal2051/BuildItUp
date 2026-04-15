@@ -1,5 +1,9 @@
-import { apiAuthPrefix, publicRoutes, authRoutes } from './route'
-import { auth } from './auth'
+import { apiAuthPrefix, publicRoutes, publicRoutePrefixes, authRoutes, DEFAULT_LOGIN_REDIRECT } from './route'
+import NextAuth from 'next-auth'
+import authConfig from './auth.config'
+import { NextResponse } from 'next/server'
+
+const { auth } = NextAuth(authConfig)
 
 export default auth((req) => {
     const { nextUrl } = req
@@ -7,11 +11,15 @@ export default auth((req) => {
 
     const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix)
     const isPublicRoute = publicRoutes.includes(nextUrl.pathname)
+    const isPublicPrefix = publicRoutePrefixes.some(p =>   // ← add this check
+        nextUrl.pathname.startsWith(p)
+    )
     const isAuthRoute = authRoutes.includes(nextUrl.pathname)
 
     if (isApiAuthRoute) {
         return null
     }
+    if (isPublicRoute || isPublicPrefix) return NextResponse.next()  // ← allow through
 
     if (isAuthRoute) {
         if (isLoggedIn) {
@@ -30,5 +38,5 @@ export default auth((req) => {
 
 export const config = {
     //clerk regex to match all routes except for static files and api routes
-    matcher: ['/((?!.+\\.[\\w]+$|_next|api|trpc).*)', '/'],
+    matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/'],
 }

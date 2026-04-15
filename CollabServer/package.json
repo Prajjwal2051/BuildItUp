@@ -1,0 +1,7 @@
+{
+    "name": "builditup-collab-server",
+    "private": true,
+    "scripts": {
+        "start": "tsx index.ts"
+    }
+}
