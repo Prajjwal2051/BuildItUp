@@ -17,7 +17,7 @@ export default auth((req) => {
     const isAuthRoute = authRoutes.includes(nextUrl.pathname)
 
     if (isApiAuthRoute) {
-        return null
+        return NextResponse.next()
     }
     if (isPublicRoute || isPublicPrefix) return NextResponse.next()  // ← allow through
 
@@ -26,17 +26,17 @@ export default auth((req) => {
             return Response.redirect(new URL('/dashboard', req.url))
         }
 
-        return null
+        return NextResponse.next()
     }
 
     if (!isLoggedIn && !isPublicRoute) {
-        return Response.redirect(new URL('/auth/sign-in', req.url))
+        return NextResponse.redirect(new URL('/auth/sign-in', req.url))
     }
-
-    return null
+    console.log('middleware hit:', req.nextUrl.pathname)
+    return NextResponse.next()
 })
 
 export const config = {
     //clerk regex to match all routes except for static files and api routes
-    matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/'],
+    matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)'],
 }
