@@ -31,7 +31,6 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env
 
 # vercel
 .vercel
@@ -53,3 +52,4 @@ GEMINI.md
 /home/prajjwal/Desktop/Coding/BuildItUp/graphify-out/.graphify_detect.json
 graphify-out/.graphify_python
 graphify-out
+config.bat
