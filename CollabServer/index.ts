@@ -6,7 +6,7 @@
 import { WebSocketServer } from "ws"
 import { handleMessage, handleDisconnect } from "./connection-manager"
 import { flushAllSessions, startPeriodicFlush, stopPeriodicFlush } from "./persistence"
-import redis from "@/lib/redis"
+import redis from "../lib/redis"
 
 // Default to port 4001 unless overridden by environment.
 const PORT = Number(process.env.COLLAB_PORT ?? 4001)
