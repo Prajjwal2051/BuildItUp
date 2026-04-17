@@ -3,8 +3,8 @@
 // Bridges in-memory document state with Redis (hot cache) and MongoDB (source of truth).
 // ─────────────────────────────────────────────────────────────────
 
-import redis from "@/lib/redis"
-import { db } from "@/lib/db"
+import redis from "../lib/redis"
+import { db } from "../lib/db"
 import { getDocumentState, setDocumentState, deleteDocumentState, listDocumentStates } from "./ot/sessions"
 import type { DocumentState } from "./ot/sessions"
 import type { TextOperations } from "./types"

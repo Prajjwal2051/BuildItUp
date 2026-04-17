@@ -3,10 +3,10 @@
 // Handles socket auth, room membership, operations, cursors, and cleanup.
 // ─────────────────────────────────────────────────────────────────
 
-import { db } from "@/lib/db"
-import redis from "@/lib/redis"
-import { verifyShareToken } from "@/lib/share-token"
-import { userColor } from "@/lib/user-color"
+import { db } from "../lib/db"
+import redis from "../lib/redis"
+import { verifyShareToken } from "../lib/share-token"
+import { userColor } from "../lib/user-color"
 import type WebSocket from "ws"
 import type { RawData } from "ws"
 import type {
