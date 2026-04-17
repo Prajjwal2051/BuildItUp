@@ -50,9 +50,13 @@ export function useCollaboration(options: UseCollaborationOptions): UseCollabora
     const userLabelRef = useRef(new Map<string, string>())
     const localUserIdRef = useRef<string | null>(null)
     const [localUserId, setLocalUserId] = useState<string | null>(null)
+
+    // Scope the guest ID to this token so multiple playground tabs in different
+    // rooms don't share the same ID — which caused the server to evict the first
+    // connection when the user joined a second room.
     const [stableGuestId] = useState(() => {
         if (typeof window === 'undefined') return `guest-${Math.random().toString(36).slice(2, 10)}`
-        const key = 'builditup-collab-client-id'
+        const key = `builditup-collab-client-id:${token}`
         const existing = window.localStorage.getItem(key)
         if (existing) return existing
         const generated = `guest-${Math.random().toString(36).slice(2, 10)}`
@@ -104,21 +108,9 @@ export function useCollaboration(options: UseCollaborationOptions): UseCollabora
         [getRevision, sendMessage],
     )
 
-    useEffect(() => {
-        if (!enabled || !editor) return
-
-        const disposable = editor.onDidChangeCursorSelection((event) => {
-            const selection = event.selection
-            void sendCursor({
-                startLine: selection.startLineNumber,
-                startCol: selection.startColumn,
-                endLine: selection.endLineNumber,
-                endColumn: selection.endColumn,
-            })
-        })
-
-        return () => disposable.dispose()
-    }, [editor, enabled, sendCursor])
+    // Cursor sending is handled exclusively by use-presence (with 80ms debounce).
+    // A duplicate listener here was firing a raw WebSocket message on every single
+    // keystroke — doubling the cursor traffic and causing flicker for other users.
 
     const sendOp = useCallback(
         (op: TextOperations) => {
@@ -139,7 +131,7 @@ export function useCollaboration(options: UseCollaborationOptions): UseCollabora
             const trimmed = name.trim()
             if (!trimmed) return false
             const sent = sendMessage({ type: 'set_name', displayName: trimmed })
-            // Reflect the name change immediately in the local users list (Bug 7)
+            // Reflect the name change immediately in the local users list
             if (sent && localUserIdRef.current) {
                 updateSelfDisplayName(localUserIdRef.current, trimmed)
             }
