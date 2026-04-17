@@ -530,6 +530,18 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
     }, [collab, ownerSessionName])
 
     useEffect(() => {
+        if (!collab || displayName) return
+        if (typeof window === 'undefined') return
+
+        const storedName = window.localStorage.getItem('builditup-collab-display-name')
+        const trimmed = storedName?.trim().slice(0, 40) || ''
+        if (!trimmed) return
+
+        setDisplayName(trimmed)
+        setPendingDisplayName(trimmed)
+    }, [collab, displayName])
+
+    useEffect(() => {
         const token = collab?.token
         if (!token) return
 
@@ -777,7 +789,7 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
 `
             })
             .join('\n')
-    }, [activePath, toClassSafeId, users])
+    }, [toClassSafeId, users])
 
     const handleKeepMine = useCallback(() => setActiveConflict(null), [])
     const handleKeepTheirs = useCallback(() => {
@@ -905,7 +917,7 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
             }
             widgetsRef.current.clear()
         }
-    }, [toClassSafeId, users])
+    }, [activePath, toClassSafeId, users])
 
     const handleEditorMount: OnMount = useCallback((mountedEditor, monaco) => {
         monacoRef.current = monaco
