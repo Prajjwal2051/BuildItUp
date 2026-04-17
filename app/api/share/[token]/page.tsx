@@ -13,7 +13,7 @@ export default async function SharedPlaygroundPage({
     if (!meta) return <ExpiredLinkPage />
 
     if (meta.permission === 'VIEW_ONLY') {
-        return <PlaygroundViewer playgroundId={meta.playgroundId} readOnly />
+        return <PlaygroundViewer playgroundId={meta.playgroundId} token={token} readOnly />
     }
 
     if (meta.permission === 'VIEW_AND_EDIT') {
