@@ -90,20 +90,33 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: str
 }
 
 // Picks the most reliable start command based on available package scripts.
-function getStartCommandFromPackageJson(packageJsonText: string): string[] {
+function getStartCommandFromPackageJson(packageJsonText: string): string[] | null {
     try {
         const parsed = JSON.parse(packageJsonText) as { scripts?: Record<string, string> }
         const scripts = parsed.scripts ?? {}
-        if (typeof scripts.dev === 'string' && scripts.dev.trim()) {
-            return ['run', 'dev']
+
+        const preferred = ['dev', 'start', 'serve', 'preview']
+        for (const scriptName of preferred) {
+            const script = scripts[scriptName]
+            if (typeof script !== 'string' || !script.trim()) continue
+
+            if (scriptName === 'start') {
+                return ['start']
+            }
+
+            return ['run', scriptName]
         }
-        if (typeof scripts.start === 'string' && scripts.start.trim()) {
-            return ['start']
+
+        const ignore = new Set(['build', 'test', 'lint', 'typecheck', 'format', 'eject', 'prepare'])
+        for (const [scriptName, scriptValue] of Object.entries(scripts)) {
+            if (ignore.has(scriptName)) continue
+            if (typeof scriptValue !== 'string' || !scriptValue.trim()) continue
+            return ['run', scriptName]
         }
     } catch {
-        // If package.json is malformed, we still fall back to npm start.
+        // Invalid package.json means we cannot infer a runnable script.
     }
-    return ['start']
+    return null
 }
 
 // Ensures preview URLs are absolute so iframe and new-tab links do not resolve to Next.js routes.
@@ -216,8 +229,13 @@ function WebContainerPreview({
     const installStreamAbortRef = React.useRef<AbortController | null>(null)
     const startStreamAbortRef = React.useRef<AbortController | null>(null)
     const isUnmountedRef = React.useRef(false)
+    const hasSetupAttemptedRef = React.useRef(false)
     const activeError = error || setupError
     const normalizedPreviewUrl = previewUrl ? normalizePreviewUrl(previewUrl) : null
+
+    React.useEffect(() => {
+        hasSetupAttemptedRef.current = false
+    }, [instance, forceReSetup])
 
     // Releases running preview processes on unmount so hidden preview tabs do not keep consuming RAM.
     React.useEffect(() => {
@@ -325,11 +343,13 @@ function WebContainerPreview({
             if (
                 !instance ||
                 ((isSetupComplete || isAwaitingServerReady) && !forceReSetup) ||
-                isSetupInProgress
+                isSetupInProgress ||
+                (hasSetupAttemptedRef.current && !forceReSetup)
             )
                 return
             try {
                 if (cancelled || isUnmountedRef.current) return
+                hasSetupAttemptedRef.current = true
                 setIsSetupInProgress(true)
                 setSetupError(null)
                 setTerminalLogs([])
@@ -452,6 +472,11 @@ function WebContainerPreview({
                         : new TextDecoder().decode(packageJsonRaw)
                     : '{}'
                 const startCommand = getStartCommandFromPackageJson(packageJsonText)
+                if (!startCommand) {
+                    throw new Error(
+                        'No runnable script found in package.json. Add one of scripts.dev, scripts.start, scripts.serve, or scripts.preview for preview runtime.',
+                    )
+                }
                 appendTerminalLog(`[info] Starting server with: npm ${startCommand.join(' ')}\n`)
 
                 const startProcess = await instance.spawn('npm', startCommand, {

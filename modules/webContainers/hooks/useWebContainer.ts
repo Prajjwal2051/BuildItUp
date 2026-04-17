@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { WebContainer } from '@webcontainer/api'
 import { TemplateFolder } from '@/modules/playground/lib/path-to-json'
 
+const BOOT_TIMEOUT_MS = 20_000
+
 interface UseWebContainerProps {
     templateData: typeof TemplateFolder | null
 }
@@ -20,6 +22,17 @@ interface UseWebContainerReturn {
 let sharedWebContainerInstance: WebContainer | null = null
 let sharedWebContainerBootPromise: Promise<WebContainer> | null = null
 
+async function bootWithTimeout(): Promise<WebContainer> {
+    return Promise.race([
+        WebContainer.boot(),
+        new Promise<never>((_, reject) => {
+            setTimeout(() => {
+                reject(new Error(`WebContainer boot timed out after ${BOOT_TIMEOUT_MS / 1000}s`))
+            }, BOOT_TIMEOUT_MS)
+        }),
+    ])
+}
+
 // Boots a single shared WebContainer so strict-mode remounts do not create duplicate instances.
 async function getOrBootWebContainer(): Promise<WebContainer> {
     if (sharedWebContainerInstance) {
@@ -27,7 +40,7 @@ async function getOrBootWebContainer(): Promise<WebContainer> {
     }
 
     if (!sharedWebContainerBootPromise) {
-        sharedWebContainerBootPromise = WebContainer.boot()
+        sharedWebContainerBootPromise = bootWithTimeout()
             .then((instance) => {
                 sharedWebContainerInstance = instance
                 return instance
@@ -46,21 +59,42 @@ const useWebContainer = ({ templateData }: UseWebContainerProps): UseWebContaine
     const [isLoading, setIsLoading] = useState<boolean>(true)
     const [error, setError] = useState<Error | null>(null)
     const [instance, setInstance] = useState<WebContainer | null>(null)
+    const [retryCount, setRetryCount] = useState(0)
 
     // Keep this reference so future template-driven boot logic can be added without changing the hook API.
     void templateData
+
+    const bootInstance = useCallback(async () => {
+        setIsLoading(true)
+        setError(null)
+
+        try {
+            const webContainerInstance = await getOrBootWebContainer()
+            setInstance(webContainerInstance)
+        } catch (error) {
+            setInstance(null)
+            setError(error as Error)
+        } finally {
+            setIsLoading(false)
+        }
+    }, [])
 
     useEffect(() => {
         // Initializes or reuses the shared WebContainer instance on mount.
         let mounted = true
         async function initializeWebContainer() {
+            setIsLoading(true)
+            setError(null)
             try {
-                const WebContainerInstance = await getOrBootWebContainer()
+                const webContainerInstance = await getOrBootWebContainer()
                 if (!mounted) return
-                setInstance(WebContainerInstance)
-                setIsLoading(false)
+                setInstance(webContainerInstance)
             } catch (error) {
+                if (!mounted) return
+                setInstance(null)
                 setError(error as Error)
+            } finally {
+                if (!mounted) return
                 setIsLoading(false)
             }
         }
@@ -69,6 +103,14 @@ const useWebContainer = ({ templateData }: UseWebContainerProps): UseWebContaine
             mounted = false
         }
     }, [])
+
+    useEffect(() => {
+        if (instance || isLoading || error) return
+        if (retryCount >= 2) return
+
+        setRetryCount((previous) => previous + 1)
+        void bootInstance()
+    }, [bootInstance, error, instance, isLoading, retryCount])
 
     // Function to write a file in the WebContainer instance
     const writeFileSync = useCallback(
@@ -99,12 +141,17 @@ const useWebContainer = ({ templateData }: UseWebContainerProps): UseWebContaine
     const destroy = useCallback(() => {
         if (instance) {
             instance.teardown()
-            setInstance(null)
-            setServerUrl(null)
-            sharedWebContainerInstance = null
-            sharedWebContainerBootPromise = null
         }
-    }, [instance])
+
+        setInstance(null)
+        setServerUrl(null)
+        sharedWebContainerInstance = null
+        sharedWebContainerBootPromise = null
+        setRetryCount(0)
+
+        // Reset action in UI should recover a fresh instance immediately.
+        void bootInstance()
+    }, [bootInstance, instance])
     return {
         serverUrl,
         isLoading,
