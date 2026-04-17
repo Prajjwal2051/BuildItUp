@@ -34,13 +34,14 @@ function broadcast(
 }
 
 // Shares cursor updates so collaborators can render live carets/selections.
+// Excludes the sender to prevent redundant self-updates and cursor flicker.
 export function broadCastCursor(room: Room, from: RoomClient, range: CursorRange) {
     broadcast(room, {
         type: "cursor",
         userId: from.userId,
         range,
         color: from.color
-    })
+    }, from)
 }
 
 // Announces a newly joined user to all existing members (except the new user).

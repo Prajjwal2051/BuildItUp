@@ -18,8 +18,9 @@ function getInitials(name: string): string {
 }
 
 function prettyDisplayName(name: string): string {
-    if (!name) return 'Guest'
-    if (name.startsWith('guest-')) return 'Guest'
+    if (!name) return 'Anonymous'
+    // Only anonymise pure random IDs (guest-xxxxxxxx), not real display names
+    if (/^guest-[a-z0-9]{6,}$/.test(name)) return 'Anonymous'
     return name
 }
 

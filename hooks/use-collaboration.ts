@@ -127,20 +127,26 @@ export function useCollaboration(options: UseCollaborationOptions): UseCollabora
         [sendLocalOperation],
     )
 
+    const { users, updateSelfDisplayName } = usePresence({
+        editor,
+        subscribe,
+        sendCursor,
+        selfDisplayName: displayName,
+    })
+
     const updateDisplayName = useCallback(
         (name: string) => {
             const trimmed = name.trim()
             if (!trimmed) return false
-            return sendMessage({ type: 'set_name', displayName: trimmed })
+            const sent = sendMessage({ type: 'set_name', displayName: trimmed })
+            // Reflect the name change immediately in the local users list (Bug 7)
+            if (sent && localUserIdRef.current) {
+                updateSelfDisplayName(localUserIdRef.current, trimmed)
+            }
+            return sent
         },
-        [sendMessage],
+        [sendMessage, updateSelfDisplayName],
     )
-
-    const { users } = usePresence({
-        editor,
-        subscribe,
-        sendCursor,
-    })
 
     useEffect(() => {
         const nextLabels = new Map<string, string>()
