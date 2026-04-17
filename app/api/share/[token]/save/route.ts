@@ -162,11 +162,6 @@ export async function POST(
         },
     })
 
-    await db.playground.update({
-        where: { id: link.playgroundId },
-        data: { lastCollabRev: session.revision },
-    }).catch(() => null)
-
     return NextResponse.json({
         ok: true,
         source: 'redis',
