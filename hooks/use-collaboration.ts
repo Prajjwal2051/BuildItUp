@@ -52,7 +52,13 @@ export function useCollaboration(options: UseCollaborationOptions): UseCollabora
     const localUserIdRef = useRef<string | null>(null)
     const [localUserId, setLocalUserId] = useState<string | null>(null)
 
+<<<<<<< HEAD
     // Scope the guest ID to this token so multiple playground tabs don't collide
+=======
+    // Scope the guest ID to this token so multiple playground tabs in different
+    // rooms don't share the same ID — which caused the server to evict the first
+    // connection when the user joined a second room.
+>>>>>>> bd3e6e80a2d4cdac600e9c84a354717749df8c73
     const [stableGuestId] = useState(() => {
         if (typeof window === 'undefined') return `guest-${Math.random().toString(36).slice(2, 10)}`
         const key = `builditup-collab-client-id:${token}`
@@ -107,6 +113,12 @@ export function useCollaboration(options: UseCollaborationOptions): UseCollabora
         [getRevision, sendMessage],
     )
 
+<<<<<<< HEAD
+=======
+    // Cursor sending is handled exclusively by use-presence (with 80ms debounce).
+    // A duplicate listener here was firing a raw WebSocket message on every single
+    // keystroke — doubling the cursor traffic and causing flicker for other users.
+>>>>>>> bd3e6e80a2d4cdac600e9c84a354717749df8c73
 
     const sendOp = useCallback(
         (op: TextOperations) => sendLocalOperation(op),
@@ -126,6 +138,10 @@ export function useCollaboration(options: UseCollaborationOptions): UseCollabora
             const trimmed = name.trim()
             if (!trimmed) return false
             const sent = sendMessage({ type: 'set_name', displayName: trimmed })
+<<<<<<< HEAD
+=======
+            // Reflect the name change immediately in the local users list
+>>>>>>> bd3e6e80a2d4cdac600e9c84a354717749df8c73
             if (sent && localUserIdRef.current) {
                 updateSelfDisplayName(localUserIdRef.current, trimmed)
             }
