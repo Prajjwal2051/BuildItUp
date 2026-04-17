@@ -282,7 +282,7 @@ function extractFilesFromUnknown(content: unknown): SharedFile[] {
             if (files.length > 0) return files
         }
 
-        const filesValue = content.files
+        const filesValue = 'files' in content ? (content as Record<string, unknown>).files : undefined
         if (Array.isArray(filesValue)) {
             const files = filesValue
                 .map((item, index) => parseItemAsFile(item, index))
