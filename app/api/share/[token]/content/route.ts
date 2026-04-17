@@ -6,6 +6,29 @@ function sessionKey(playgroundId: string) {
     return `collab:session:${playgroundId}`
 }
 
+function parseMaybeNestedJson(value: unknown): unknown {
+    let current = value
+
+    for (let i = 0; i < 5; i += 1) {
+        if (typeof current !== 'string') return current
+        const text = current.trim()
+        const looksJson =
+            text.startsWith('{') ||
+            text.startsWith('[') ||
+            text.startsWith('"{') ||
+            text.startsWith('"[')
+        if (!looksJson) return current
+
+        try {
+            current = JSON.parse(text)
+        } catch {
+            return current
+        }
+    }
+
+    return current
+}
+
 export async function GET(
     _req: NextRequest,
     { params }: { params: Promise<{ token: string }> }
@@ -36,12 +59,7 @@ export async function GET(
             const cached = await redis.get(sessionKey(playgroundId))
             if (cached) {
                 const session = JSON.parse(cached) as { content: string; revision: number }
-                let parsedContent: unknown
-                try {
-                    parsedContent = JSON.parse(session.content)
-                } catch {
-                    parsedContent = session.content
-                }
+                const parsedContent = parseMaybeNestedJson(session.content)
 
                 return NextResponse.json(
                     {
@@ -59,7 +77,7 @@ export async function GET(
 
         const playground = await db.playground.findUnique({
             where: { id: playgroundId },
-            select: { id: true, title: true },
+            select: { id: true, title: true, code: true },
         })
 
         if (!playground) {
@@ -85,11 +103,14 @@ export async function GET(
             )
         }
 
+        const dbSnapshotSource = templateFile?.content ?? playground.code ?? ''
+        const normalizedContent = parseMaybeNestedJson(dbSnapshotSource)
+
         return NextResponse.json(
             {
                 playgroundId,
                 name: playground.title,
-                content: templateFile?.content ?? '',
+                content: normalizedContent,
                 revision: 0,
                 source: 'db',
             },

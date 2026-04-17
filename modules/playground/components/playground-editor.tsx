@@ -19,6 +19,7 @@ import { PresenceAvatars } from '@/modules/playground/components/presence-avatar
 import { apply } from '@/CollabServer/ot/engine'
 import { toast } from 'sonner'
 import PlaygroundAiSidebar from '@/modules/playground/components/playground-ai-sidebar'
+import { normalizeTemplateTree } from '@/modules/playground/hooks/usePlayground'
 
 type CollaborationConflict = Extract<ServerMessage, { type: 'conflict' }>
 
@@ -500,9 +501,10 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
         applyFileToEditor(nextActivePath, nextFiles)
     }, [applyFileToEditor])
 
-    const handleServerInit = useCallback((content: string) => {
+    const handleServerInit = useCallback((content: string, fileTree?: unknown | null) => {
         serializedDocRef.current = content
-        const nextFiles = extractFilesFromUnknown(content)
+        const normalizedTree = normalizeTemplateTree(fileTree ?? null)
+        const nextFiles = extractFilesFromUnknown(normalizedTree ?? content)
         const nextActivePath =
             nextFiles.find((file) => file.path === activePathRef.current)?.path ?? nextFiles[0]?.path ?? 'main.ts'
 
@@ -518,7 +520,7 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
         editor,
         enabled: Boolean(collab?.token),
         onServerOperation: (op) => applyRemoteOperation(op),
-        onServerInit: (content) => handleServerInit(content),
+        onServerInit: (content, _rev, fileTree) => handleServerInit(content, fileTree),
     })
 
     const activePeopleCount = useMemo(() => {

@@ -263,10 +263,25 @@ async function handleAuth(ws: WebSocket, token: string, userId?: string, display
             isActive: true,
         }))
 
+    const [playground, templateFile] = await Promise.all([
+        db.playground.findUnique({
+            where: { id: playgroundId },
+            select: { code: true }
+        }),
+        db.templateFile.findUnique({
+            where: { playgroundId }
+        })
+    ])
+
+    const fileTree = templateFile?.content ?? playground?.code ?? null
+        
+        
+
     send(ws, {
         type: "init",
         rev: state.revision,
         content: state.content,
+        fileTree: fileTree ?? null,
         users,
         selfUserId: id,
     })

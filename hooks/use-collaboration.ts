@@ -15,7 +15,7 @@ interface UseCollaborationOptions {
     wsUrl?: string
     enabled?: boolean
     onServerOperation?: (op: TextOperations, authorId: string, rev: number) => void
-    onServerInit?: (content: string, rev: number) => void
+    onServerInit?: (content: string, rev: number, fileTree?: unknown | null) => void
 }
 
 interface UseCollaborationResult {
@@ -79,7 +79,7 @@ export function useCollaboration(options: UseCollaborationOptions): UseCollabora
     const { getRevision, handleServerMessage, sendLocalOperation } = useOTClient({
         sendMessage,
         onApplyRemoteOperation: (op, authorId, rev) => onServerOperation?.(op, authorId, rev),
-        onServerInit: (content, rev) => onServerInit?.(content, rev),
+        onServerInit: (content, rev, fileTree) => onServerInit?.(content, rev, fileTree),
     })
 
     useEffect(() => {

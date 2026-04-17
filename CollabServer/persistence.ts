@@ -39,6 +39,19 @@ function decodeSnapshotContent(content: string): unknown {
     }
 }
 
+function normalizeStoredSnapshot(value: unknown): string {
+    if (typeof value === 'string') {
+        const decoded = decodeSnapshotContent(value)
+        return typeof decoded === 'string' ? decoded : JSON.stringify(decoded)
+    }
+
+    if (value === null || value === undefined) {
+        return ''
+    }
+
+    return JSON.stringify(value)
+}
+
 // Resets a per-playground idle timer; when it fires, session state is flushed to DB.
 export function markSessionActivity(playgroundId: string): void {
     const existing = idleTimers.get(playgroundId)
@@ -114,13 +127,27 @@ export async function loadSession(playgroundId: string): Promise<DocumentState> 
     // On cache miss, restore initial content from persistent storage.
     const templateFile = await db.templateFile.findUnique({
         where: { playgroundId },
+        select: { content: true },
     })
 
-    const decodedTemplate = templateFile ? decodeSnapshotContent(JSON.stringify(templateFile.content)) : ''
+    let initialContent = ''
+
+    if (templateFile) {
+        initialContent = normalizeStoredSnapshot(templateFile.content)
+    } else {
+        const playground = await db.playground.findUnique({
+            where: { id: playgroundId },
+            select: { code: true },
+        })
+
+        if (playground?.code) {
+            initialContent = normalizeStoredSnapshot(playground.code)
+        }
+    }
 
     const initial: DocumentState = {
         revision: 0,
-        content: typeof decodedTemplate === 'string' ? decodedTemplate : JSON.stringify(decodedTemplate),
+        content: initialContent,
         operations: [],
     }
 

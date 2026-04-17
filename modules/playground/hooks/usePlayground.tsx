@@ -175,7 +175,7 @@ function toTemplateTreeFromFiles(files: FileSnapshot[]): FileTreeNode | null {
     return root.children && root.children.length > 0 ? root : null
 }
 
-function normalizeTemplateTree(value: unknown): FileTreeNode | null {
+export function normalizeTemplateTree(value: unknown): FileTreeNode | null {
     const parsed = parseMaybeNestedJson(value)
     const coercedRoot = coerceTemplateNode(parsed)
     if (coercedRoot) return coercedRoot

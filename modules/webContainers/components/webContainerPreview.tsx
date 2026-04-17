@@ -11,6 +11,7 @@ import { transformToWebContainerFormat } from '../hooks/transformer'
 
 const ANSI_ESCAPE_REGEX = /\u001b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g
 const SPINNER_LINE_REGEX = /^[\\|\/-]{1,120}$/
+const INSTALL_TIMEOUT_MS = 3 * 60 * 1000
 type TerminalTone = 'info' | 'warn' | 'error' | 'success' | 'neutral'
 type SpawnedProcess = Awaited<ReturnType<WebContainer['spawn']>>
 
@@ -413,7 +414,22 @@ function WebContainerPreview({
                             // Expected when stream is aborted during cleanup.
                         })
 
-                    const installExitCode = await installProcess.exit
+                    let installExitCode: number
+                    try {
+                        installExitCode = await withTimeout(
+                            installProcess.exit,
+                            INSTALL_TIMEOUT_MS,
+                            'npm install',
+                        )
+                    } catch (installError) {
+                        try {
+                            installProcess.kill?.()
+                        } catch {
+                            // Process may already be closed.
+                        }
+                        throw installError
+                    }
+
                     installProcessRef.current = null
                     installStreamAbortRef.current = null
                     if (cancelled || isUnmountedRef.current) return
@@ -478,6 +494,13 @@ function WebContainerPreview({
                 if (cancelled || isUnmountedRef.current) return
                 setSetupError(error as Error)
                 setIsAwaitingServerReady(false)
+                setLoadingState({
+                    transforming: false,
+                    mounting: false,
+                    installingDependencies: false,
+                    starting: false,
+                    ready: false,
+                })
                 appendTerminalLog(`[error] ${(error as Error).message}\n`)
             } finally {
                 if (!isUnmountedRef.current) {

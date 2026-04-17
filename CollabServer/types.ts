@@ -89,6 +89,7 @@ export type ServerMessage =
         type: "init"
         rev: number           // Current document revision (e.g. 42)
         content: string       // Full document text at that revision
+        fileTree?: unknown | null // Optional file tree structure for the playground
         users: User[]         // Other users currently in the room
         selfUserId: string    // User ID assigned to this client
     }

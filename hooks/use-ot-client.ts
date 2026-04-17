@@ -7,7 +7,7 @@ import type { ServerMessage, TextOperations } from '@/CollabServer/types'
 interface UseOTClientOptions {
     sendMessage: (message: Record<string, unknown>) => boolean
     onApplyRemoteOperation: (op: TextOperations, authorId: string, rev: number) => void
-    onServerInit: (content: string, rev: number) => void
+    onServerInit: (content: string, rev: number, fileTree?: unknown | null) => void
 }
 
 interface UseOTClientResult {
@@ -71,7 +71,7 @@ export function useOTClient(options: UseOTClientOptions): UseOTClientResult {
                 queuedRef.current = []
                 revisionRef.current = message.rev
 
-                onServerInit(message.content, message.rev)
+                onServerInit(message.content, message.rev, message.fileTree ?? null)
 
                 // Replay local unsynced edits on top of the fresh server snapshot.
                 for (const op of outstanding) {

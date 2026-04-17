@@ -25,6 +25,27 @@ interface UseWebSocketResult<TIncoming> {
     subscribe: (listener: MessageListener<TIncoming>) => () => void
 }
 
+function normalizeWsUrl(rawUrl: string | undefined): string | null {
+    if (!rawUrl) return null
+
+    const trimmed = rawUrl.trim()
+    if (!trimmed) return null
+
+    if (trimmed.startsWith('ws://') || trimmed.startsWith('wss://')) {
+        return trimmed
+    }
+
+    if (trimmed.startsWith('http://')) {
+        return `ws://${trimmed.slice('http://'.length)}`
+    }
+
+    if (trimmed.startsWith('https://')) {
+        return `wss://${trimmed.slice('https://'.length)}`
+    }
+
+    return null
+}
+
 // Creates a browser WebSocket client with auth-on-open and retry backoff.
 export function useWebSocket<TIncoming = unknown>(
     options: UseWebSocketOptions,
@@ -101,13 +122,11 @@ export function useWebSocket<TIncoming = unknown>(
 
         const resolveCandidateUrls = () => {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-            const pageHost = window.location.host
             const pageHostname = window.location.hostname
-            const explicitUrl = wsUrl ?? process.env.NEXT_PUBLIC_COLLAB_WS_URL
+            const explicitUrl = normalizeWsUrl(wsUrl ?? process.env.NEXT_PUBLIC_COLLAB_WS_URL)
 
             const candidates = [
                 explicitUrl,
-                `${protocol}//${pageHost}`,
                 `${protocol}//${pageHostname}:4001`,
                 `${protocol}//localhost:4001`,
                 `${protocol}//127.0.0.1:4001`,
