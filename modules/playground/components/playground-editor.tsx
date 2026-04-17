@@ -2,10 +2,29 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Editor, { type Monaco, type OnMount } from '@monaco-editor/react'
-import type { editor as MonacoEditor } from 'monaco-editor'
+import type {
+    CancellationToken,
+    Position,
+    editor as MonacoEditor,
+    languages as MonacoLanguages,
+} from 'monaco-editor'
 import { SidebarInset } from '@/components/ui/sidebar'
-import { FileCode2, File, Folder, Save, SplitSquareVertical, Bot } from 'lucide-react'
+import {
+    FileCode2,
+    File,
+    Folder,
+    Save,
+    SplitSquareVertical,
+    Bot,
+    House,
+    Maximize2,
+    Minimize2,
+    Search,
+    Settings,
+} from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { configureMonaco, defaultEditorOptions, getEditorLanguage } from '@/modules/playground/lib/editor-config'
 import { useCollaboration } from '@/hooks/use-collaboration'
 import type { ServerMessage, TextOperations } from '@/CollabServer/types'
@@ -20,6 +39,11 @@ import { apply } from '@/CollabServer/ot/engine'
 import { toast } from 'sonner'
 import PlaygroundAiSidebar from '@/modules/playground/components/playground-ai-sidebar'
 import { normalizeTemplateTree } from '@/modules/playground/hooks/usePlayground'
+import useAISuggestion from '@/modules/playground/hooks/useAISuggestion'
+import ToggleAi from '@/modules/playground/components/toggle-ai'
+import AiSettingsModal from '@/modules/playground/components/ai-settings-modal'
+import { JoinNameGate } from './join-name-gate'
+import { getAiSettings } from '@/modules/playground/actions/ai-settings'
 
 type CollaborationConflict = Extract<ServerMessage, { type: 'conflict' }>
 
@@ -54,6 +78,15 @@ type RuntimeTemplateRoot = {
     folderName?: unknown
     items?: unknown
     content?: unknown
+}
+
+const PROVIDER_LABELS: Record<string, string> = {
+    OLLAMA_LOCAL: 'Ollama Local',
+    OLLAMA_REMOTE: 'Ollama Remote',
+    OPENAI: 'OpenAI',
+    GEMINI: 'Gemini',
+    ANTHROPIC: 'Anthropic',
+    OPEN_ROUTER: 'OpenRouter',
 }
 
 function normalizePath(pathLike: string): string {
@@ -384,10 +417,11 @@ function buildOpsFromSerializedDiff(previous: string, next: string): TextOperati
 }
 
 export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps) {
-    const [displayName, setDisplayName] = useState(() => {
-        if (typeof window === 'undefined') return 'Guest'
-        return window.localStorage.getItem('builditup-collab-display-name') || 'Guest'
-    })
+    const router = useRouter()
+    const { data: session } = useSession()
+    const ownerSessionName = session?.user?.name?.trim() || 'Owner'
+    const [playgroundName, setPlaygroundName] = useState('Collaborative Playground')
+    const [displayName, setDisplayName] = useState<string | null>(collab ? null : ownerSessionName)
     const [editor, setEditor] = useState<MonacoEditor.IStandaloneCodeEditor | null>(null)
     const [files, setFiles] = useState<SharedFile[]>([{ path: 'main.ts', content: '// Connecting collaborative session...', language: 'typescript' }])
     const [activePath, setActivePath] = useState<string>('main.ts')
@@ -395,11 +429,17 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
     const [isSplitEditorOpen, setIsSplitEditorOpen] = useState(false)
     const [splitFilePath, setSplitFilePath] = useState('')
     const [isAiChatOpen, setIsAiChatOpen] = useState(false)
+    const [isAiAutocompleteEnabled, setIsAiAutocompleteEnabled] = useState(true)
+    const [isAiSettingsOpen, setIsAiSettingsOpen] = useState(false)
+    const [activeAiProvider, setActiveAiProvider] = useState<string | null>(null)
+    const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false)
+    const [searchQuery, setSearchQuery] = useState('')
+    const [isFullscreen, setIsFullscreen] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
     const [isDirty, setIsDirty] = useState(false)
     const [isDisplayNameDialogOpen, setIsDisplayNameDialogOpen] = useState(false)
-    const [pendingDisplayName, setPendingDisplayName] = useState(displayName)
+    const [pendingDisplayName, setPendingDisplayName] = useState(ownerSessionName)
     const [isAddFileDialogOpen, setIsAddFileDialogOpen] = useState(false)
     const [pendingFilePath, setPendingFilePath] = useState('src/main.ts')
     const [isAddFolderDialogOpen, setIsAddFolderDialogOpen] = useState(false)
@@ -407,7 +447,9 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
 
     const monacoRef = useRef<Monaco | null>(null)
     const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null)
+    const inlineProviderRef = useRef<{ dispose: () => void } | null>(null)
     const decorationsRef = useRef<MonacoEditor.IEditorDecorationsCollection | null>(null)
+    const widgetsRef = useRef<Map<string, MonacoEditor.IContentWidget>>(new Map())
     const isApplyingRemoteEditRef = useRef(false)
     const serializedDocRef = useRef<string>('')
     const filesRef = useRef<SharedFile[]>(files)
@@ -417,6 +459,31 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
     const activeFile = files.find((file) => file.path === activePath) ?? files[0]
     const splitFile = files.find((file) => file.path === splitFilePath)
     const fileTree = useMemo(() => buildFileTree(files), [files])
+    const {
+        isLoading: aiSuggestionLoading,
+        error: aiSuggestionError,
+        fetchSuggestion: fetchAiSuggestion,
+        clearSuggestion: clearAiSuggestion,
+    } = useAISuggestion({ enabled: isAiAutocompleteEnabled })
+    const filteredSearchFiles = useMemo(() => {
+        const normalized = searchQuery.trim().toLowerCase()
+        if (!normalized) return files.slice(0, 100)
+
+        return files
+            .filter((file) => file.path.toLowerCase().includes(normalized))
+            .slice(0, 100)
+    }, [files, searchQuery])
+    const editorOptions = useMemo(
+        () => ({
+            ...(defaultEditorOptions as unknown as MonacoEditor.IStandaloneEditorConstructionOptions),
+            quickSuggestions: isAiAutocompleteEnabled,
+            suggestOnTriggerCharacters: isAiAutocompleteEnabled,
+            inlineSuggest: {
+                enabled: isAiAutocompleteEnabled,
+            },
+        }),
+        [isAiAutocompleteEnabled],
+    )
     const displayNameError = useMemo(() => {
         const trimmed = pendingDisplayName.trim()
         if (!trimmed) return 'Name is required.'
@@ -455,6 +522,74 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
     }, [activePath])
 
     useEffect(() => {
+        if (collab) return
+        setDisplayName(ownerSessionName)
+        setPendingDisplayName(ownerSessionName)
+    }, [collab, ownerSessionName])
+
+    useEffect(() => {
+        const token = collab?.token
+        if (!token) return
+
+        let cancelled = false
+        async function loadSharedName() {
+            try {
+                const response = await fetch(`/api/share/${token}/content`, {
+                    cache: 'no-store',
+                })
+                if (!response.ok) return
+
+                const payload = (await response.json()) as { name?: string }
+                if (cancelled) return
+                if (typeof payload.name === 'string' && payload.name.trim()) {
+                    setPlaygroundName(payload.name.trim())
+                }
+            } catch {
+                // Keep fallback title on transient failures.
+            }
+        }
+
+        void loadSharedName()
+        return () => {
+            cancelled = true
+        }
+    }, [collab?.token])
+
+    useEffect(() => {
+        if (isAiSettingsOpen) return
+
+        let cancelled = false
+        async function refreshAiProvider() {
+            try {
+                const settings = await getAiSettings()
+                if (cancelled) return
+
+                const providerKey = settings?.provider ?? null
+                setActiveAiProvider(providerKey ? (PROVIDER_LABELS[providerKey] ?? providerKey) : null)
+            } catch {
+                if (!cancelled) {
+                    setActiveAiProvider(null)
+                }
+            }
+        }
+
+        void refreshAiProvider()
+        return () => {
+            cancelled = true
+        }
+    }, [isAiSettingsOpen])
+
+    useEffect(() => {
+        function handleFullscreenChange() {
+            setIsFullscreen(Boolean(document.fullscreenElement))
+        }
+
+        handleFullscreenChange()
+        document.addEventListener('fullscreenchange', handleFullscreenChange)
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    }, [])
+
+    useEffect(() => {
         const frame = window.requestAnimationFrame(() => {
             editorRef.current?.layout()
         })
@@ -489,7 +624,7 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
 
     const toClassSafeId = useCallback((userId: string) => userId.replace(/[^a-zA-Z0-9_-]/g, '_'), [])
 
-    const applyRemoteOperation = useCallback((op: TextOperations) => {
+    const applyRemoteOperation = useCallback((op: TextOperations, _authorId?: string, _rev?: number) => {
         serializedDocRef.current = apply(serializedDocRef.current, op)
         const nextFiles = extractFilesFromUnknown(serializedDocRef.current)
         const nextActivePath =
@@ -514,12 +649,14 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
         applyFileToEditor(nextActivePath, nextFiles)
     }, [applyFileToEditor])
 
+    const ownerDisplayName = collab ? displayName : ownerSessionName
+
     const { users, isConnected, sendOp, localUserId, updateDisplayName } = useCollaboration({
         token: collab?.token ?? '',
-        displayName,
+        displayName: ownerDisplayName ?? undefined,
         editor,
-        enabled: Boolean(collab?.token),
-        onServerOperation: (op) => applyRemoteOperation(op),
+        enabled: Boolean(collab?.token && displayName),
+        onServerOperation: (op, authorId, rev) => applyRemoteOperation(op, authorId, rev),
         onServerInit: (content, _rev, fileTree) => handleServerInit(content, fileTree),
     })
 
@@ -595,15 +732,23 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
         const model = currentEditor?.getModel()
         if (!currentEditor || !model) return
         isApplyingRemoteEditRef.current = true
-        try { model.setValue(nextValue) }
-        finally { isApplyingRemoteEditRef.current = false }
+        try {
+            model.setValue(nextValue)
+        } finally {
+            isApplyingRemoteEditRef.current = false
+        }
     }, [])
 
     const cursorCss = useMemo(() => {
-        return users.map((user) => {
-            const classId = toClassSafeId(user.userId)
-            return `
-.remote-cursor-${classId} { border-left: 2px solid ${user.color}; background: ${user.color}33; }
+        return users
+            .map((user) => {
+                const classId = toClassSafeId(user.userId)
+                return `
+.remote-cursor-${classId} {
+    border-left: 4px solid ${user.color};
+    background: ${user.color}2e;
+    box-shadow: inset 0 0 0 1px ${user.color}33;
+}
 .remote-cursor-label-${classId} {
     color: ${user.color};
     font-size: 10px;
@@ -627,7 +772,8 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
     letter-spacing: 0.01em;
 }
 `
-        }).join('\n')
+            })
+            .join('\n')
     }, [toClassSafeId, users])
 
     const handleKeepMine = useCallback(() => setActiveConflict(null), [])
@@ -647,6 +793,17 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
         const monaco = monacoRef.current
         const decorations = decorationsRef.current
         if (!currentEditor || !monaco || !decorations) return
+
+        // Rebuild cursor widgets on each presence update so avatar tooltips are reliable.
+        for (const widget of widgetsRef.current.values()) {
+            try {
+                currentEditor.removeContentWidget(widget)
+            } catch {
+                // Widget may already be detached.
+            }
+        }
+        widgetsRef.current.clear()
+
         decorations.set(
             users.flatMap((user) => {
                 if (!user.cursor) return []
@@ -658,15 +815,68 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
                     ),
                     options: {
                         className: `remote-cursor-${classId}`,
-                        after: {
-                            content: getNameInitials(user.displayName || user.userId),
-                            inlineClassName: `remote-cursor-avatar-${classId}`,
-                        },
-                        hoverMessage: { value: user.displayName || user.userId },
                     },
                 }]
             }),
         )
+
+        for (const user of users) {
+            if (!user.cursor) continue
+
+            const classId = toClassSafeId(user.userId)
+            const widgetId = `remote-cursor-widget-${classId}`
+            const domNode = document.createElement('div')
+            domNode.className = 'collab-cursor-widget'
+            domNode.style.cssText = `
+                background:${user.color};
+                color:#fff;
+                border-radius:9999px;
+                width:18px;
+                height:18px;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-size:9px;
+                font-weight:700;
+                pointer-events:auto;
+                cursor:help;
+                white-space:nowrap;
+                z-index:100;
+                border:1px solid rgba(255,255,255,0.45);
+                transform: translateX(8px);
+            `
+            domNode.title = user.displayName || user.userId
+            domNode.textContent = getNameInitials(user.displayName || user.userId)
+
+            const widget: MonacoEditor.IContentWidget = {
+                getId: () => widgetId,
+                getDomNode: () => domNode,
+                getPosition: () => ({
+                    position: {
+                        lineNumber: user.cursor!.startLine,
+                        column: user.cursor!.startCol,
+                    },
+                    preference: [
+                        monaco.editor.ContentWidgetPositionPreference.EXACT,
+                    ],
+                }),
+            }
+
+            currentEditor.addContentWidget(widget)
+            currentEditor.layoutContentWidget(widget)
+            widgetsRef.current.set(widgetId, widget)
+        }
+
+        return () => {
+            for (const widget of widgetsRef.current.values()) {
+                try {
+                    currentEditor.removeContentWidget(widget)
+                } catch {
+                    // Widget may already be detached.
+                }
+            }
+            widgetsRef.current.clear()
+        }
     }, [toClassSafeId, users])
 
     const handleEditorMount: OnMount = useCallback((mountedEditor, monaco) => {
@@ -694,6 +904,86 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
             syncFilesToCollab(nextFiles)
         })
     }, [syncFilesToCollab])
+
+    useEffect(() => {
+        const currentEditor = editorRef.current
+        const monaco = monacoRef.current
+        if (!currentEditor || !monaco) return
+
+        inlineProviderRef.current?.dispose()
+        const currentLanguage = getEditorLanguage(activePath.split('.').pop() ?? '')
+
+        const provider = monaco.languages.registerInlineCompletionsProvider(currentLanguage, {
+            provideInlineCompletions: async (
+                model: MonacoEditor.ITextModel,
+                position: Position,
+                _context: MonacoLanguages.InlineCompletionContext,
+                token: CancellationToken,
+            ) => {
+                if (!isAiAutocompleteEnabled) {
+                    return { items: [] }
+                }
+
+                if (currentEditor.getModel() !== model) {
+                    return { items: [] }
+                }
+
+                const selection = currentEditor.getSelection()
+                const hasSelection = Boolean(selection && !selection.isEmpty())
+                const selectedText = hasSelection ? model.getValueInRange(selection!) : ''
+
+                const suggestion = await fetchAiSuggestion({
+                    fileName: activePath,
+                    fileContent: model.getValue(),
+                    cursorLine: Math.max(0, position.lineNumber - 1),
+                    cursorColumn: Math.max(0, position.column - 1),
+                    selectionStartLine: hasSelection ? selection!.startLineNumber - 1 : undefined,
+                    selectionStartColumn: hasSelection ? selection!.startColumn - 1 : undefined,
+                    selectionEndLine: hasSelection ? selection!.endLineNumber - 1 : undefined,
+                    selectionEndColumn: hasSelection ? selection!.endColumn - 1 : undefined,
+                    selectedText: hasSelection ? selectedText : undefined,
+                })
+
+                if (token.isCancellationRequested || !suggestion.trim()) {
+                    return { items: [] }
+                }
+
+                const replaceRange = hasSelection
+                    ? new monaco.Range(
+                        selection!.startLineNumber,
+                        selection!.startColumn,
+                        selection!.endLineNumber,
+                        selection!.endColumn,
+                    )
+                    : new monaco.Range(
+                        position.lineNumber,
+                        position.column,
+                        position.lineNumber,
+                        position.column,
+                    )
+
+                return {
+                    items: [
+                        {
+                            insertText: suggestion,
+                            range: replaceRange,
+                        },
+                    ],
+                }
+            },
+            freeInlineCompletions: () => {
+                // Monaco handles completion lifecycle internally.
+            },
+        })
+
+        inlineProviderRef.current = provider
+        return () => {
+            provider.dispose()
+            if (inlineProviderRef.current === provider) {
+                inlineProviderRef.current = null
+            }
+        }
+    }, [activePath, fetchAiSuggestion, isAiAutocompleteEnabled])
 
     const handleSelectFile = useCallback((path: string) => {
         setActivePath(path)
@@ -730,6 +1020,7 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
             const timestamp = new Date().toLocaleTimeString()
             setLastSavedAt(timestamp)
             setIsDirty(false)
+            router.refresh()
             if (!silent) {
                 toast.success('Collaborative session saved to database')
             }
@@ -741,7 +1032,7 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
         } finally {
             setIsSaving(false)
         }
-    }, [collab?.token])
+    }, [collab?.token, router])
 
     useEffect(() => {
         if (!isDirty || !collab?.token) return
@@ -762,7 +1053,7 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
     }, [collab?.token, handleSaveToDatabase, isDirty])
 
     const handleSetDisplayName = useCallback(() => {
-        setPendingDisplayName(displayName)
+        setPendingDisplayName(displayName ?? '')
         setIsDisplayNameDialogOpen(true)
     }, [displayName])
 
@@ -877,6 +1168,46 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
         syncFilesToCollab(nextFiles)
     }, [syncFilesToCollab])
 
+    const handleToggleFullscreen = useCallback(async () => {
+        if (typeof document === 'undefined') return
+        if (document.fullscreenElement) {
+            await document.exitFullscreen()
+            return
+        }
+        await document.documentElement.requestFullscreen()
+    }, [])
+
+    const handleToggleAiAutocomplete = useCallback((enabled: boolean) => {
+        setIsAiAutocompleteEnabled(enabled)
+        if (!enabled) {
+            clearAiSuggestion()
+            editorRef.current?.trigger('ai-inline-hide', 'editor.action.inlineSuggest.hide', {})
+        }
+    }, [clearAiSuggestion])
+
+    useEffect(() => {
+        function handleKeyDown(event: KeyboardEvent) {
+            if (!(event.ctrlKey || event.metaKey)) return
+            if (event.key.toLowerCase() === 'p') {
+                event.preventDefault()
+                setIsSearchDialogOpen(true)
+                return
+            }
+
+            if (event.key.toLowerCase() === 'i') {
+                if (!isAiAutocompleteEnabled) return
+                event.preventDefault()
+                const currentEditor = editorRef.current
+                if (!currentEditor) return
+                currentEditor.focus()
+                currentEditor.trigger('ai-inline-trigger', 'editor.action.inlineSuggest.trigger', {})
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [isAiAutocompleteEnabled])
+
     const renderFileTree = useCallback((nodes: Array<{ name: string; path: string; type: 'folder' | 'file'; children?: Array<any> }>, depth = 0): React.ReactNode => {
         return nodes.map((node) => {
             if (node.type === 'folder') {
@@ -913,9 +1244,24 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
         })
     }, [activeFile?.path, handleSelectFile])
 
+    if (collab && !displayName) {
+        return (
+            <JoinNameGate
+                onJoin={(name) => {
+                    const trimmed = name.trim().slice(0, 40)
+                    if (!trimmed) return
+                    setDisplayName(trimmed)
+                    setPendingDisplayName(trimmed)
+                    if (typeof window !== 'undefined') {
+                        window.localStorage.setItem('builditup-collab-display-name', trimmed)
+                    }
+                }}
+            />
+        )
+    }
+
     return (
         <div className="flex h-screen w-full overflow-hidden bg-[#0a0d12]">
-            <style>{cursorCss}</style>
             <SidebarInset className="relative flex flex-1 flex-col overflow-hidden text-white">
                 {/* Header */}
                 <div className="flex shrink-0 items-center justify-between border-b border-[#1e2028] bg-[#080e13] px-4 py-3">
@@ -923,7 +1269,7 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
                         <div className="flex items-center justify-center gap-2 rounded-xl border border-[#1e2028] bg-[#11161d] px-3 py-1.5">
                             <FileCode2 size={16} className="text-[#00d4aa]" />
                             <span className="font-mono text-[13px] font-medium text-[#c9d4e5]">
-                                Collaborative Playground
+                                {playgroundName}
                             </span>
                         </div>
 
@@ -950,6 +1296,28 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
                     </div>
 
                     <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setIsSearchDialogOpen(true)}
+                            className="flex items-center gap-1.5 rounded-md border border-[#1e2028] bg-[#11161d] px-3 py-1.5 text-xs text-[#8ea5b5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
+                            title="Search files"
+                        >
+                            <Search size={13} />
+                            <span>Search</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                void handleToggleFullscreen()
+                            }}
+                            className="flex items-center gap-1.5 rounded-md border border-[#1e2028] bg-[#11161d] px-3 py-1.5 text-xs text-[#8ea5b5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
+                            title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                        >
+                            {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                            <span>{isFullscreen ? 'Windowed' : 'Fullscreen'}</span>
+                        </button>
+
                         {collab && (
                             <button
                                 type="button"
@@ -957,7 +1325,7 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
                                 className="rounded-md border border-[#1e2028] bg-[#11161d] px-3 py-1.5 text-xs text-[#8ea5b5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
                                 title="Change display name"
                             >
-                                Name: {displayName}
+                                Name: {displayName ?? ownerSessionName}
                             </button>
                         )}
 
@@ -986,6 +1354,33 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
                             <Bot size={13} />
                             <span>AI</span>
                         </button>
+
+                        <ToggleAi
+                            isAiAutocompleteEnabled={isAiAutocompleteEnabled}
+                            isAiChatOpen={isAiChatOpen}
+                            onToggleAutocomplete={handleToggleAiAutocomplete}
+                            onOpenChat={() => setIsAiChatOpen(true)}
+                            onCloseChat={() => setIsAiChatOpen(false)}
+                            onOpenSettings={() => setIsAiSettingsOpen(true)}
+                            activeProvider={activeAiProvider}
+                        />
+
+                        <button
+                            type="button"
+                            onClick={() => setIsAiSettingsOpen(true)}
+                            className="flex h-8 w-8 items-center justify-center rounded-md border border-[#1e2028] bg-[#11161d] text-[#8ea5b5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
+                            title="AI settings"
+                        >
+                            <Settings size={13} />
+                        </button>
+
+                        <Link
+                            href="/"
+                            className="flex h-8 w-8 items-center justify-center rounded-md border border-[#1e2028] bg-[#11161d] text-[#8ea5b5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
+                            title="Home"
+                        >
+                            <House size={14} />
+                        </Link>
 
                         {collab && (
                             <button
@@ -1020,6 +1415,55 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
                     </div>
                 </div>
 
+                <Dialog open={isSearchDialogOpen} onOpenChange={setIsSearchDialogOpen}>
+                    <DialogContent className="max-w-3xl gap-0 overflow-hidden border-[#1e2028] bg-[#11161d] p-0 text-white">
+                        <DialogHeader className="border-b border-[#1e2028] px-4 py-3">
+                            <DialogTitle>Search files</DialogTitle>
+                        </DialogHeader>
+
+                        <div className="border-b border-[#1e2028] px-4 py-3">
+                            <Input
+                                autoFocus
+                                value={searchQuery}
+                                onChange={(event) => setSearchQuery(event.target.value)}
+                                placeholder="Type a file name or path..."
+                                className="border-[#1e2028] bg-[#0f141b] text-white placeholder:text-[#6a7280]"
+                            />
+                        </div>
+
+                        <ScrollArea className="max-h-[60vh]">
+                            <div className="space-y-2 p-3">
+                                {filteredSearchFiles.length > 0 ? (
+                                    filteredSearchFiles.map((file) => (
+                                        <button
+                                            key={file.path}
+                                            type="button"
+                                            onClick={() => {
+                                                handleSelectFile(file.path)
+                                                setIsSearchDialogOpen(false)
+                                            }}
+                                            className="w-full rounded-lg border border-transparent px-3 py-2 text-left transition-colors hover:border-[#1e2028] hover:bg-[#0f141b]"
+                                        >
+                                            <div className="truncate text-sm font-medium text-[#d6e1ef]">
+                                                {file.path}
+                                            </div>
+                                        </button>
+                                    ))
+                                ) : (
+                                    <div className="py-10 text-center text-sm text-[#8ea5b5]">
+                                        No matching files found.
+                                    </div>
+                                )}
+                            </div>
+                        </ScrollArea>
+                    </DialogContent>
+                </Dialog>
+
+                <AiSettingsModal
+                    isOpen={isAiSettingsOpen}
+                    onClose={() => setIsAiSettingsOpen(false)}
+                />
+
                 {/* Monaco editor */}
                 <div className="flex flex-1 overflow-hidden">
                     <aside className="hidden w-64 shrink-0 border-r border-[#1e2028] bg-[#0c1117] md:flex md:flex-col">
@@ -1050,6 +1494,14 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
                             <span className="text-[#6f8193]">Editing</span>
                             <span className="mx-2 text-[#33404e]">/</span>
                             <span className="truncate text-[#d7e2f1]">{activeFile?.path ?? 'No file selected'}</span>
+                            {aiSuggestionLoading ? (
+                                <span className="ml-3 text-[10px] text-[#6f8193]">AI thinking...</span>
+                            ) : null}
+                            {aiSuggestionError ? (
+                                <span className="ml-3 max-w-72 truncate text-[10px] text-[#ef8d8d]">
+                                    {aiSuggestionError}
+                                </span>
+                            ) : null}
                         </div>
 
                         <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-[#1e2028] bg-[#0f141b] px-2 py-1">
@@ -1080,8 +1532,14 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
                                     value={activeFile?.content ?? ''}
                                     theme="modern-dark"
                                     onMount={handleEditorMount}
-                                    options={defaultEditorOptions}
+                                    options={editorOptions}
                                     path={`${playgroundId}-${activeFile?.path ?? 'main.ts'}`}
+                                    keepCurrentModel={true}
+                                    loading={
+                                        <div className="flex h-full items-center justify-center text-xs text-[#6f8193]">
+                                            Loading...
+                                        </div>
+                                    }
                                 />
                             </div>
 
@@ -1105,9 +1563,15 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
                                         language={splitFile?.language ?? activeFile?.language ?? 'typescript'}
                                         value={splitFile?.content ?? activeFile?.content ?? ''}
                                         theme="modern-dark"
-                                        options={defaultEditorOptions}
+                                        options={editorOptions}
                                         onChange={handleSplitEditorChange}
                                         path={`${playgroundId}-split-${splitFile?.path ?? activeFile?.path ?? 'main.ts'}`}
+                                        keepCurrentModel={true}
+                                        loading={
+                                            <div className="flex h-full items-center justify-center text-xs text-[#6f8193]">
+                                                Loading...
+                                            </div>
+                                        }
                                     />
                                 </div>
                             )}

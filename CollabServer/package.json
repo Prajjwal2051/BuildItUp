@@ -3,5 +3,8 @@
     "private": true,
     "scripts": {
         "start": "tsx index.ts"
+    },
+    "dependencies": {
+        "ws": "^8.20.0"
     }
 }

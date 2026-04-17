@@ -88,11 +88,13 @@ function Avatar({ user, isSelf, isTyping }: AvatarProps) {
             {/* Tooltip */}
             {showTooltip && (
                 <div
-                    className="absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-[#1e2028] bg-[#11161d] px-2.5 py-1.5 shadow-lg"
+                    className="absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-[#1e2028] bg-[#11161d] px-2.5 py-2.5 shadow-lg"
                     style={{ pointerEvents: 'none' }}
                 >
                     <p className="text-[11px] font-medium text-white">
-                        {isSelf ? 'You' : prettyDisplayName(user.displayName || user.userId)}
+                        {isSelf
+                            ? `You${user.displayName ? ` (${user.displayName})` : ''}`
+                            : prettyDisplayName(user.displayName || user.userId)}
                     </p>
                     <p className="text-[10px] text-[#8ea5b5]">
                         {isTyping ? 'Typing…' : user.isActive ? 'Active' : 'Idle'}

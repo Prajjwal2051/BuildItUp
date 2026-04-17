@@ -104,6 +104,22 @@ export function useCollaboration(options: UseCollaborationOptions): UseCollabora
         [getRevision, sendMessage],
     )
 
+    useEffect(() => {
+        if (!enabled || !editor) return
+
+        const disposable = editor.onDidChangeCursorSelection((event) => {
+            const selection = event.selection
+            void sendCursor({
+                startLine: selection.startLineNumber,
+                startCol: selection.startColumn,
+                endLine: selection.endLineNumber,
+                endColumn: selection.endColumn,
+            })
+        })
+
+        return () => disposable.dispose()
+    }, [editor, enabled, sendCursor])
+
     const sendOp = useCallback(
         (op: TextOperations) => {
             return sendLocalOperation(op)

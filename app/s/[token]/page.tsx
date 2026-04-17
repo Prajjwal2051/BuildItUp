@@ -1,6 +1,6 @@
 import { getSharedPlaygroundMeta } from '@/modules/playground/server/getSharedPlaygroundMeta'
 import { PlaygroundViewer } from '@/modules/playground/components/playground-viewer'
-import { PlaygroundEditor } from '@/modules/playground/components/playground-editor'
+import { PlaygroundEditorClient } from '@/modules/playground/components/playground-editor-client'
 import { ExpiredLinkPage } from '@/modules/playground/components/expired-link-page'
 
 export default async function SharedPlaygroundPage({
@@ -17,7 +17,7 @@ export default async function SharedPlaygroundPage({
     }
 
     if (meta.permission === 'VIEW_AND_EDIT') {
-        return <PlaygroundEditor playgroundId={meta.playgroundId} collab={{ token }} />
+        return <PlaygroundEditorClient playgroundId={meta.playgroundId} collab={{ token }} />
     }
 
     return <ExpiredLinkPage />

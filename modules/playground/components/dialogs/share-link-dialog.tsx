@@ -144,6 +144,9 @@ export function ShareLinkDialog({
             }
 
             setGeneratedShareLink(finalShareUrl)
+            if (sharePermission === 'VIEW_AND_EDIT') {
+                window.open(finalShareUrl, '_blank', 'noopener,noreferrer')
+            }
             await loadActiveLinks()
             onLogTerminal(`[info] Share link created: ${finalShareUrl}\n`)
             toast.success('Share link generated')

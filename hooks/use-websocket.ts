@@ -63,17 +63,27 @@ export function useWebSocket<TIncoming = unknown>(
 
     const socketRef = useRef<WebSocket | null>(null)
     const shouldReconnectRef = useRef(true)
+    const isIntentionalCloseRef = useRef(false)
     const reconnectAttemptRef = useRef(0)
     const reconnectTimerRef = useRef<number | null>(null)
+    const heartbeatTimerRef = useRef<number | null>(null)
+    const disconnectDebounceTimerRef = useRef<number | null>(null)
     const listenersRef = useRef(new Set<MessageListener<TIncoming>>())
     const candidateUrlsRef = useRef<string[]>([])
+    const preferredUrlIndexRef = useRef(0)
     const activeUrlIndexRef = useRef(0)
+    const retrySinceDisconnectRef = useRef(0)
     const resolveUserLabelRef = useRef(resolveUserLabel)
     const getCurrentUserIdRef = useRef(getCurrentUserId)
     const onViewConflictRef = useRef(onViewConflict)
     const displayNameRef = useRef(displayName)
+    const isConnectedRef = useRef(false)
 
     const [isConnected, setIsConnected] = useState(false)
+
+    useEffect(() => {
+        isConnectedRef.current = isConnected
+    }, [isConnected])
 
     const subscribe = useCallback((listener: MessageListener<TIncoming>) => {
         listenersRef.current.add(listener)
@@ -119,6 +129,7 @@ export function useWebSocket<TIncoming = unknown>(
         }
 
         shouldReconnectRef.current = true
+        isIntentionalCloseRef.current = false
 
         const resolveCandidateUrls = () => {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -135,17 +146,80 @@ export function useWebSocket<TIncoming = unknown>(
             return Array.from(new Set(candidates))
         }
 
+        const clearReconnectTimer = () => {
+            if (reconnectTimerRef.current !== null) {
+                window.clearTimeout(reconnectTimerRef.current)
+                reconnectTimerRef.current = null
+            }
+        }
+
+        const clearHeartbeat = () => {
+            if (heartbeatTimerRef.current !== null) {
+                window.clearInterval(heartbeatTimerRef.current)
+                heartbeatTimerRef.current = null
+            }
+        }
+
+        const setConnectedTrue = () => {
+            if (disconnectDebounceTimerRef.current !== null) {
+                window.clearTimeout(disconnectDebounceTimerRef.current)
+                disconnectDebounceTimerRef.current = null
+            }
+            if (!isConnectedRef.current) {
+                setIsConnected(true)
+            }
+        }
+
+        const setConnectedFalseDebounced = () => {
+            if (disconnectDebounceTimerRef.current !== null) {
+                window.clearTimeout(disconnectDebounceTimerRef.current)
+            }
+
+            // Prevent very brief reconnect blips from flashing the UI badge.
+            disconnectDebounceTimerRef.current = window.setTimeout(() => {
+                disconnectDebounceTimerRef.current = null
+                if (socketRef.current?.readyState === WebSocket.OPEN) return
+                if (isConnectedRef.current) {
+                    setIsConnected(false)
+                }
+            }, 200)
+        }
+
+        const getReconnectUrlIndex = (candidatesLength: number) => {
+            if (candidatesLength <= 1) {
+                return preferredUrlIndexRef.current
+            }
+
+            if (retrySinceDisconnectRef.current <= 1) {
+                // First retry sticks to the last good URL.
+                return preferredUrlIndexRef.current
+            }
+
+            // Only after retrying the same URL once, walk the full candidate list.
+            const offset = (retrySinceDisconnectRef.current - 1) % candidatesLength
+            return (preferredUrlIndexRef.current + offset) % candidatesLength
+        }
+
         const connect = () => {
             const candidates = candidateUrlsRef.current
-            const resolvedUrl = candidates[activeUrlIndexRef.current] ?? candidates[0]
+            if (candidates.length === 0) return
+
+            const nextIndex = getReconnectUrlIndex(candidates.length)
+            activeUrlIndexRef.current = nextIndex
+            const resolvedUrl = candidates[nextIndex] ?? candidates[0]
             if (!resolvedUrl) return
 
+            clearReconnectTimer()
             const socket = new WebSocket(resolvedUrl)
             socketRef.current = socket
 
             socket.onopen = () => {
+                clearReconnectTimer()
+                clearHeartbeat()
                 reconnectAttemptRef.current = 0
-                setIsConnected(true)
+                retrySinceDisconnectRef.current = 0
+                preferredUrlIndexRef.current = activeUrlIndexRef.current
+                setConnectedTrue()
                 socket.send(
                     JSON.stringify({
                         type: 'auth',
@@ -154,6 +228,12 @@ export function useWebSocket<TIncoming = unknown>(
                         displayName: displayNameRef.current,
                     }),
                 )
+
+                heartbeatTimerRef.current = window.setInterval(() => {
+                    const currentSocket = socketRef.current
+                    if (!currentSocket || currentSocket.readyState !== WebSocket.OPEN) return
+                    currentSocket.send(JSON.stringify({ type: 'ping' }))
+                }, 30000)
             }
 
             socket.onmessage = (event) => {
@@ -186,19 +266,20 @@ export function useWebSocket<TIncoming = unknown>(
             }
 
             socket.onclose = () => {
-                setIsConnected(false)
+                clearHeartbeat()
+                socketRef.current = null
+                setConnectedFalseDebounced()
+
+                if (isIntentionalCloseRef.current) return
                 if (!shouldReconnectRef.current) return
 
-                // Rotate through known URLs to recover from stale env port values.
-                if (candidateUrlsRef.current.length > 1) {
-                    activeUrlIndexRef.current =
-                        (activeUrlIndexRef.current + 1) % candidateUrlsRef.current.length
-                }
+                retrySinceDisconnectRef.current += 1
 
                 const attempt = reconnectAttemptRef.current
                 const delay = Math.min(1000 * Math.pow(2, attempt), 8000)
                 reconnectAttemptRef.current = attempt + 1
 
+                clearReconnectTimer()
                 reconnectTimerRef.current = window.setTimeout(connect, delay)
             }
 
@@ -208,22 +289,34 @@ export function useWebSocket<TIncoming = unknown>(
         }
 
         candidateUrlsRef.current = resolveCandidateUrls()
+        preferredUrlIndexRef.current = 0
         activeUrlIndexRef.current = 0
+        retrySinceDisconnectRef.current = 0
         connect()
 
         return () => {
             shouldReconnectRef.current = false
-            setIsConnected(false)
+            isIntentionalCloseRef.current = true
 
-            if (reconnectTimerRef.current !== null) {
-                window.clearTimeout(reconnectTimerRef.current)
+            clearReconnectTimer()
+            clearHeartbeat()
+
+            if (disconnectDebounceTimerRef.current !== null) {
+                window.clearTimeout(disconnectDebounceTimerRef.current)
+                disconnectDebounceTimerRef.current = null
             }
 
             const socket = socketRef.current
             socketRef.current = null
             candidateUrlsRef.current = []
+            preferredUrlIndexRef.current = 0
             activeUrlIndexRef.current = 0
-            if (socket && socket.readyState === WebSocket.OPEN) {
+            retrySinceDisconnectRef.current = 0
+
+            if (
+                socket &&
+                (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)
+            ) {
                 socket.close()
             }
         }
