@@ -20,6 +20,267 @@ interface UsePlaygroundReturn {
     saveTemplateData: (data: FileTreeNode) => Promise<void>
 }
 
+type FileSnapshot = {
+    path?: unknown
+    content?: unknown
+    filename?: unknown
+    extension?: unknown
+}
+
+type RuntimeTemplateItem = {
+    filename?: unknown
+    fileExtension?: unknown
+    content?: unknown
+    folderName?: unknown
+    items?: unknown
+}
+
+type RuntimeTemplateRoot = {
+    folderName?: unknown
+    items?: unknown
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null
+}
+
+function isFileTreeNode(value: unknown): value is FileTreeNode {
+    if (!isRecord(value)) return false
+    if (typeof value.name !== 'string') return false
+    if (typeof value.path !== 'string') return false
+    return value.type === 'directory' || value.type === 'file'
+}
+
+function coerceTemplateNode(value: unknown, fallbackPath = '.'): FileTreeNode | null {
+    if (!isRecord(value)) return null
+
+    const nodeType = value.type
+    const normalizedType = nodeType === 'folder' ? 'directory' : nodeType
+    if (normalizedType !== 'directory' && normalizedType !== 'file') return null
+
+    const nodeName = typeof value.name === 'string' && value.name.trim() ? value.name : 'root'
+    const nodePath = typeof value.path === 'string' && value.path.trim() ? value.path : fallbackPath
+
+    if (normalizedType === 'file') {
+        return {
+            name: nodeName,
+            path: nodePath,
+            type: 'file',
+            content: toFileContent(value.content),
+        }
+    }
+
+    const childValues = Array.isArray(value.children) ? value.children : []
+    const children = childValues
+        .map((child) => {
+            const childName = isRecord(child) && typeof child.name === 'string' ? child.name : 'item'
+            const childPath = nodePath === '.' ? childName : `${nodePath}/${childName}`
+            return coerceTemplateNode(child, childPath)
+        })
+        .filter((child): child is FileTreeNode => child !== null)
+
+    return {
+        name: nodeName,
+        path: nodePath,
+        type: 'directory',
+        children,
+    }
+}
+
+function parseMaybeNestedJson(value: unknown): unknown {
+    let current = value
+
+    for (let i = 0; i < 5; i += 1) {
+        if (typeof current !== 'string') return current
+        const text = current.trim()
+        if (!text) return current
+
+        const looksJson =
+            text.startsWith('{') ||
+            text.startsWith('[') ||
+            text.startsWith('"{') ||
+            text.startsWith('"[')
+        if (!looksJson) return current
+
+        try {
+            current = JSON.parse(text)
+        } catch {
+            return current
+        }
+    }
+
+    return current
+}
+
+function normalizePath(pathLike: string): string {
+    return pathLike.replace(/^\/+/, '').replace(/\\/g, '/').trim()
+}
+
+function toFileContent(value: unknown): string {
+    if (typeof value === 'string') return value
+    if (value === null || value === undefined) return ''
+    if (typeof value === 'object') return JSON.stringify(value, null, 2)
+    return String(value)
+}
+
+function toTemplateTreeFromFiles(files: FileSnapshot[]): FileTreeNode | null {
+    const root: FileTreeNode = {
+        name: 'playground',
+        path: '.',
+        type: 'directory',
+        children: [],
+    }
+
+    for (const entry of files) {
+        const pathFromPath = typeof entry.path === 'string' ? normalizePath(entry.path) : ''
+        const pathFromName =
+            typeof entry.filename === 'string'
+                ? `${normalizePath(entry.filename)}${typeof entry.extension === 'string' && entry.extension.trim() ? `.${entry.extension.trim().replace(/^\.+/, '')}` : ''}`
+                : ''
+        const normalizedPath = pathFromPath || pathFromName
+        if (!normalizedPath) continue
+
+        const segments = normalizedPath.split('/').filter(Boolean)
+        if (segments.length === 0) continue
+
+        let cursor = root
+        let currentPath = '.'
+
+        for (let i = 0; i < segments.length; i += 1) {
+            const segment = segments[i]
+            const isFile = i === segments.length - 1
+            currentPath = currentPath === '.' ? segment : `${currentPath}/${segment}`
+
+            if (!cursor.children) cursor.children = []
+
+            let child = cursor.children.find(
+                (node) => node.name === segment && node.type === (isFile ? 'file' : 'directory'),
+            )
+
+            if (!child) {
+                child = {
+                    name: segment,
+                    path: currentPath,
+                    type: isFile ? 'file' : 'directory',
+                    children: isFile ? undefined : [],
+                    content: isFile ? toFileContent(entry.content) : undefined,
+                }
+                cursor.children.push(child)
+            }
+
+            if (!isFile) cursor = child
+        }
+    }
+
+    return root.children && root.children.length > 0 ? root : null
+}
+
+function normalizeTemplateTree(value: unknown): FileTreeNode | null {
+    const parsed = parseMaybeNestedJson(value)
+    const coercedRoot = coerceTemplateNode(parsed)
+    if (coercedRoot) return coercedRoot
+
+    const runtimeTree = fromRuntimeTemplate(parsed)
+    if (runtimeTree) return runtimeTree
+
+    if (isFileTreeNode(parsed)) {
+        return parsed
+    }
+
+    if (Array.isArray(parsed)) {
+        return toTemplateTreeFromFiles(parsed as FileSnapshot[])
+    }
+
+    if (!isRecord(parsed)) {
+        return null
+    }
+
+    const coercedContent = coerceTemplateNode(parsed.content)
+    if (coercedContent) {
+        return coercedContent
+    }
+
+    if (Array.isArray(parsed.files)) {
+        const fromFiles = toTemplateTreeFromFiles(parsed.files as FileSnapshot[])
+        if (fromFiles) return fromFiles
+    }
+
+    if (parsed.content !== undefined) {
+        return normalizeTemplateTree(parsed.content)
+    }
+
+    return null
+}
+
+function fromRuntimeTemplateItem(
+    item: RuntimeTemplateItem,
+    parentPath: string,
+): FileTreeNode | null {
+    const folderName =
+        typeof item.folderName === 'string' && item.folderName.trim()
+            ? item.folderName.trim()
+            : ''
+
+    if (folderName) {
+        const folderPath = parentPath === '.' ? folderName : `${parentPath}/${folderName}`
+        const rawChildren = Array.isArray(item.items) ? item.items : []
+        const children = rawChildren
+            .map((child) => fromRuntimeTemplateItem(child as RuntimeTemplateItem, folderPath))
+            .filter((child): child is FileTreeNode => child !== null)
+
+        return {
+            name: folderName,
+            path: folderPath,
+            type: 'directory',
+            children,
+        }
+    }
+
+    const baseName =
+        typeof item.filename === 'string' && item.filename.trim() ? item.filename.trim() : ''
+    const ext =
+        typeof item.fileExtension === 'string' && item.fileExtension.trim()
+            ? item.fileExtension.trim().replace(/^\.+/, '')
+            : ''
+    if (!baseName) return null
+
+    const fileName =
+        ext && !baseName.toLowerCase().endsWith(`.${ext.toLowerCase()}`)
+            ? `${baseName}.${ext}`
+            : baseName
+    const filePath = parentPath === '.' ? fileName : `${parentPath}/${fileName}`
+
+    return {
+        name: fileName,
+        path: filePath,
+        type: 'file',
+        content: toFileContent(item.content),
+    }
+}
+
+function fromRuntimeTemplate(value: unknown): FileTreeNode | null {
+    if (!isRecord(value)) return null
+
+    const root = value as RuntimeTemplateRoot
+    const rootName =
+        typeof root.folderName === 'string' && root.folderName.trim()
+            ? root.folderName.trim()
+            : 'playground'
+    const rawItems = Array.isArray(root.items) ? root.items : null
+    if (!rawItems) return null
+
+    const children = rawItems
+        .map((item) => fromRuntimeTemplateItem(item as RuntimeTemplateItem, '.'))
+        .filter((child): child is FileTreeNode => child !== null)
+
+    return {
+        name: rootName,
+        path: '.',
+        type: 'directory',
+        children,
+    }
+}
+
 function usePlayground(playgroundId: string): UsePlaygroundReturn {
     const [playgroundData, setPlaygroundData] = useState<PlaygroundData | null>(null)
     const [templateData, setTemplateData] = useState<FileTreeNode | null>(null)
@@ -52,31 +313,23 @@ function usePlayground(playgroundId: string): UsePlaygroundReturn {
             setPlaygroundData(data)
 
             // Template can come from the playground payload or from the dedicated template endpoint.
-            const templateFromPlayground = data.templateFile?.content ?? null
+            const templateFromPlayground = normalizeTemplateTree(data.templateFile?.content)
             if (templateFromPlayground) {
-                setTemplateData(templateFromPlayground as FileTreeNode)
+                setTemplateData(templateFromPlayground)
             } else if (typeof data.code === 'string' && data.code.trim().length > 0) {
                 // New playgrounds start from code snapshot, so parse it when templateFile is not created yet.
-                try {
-                    const parsedCodeTemplate = JSON.parse(data.code) as FileTreeNode
+                const parsedCodeTemplate = normalizeTemplateTree(data.code)
+                if (parsedCodeTemplate) {
                     setTemplateData(parsedCodeTemplate)
-                } catch {
+                } else {
                     setTemplateData(null)
                 }
             } else {
                 const templateResponse = await fetch(`/api/template/${playgroundId}`)
                 if (templateResponse.ok) {
                     const templatePayload = await templateResponse.json()
-                    const templateContent = templatePayload.content ?? null
-                    if (typeof templateContent === 'string') {
-                        try {
-                            setTemplateData(JSON.parse(templateContent) as FileTreeNode)
-                        } catch {
-                            setTemplateData(null)
-                        }
-                    } else {
-                        setTemplateData(templateContent as FileTreeNode | null)
-                    }
+                    const normalizedTemplate = normalizeTemplateTree(templatePayload.content ?? null)
+                    setTemplateData(normalizedTemplate)
                 } else {
                     setTemplateData(null)
                 }

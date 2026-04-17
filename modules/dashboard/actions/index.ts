@@ -4,6 +4,7 @@
 
 // when our user comes to the dashboard page, we want to fetch their playground and display them. This action will be called from the dashboard page component to get the data needed for rendering.
 import { db } from '@/lib/db'
+import redis from '@/lib/redis'
 import { currentUser } from './../../auth/actions/index'
 import { revalidatePath } from 'next/cache'
 import { getTemplateAbsolutePath } from '@/lib/template'
@@ -109,17 +110,59 @@ async function deletePlaygroundById(playgroundId: string) {
         revalidatePath('/dashboard') // Revalidate the dashboard page to reflect the changes after deletion
         return deletedPlayground
     } catch (error) {
-        if (
-            (
-                error as {
-                    code?: string
-                }
-            ).code === 'P2025'
-        ) {
-            console.log(`Playground with id ${playgroundId} not found or already deleted.`)
-            throw new Error('Playground not found or already deleted')
+        if ((error as { code?: string }).code === 'P2025') {
+            const ownedPlayground = await db.playground.findFirst({
+                where: {
+                    id: playgroundId,
+                    userId: user.id,
+                },
+                select: { id: true },
+            })
+
+            if (!ownedPlayground) {
+                throw new Error('Playground not found or already deleted')
+            }
+
+            const shareLinks = await db.shareLink.findMany({
+                where: { playgroundId },
+                select: { id: true },
+            })
+
+            await db.$transaction([
+                db.shareLinkAccess.deleteMany({
+                    where: {
+                        shareLinkId: {
+                            in: shareLinks.map((link) => link.id),
+                        },
+                    },
+                }),
+                db.shareLink.deleteMany({
+                    where: { playgroundId },
+                }),
+                db.templateFile.deleteMany({
+                    where: { playgroundId },
+                }),
+                db.starMark.deleteMany({
+                    where: { playgroundId },
+                }),
+                db.playground.delete({
+                    where: {
+                        id: playgroundId,
+                    },
+                }),
+            ])
+
+            await Promise.all([
+                redis.del(`collab:session:${playgroundId}`),
+                redis.del(`collab:ops:${playgroundId}`),
+                redis.del(`collab:presence:${playgroundId}`),
+                redis.del(`collab:stopped:${playgroundId}`),
+            ])
+
+            revalidatePath('/dashboard')
             return null
         }
+
         console.error(`Error deleting playground with id ${playgroundId}:`, error)
         throw new Error('Failed to delete playground')
     }
@@ -240,20 +283,20 @@ async function togglePlaygroundStarMark(playgroundId: string) {
 
         const updatedMark = existingMark
             ? await db.starMark.update({
-                  where: {
-                      id: existingMark.id,
-                  },
-                  data: {
-                      isMarked: !existingMark.isMarked,
-                  },
-              })
+                where: {
+                    id: existingMark.id,
+                },
+                data: {
+                    isMarked: !existingMark.isMarked,
+                },
+            })
             : await db.starMark.create({
-                  data: {
-                      userId: user.id,
-                      playgroundId,
-                      isMarked: true,
-                  },
-              })
+                data: {
+                    userId: user.id,
+                    playgroundId,
+                    isMarked: true,
+                },
+            })
 
         revalidatePath('/dashboard')
         return updatedMark

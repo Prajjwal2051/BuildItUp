@@ -8,6 +8,7 @@ import { auth } from '@/auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { generateShareToken } from '@/lib/share-token'
 import { db } from '@/lib/db'
+import redis from '@/lib/redis'
 
 type CreateShareBody = {
     playgroundId?: string
@@ -72,6 +73,9 @@ export async function POST(request: NextRequest) {
             expiresAt,
         },
     })
+
+    // Creating a new share link re-opens collaboration if it was previously stopped.
+    await redis.del(`collab:stopped:${playgroundId}`)
 
     const shareUrl = `${request.nextUrl.origin}/s/${token}`
 

@@ -9,6 +9,7 @@ import type { CursorRange, User, ServerMessage } from "./types";
 export interface RoomClient {
     ws: WebSocket
     userId: string
+    displayName: string
     color: string
 }
 
@@ -49,6 +50,16 @@ export function broadCastJoin(room: Room, user: User, joinedClient: RoomClient) 
         user,
     },
         joinedClient
+    )
+}
+
+// Announces profile updates like display-name changes.
+export function broadCastUserUpdate(room: Room, user: User, updatedClient: RoomClient) {
+    broadcast(room, {
+        type: 'user_update',
+        user,
+    },
+        updatedClient,
     )
 }
 

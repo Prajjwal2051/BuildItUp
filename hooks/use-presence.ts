@@ -10,6 +10,14 @@ interface UsePresenceOptions {
     sendCursor: (cursor: CursorRange) => void
 }
 
+function dedupeUsers(users: User[]): User[] {
+    const byId = new Map<string, User>()
+    for (const user of users) {
+        byId.set(user.userId, user)
+    }
+    return Array.from(byId.values())
+}
+
 // Tracks presence state and syncs local Monaco cursor updates to the collaboration server.
 export function usePresence(options: UsePresenceOptions) {
     const { editor, subscribe, sendCursor } = options
@@ -18,7 +26,7 @@ export function usePresence(options: UsePresenceOptions) {
     useEffect(() => {
         return subscribe((message) => {
             if (message.type === 'init') {
-                setUsers(message.users)
+                setUsers(dedupeUsers(message.users))
                 return
             }
 
@@ -26,13 +34,13 @@ export function usePresence(options: UsePresenceOptions) {
                 setUsers((current) => {
                     const existing = current.find((user) => user.userId === message.user.userId)
                     if (existing) {
-                        return current.map((user) =>
+                        return dedupeUsers(current.map((user) =>
                             user.userId === message.user.userId
                                 ? { ...message.user, isActive: true }
                                 : user,
-                        )
+                        ))
                     }
-                    return [...current, { ...message.user, isActive: true }]
+                    return dedupeUsers([...current, { ...message.user, isActive: true }])
                 })
                 return
             }
@@ -55,6 +63,19 @@ export function usePresence(options: UsePresenceOptions) {
                             : user,
                     ),
                 )
+                return
+            }
+
+            if (message.type === 'user_update') {
+                setUsers((current) =>
+                    dedupeUsers(
+                        current.map((user) =>
+                            user.userId === message.user.userId
+                                ? { ...user, ...message.user, isActive: true }
+                                : user,
+                        ),
+                    ),
+                )
             }
         })
     }, [subscribe])
@@ -62,18 +83,23 @@ export function usePresence(options: UsePresenceOptions) {
     useEffect(() => {
         if (!editor) return
 
-        const disposable = editor.onDidChangeCursorPosition((event) => {
-            const selection = event.selection
-            const cursor: CursorRange = {
-                startLine: selection.startLineNumber,
-                startCol: selection.startColumn,
-                endLine: selection.endLineNumber,
-                endColumn: selection.endColumn,
-            }
-            sendCursor(cursor)
+        let timer: ReturnType<typeof setTimeout> | null = null
+        const disposable = editor.onDidChangeCursorSelection((event) => {
+            if (timer) clearTimeout(timer)
+            timer = setTimeout(() => {
+                const selection = event.selection
+                const cursor: CursorRange = {
+                    startLine: selection.startLineNumber,
+                    startCol: selection.startColumn,
+                    endLine: selection.endLineNumber,
+                    endColumn: selection.endColumn,
+                }
+                sendCursor(cursor)
+            }, 80)
         })
 
         return () => {
+            if (timer) clearTimeout(timer)
             disposable.dispose()
         }
     }, [editor, sendCursor])

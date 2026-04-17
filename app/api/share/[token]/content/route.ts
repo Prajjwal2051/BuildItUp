@@ -12,8 +12,6 @@ export async function GET(
 ) {
     const { token } = await params
 
-    // 1. Validate the share token
-    let playgroundId: string
     try {
         const link = await db.shareLink.findUnique({
             where: { token },
@@ -27,63 +25,83 @@ export async function GET(
         if (!link || link.isRevoked) {
             return NextResponse.json({ error: 'Link not found or revoked' }, { status: 404 })
         }
+
         if (link.expiresAt && link.expiresAt < new Date()) {
             return NextResponse.json({ error: 'Link expired' }, { status: 410 })
         }
-        playgroundId = link.playgroundId
-    } catch {
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-    }
 
-    // 2. Try Redis for live content first (collab session may be active)
-    try {
-        const cached = await redis.get(sessionKey(playgroundId))
-        if (cached) {
-            const session = JSON.parse(cached) as { content: string; revision: number }
-            // content is stored as JSON-stringified file tree in collab sessions
-            let parsedContent: unknown
-            try {
-                parsedContent = JSON.parse(session.content)
-            } catch {
-                parsedContent = session.content
+        const playgroundId = link.playgroundId
+
+        try {
+            const cached = await redis.get(sessionKey(playgroundId))
+            if (cached) {
+                const session = JSON.parse(cached) as { content: string; revision: number }
+                let parsedContent: unknown
+                try {
+                    parsedContent = JSON.parse(session.content)
+                } catch {
+                    parsedContent = session.content
+                }
+
+                return NextResponse.json(
+                    {
+                        playgroundId,
+                        content: parsedContent,
+                        revision: session.revision,
+                        source: 'redis',
+                    },
+                    { headers: { 'Cache-Control': 'no-store' } }
+                )
             }
-            return NextResponse.json(
-                { playgroundId, content: parsedContent, revision: session.revision, source: 'redis' },
-                { headers: { 'Cache-Control': 'no-store' } }
-            )
+        } catch (redisError) {
+            console.warn('Share content route: Redis read failed', redisError)
         }
-    } catch {
-        // Redis miss or unavailable — fall through to DB
-    }
 
-    // 3. Fall back to DB
-    try {
-        const [playground, templateFile] = await Promise.all([
-            db.playground.findUnique({
-                where: { id: playgroundId },
-                select: { id: true, name: true },
-            }),
-            db.templateFile.findUnique({
-                where: { playgroundId },
-                select: { content: true },
-            }),
-        ])
+        const playground = await db.playground.findUnique({
+            where: { id: playgroundId },
+            select: { id: true, title: true },
+        })
 
         if (!playground) {
             return NextResponse.json({ error: 'Playground not found' }, { status: 404 })
         }
 
+        let templateFile = null
+        try {
+            templateFile = await db.templateFile.findFirst({
+                where: { playgroundId },
+                select: { content: true },
+            })
+        } catch (templateError) {
+            console.error('Share content route: template lookup failed', templateError)
+            return NextResponse.json(
+                {
+                    error:
+                        templateError instanceof Error
+                            ? templateError.message
+                            : 'Template lookup failed',
+                },
+                { status: 500 }
+            )
+        }
+
         return NextResponse.json(
             {
                 playgroundId,
-                name: playground.name,
-                content: templateFile?.content ?? null,
+                name: playground.title,
+                content: templateFile?.content ?? '',
                 revision: 0,
                 source: 'db',
             },
             { headers: { 'Cache-Control': 'no-store' } }
         )
-    } catch {
-        return NextResponse.json({ error: 'Failed to load playground' }, { status: 500 })
+    } catch (error) {
+        console.error('Share content route failed:', error)
+        return NextResponse.json(
+            {
+                error: error instanceof Error ? error.message : 'Internal server error',
+            },
+            { status: 500 }
+        )
     }
 }

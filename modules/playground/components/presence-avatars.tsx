@@ -17,6 +17,12 @@ function getInitials(name: string): string {
     return `${words[0][0]}${words[1][0]}`.toUpperCase()
 }
 
+function prettyDisplayName(name: string): string {
+    if (!name) return 'Guest'
+    if (name.startsWith('guest-')) return 'Guest'
+    return name
+}
+
 interface AvatarProps {
     user: User
     isSelf: boolean
@@ -47,7 +53,7 @@ function Avatar({ user, isSelf, isTyping }: AvatarProps) {
 
     return (
         <div
-            className="relative flex-shrink-0"
+            className="relative shrink-0"
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
@@ -71,28 +77,28 @@ function Avatar({ user, isSelf, isTyping }: AvatarProps) {
                 {user.avatar ? (
                     <img
                         src={user.avatar}
-                        alt={user.displayName}
+                        alt={prettyDisplayName(user.displayName || user.userId)}
                         className="h-full w-full rounded-full object-cover"
                     />
                 ) : (
-                    getInitials(user.displayName || user.userId)
+                    getInitials(prettyDisplayName(user.displayName || user.userId))
                 )}
             </div>
 
             {/* Tooltip */}
             {showTooltip && (
                 <div
-                    className="absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-[#1e2028] bg-[#11161d] px-2.5 py-1.5 shadow-lg"
+                    className="absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-[#1e2028] bg-[#11161d] px-2.5 py-1.5 shadow-lg"
                     style={{ pointerEvents: 'none' }}
                 >
                     <p className="text-[11px] font-medium text-white">
-                        {isSelf ? 'You' : (user.displayName || user.userId)}
+                        {isSelf ? 'You' : prettyDisplayName(user.displayName || user.userId)}
                     </p>
                     <p className="text-[10px] text-[#8ea5b5]">
                         {isTyping ? 'Typing…' : user.isActive ? 'Active' : 'Idle'}
                     </p>
                     {/* Tooltip arrow */}
-                    <span className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-[#1e2028]" />
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-[#1e2028]" />
                 </div>
             )}
         </div>

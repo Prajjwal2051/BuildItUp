@@ -9,6 +9,7 @@ type JsonValue = Record<string, unknown>
 interface UseWebSocketOptions {
     token: string
     userId?: string
+    displayName?: string
     enabled?: boolean
     wsUrl?: string
     resolveUserLabel?: (userId: string) => string
@@ -31,6 +32,7 @@ export function useWebSocket<TIncoming = unknown>(
     const {
         token,
         userId,
+        displayName,
         enabled = true,
         wsUrl,
         resolveUserLabel,
@@ -43,6 +45,12 @@ export function useWebSocket<TIncoming = unknown>(
     const reconnectAttemptRef = useRef(0)
     const reconnectTimerRef = useRef<number | null>(null)
     const listenersRef = useRef(new Set<MessageListener<TIncoming>>())
+    const candidateUrlsRef = useRef<string[]>([])
+    const activeUrlIndexRef = useRef(0)
+    const resolveUserLabelRef = useRef(resolveUserLabel)
+    const getCurrentUserIdRef = useRef(getCurrentUserId)
+    const onViewConflictRef = useRef(onViewConflict)
+    const displayNameRef = useRef(displayName)
 
     const [isConnected, setIsConnected] = useState(false)
 
@@ -69,21 +77,51 @@ export function useWebSocket<TIncoming = unknown>(
     }, [])
 
     useEffect(() => {
+        resolveUserLabelRef.current = resolveUserLabel
+    }, [resolveUserLabel])
+
+    useEffect(() => {
+        getCurrentUserIdRef.current = getCurrentUserId
+    }, [getCurrentUserId])
+
+    useEffect(() => {
+        onViewConflictRef.current = onViewConflict
+    }, [onViewConflict])
+
+    useEffect(() => {
+        displayNameRef.current = displayName
+    }, [displayName])
+
+    useEffect(() => {
         if (!enabled || !token || typeof window === 'undefined') {
             return
         }
 
         shouldReconnectRef.current = true
 
-        const resolveUrl = () => {
-            if (wsUrl) return wsUrl
+        const resolveCandidateUrls = () => {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-            const host = window.location.host
-            return `${protocol}//${host}`
+            const pageHost = window.location.host
+            const pageHostname = window.location.hostname
+            const explicitUrl = wsUrl ?? process.env.NEXT_PUBLIC_COLLAB_WS_URL
+
+            const candidates = [
+                explicitUrl,
+                `${protocol}//${pageHost}`,
+                `${protocol}//${pageHostname}:4001`,
+                `${protocol}//localhost:4001`,
+                `${protocol}//127.0.0.1:4001`,
+            ].filter((value): value is string => Boolean(value))
+
+            return Array.from(new Set(candidates))
         }
 
         const connect = () => {
-            const socket = new WebSocket(resolveUrl())
+            const candidates = candidateUrlsRef.current
+            const resolvedUrl = candidates[activeUrlIndexRef.current] ?? candidates[0]
+            if (!resolvedUrl) return
+
+            const socket = new WebSocket(resolvedUrl)
             socketRef.current = socket
 
             socket.onopen = () => {
@@ -94,6 +132,7 @@ export function useWebSocket<TIncoming = unknown>(
                         type: 'auth',
                         token,
                         userId,
+                        displayName: displayNameRef.current,
                     }),
                 )
             }
@@ -108,15 +147,15 @@ export function useWebSocket<TIncoming = unknown>(
                         (parsed as ServerMessage).type === 'conflict'
                     ) {
                         const conflict = parsed as unknown as Extract<ServerMessage, { type: 'conflict' }>
-                        const currentUserId = getCurrentUserId?.() ?? userId ?? null
+                        const currentUserId = getCurrentUserIdRef.current?.() ?? userId ?? null
                         const otherUserId = conflict.authorAId === currentUserId ? conflict.authorBId : conflict.authorAId
-                        const otherLabel = resolveUserLabel?.(otherUserId) ?? otherUserId
+                        const otherLabel = resolveUserLabelRef.current?.(otherUserId) ?? otherUserId
 
                         toast(`⚡ You and ${otherLabel} edited the same region`, {
                             action: {
                                 label: 'View diff',
                                 onClick: () => {
-                                    onViewConflict?.(conflict)
+                                    onViewConflictRef.current?.(conflict)
                                 },
                             },
                         })
@@ -131,6 +170,12 @@ export function useWebSocket<TIncoming = unknown>(
                 setIsConnected(false)
                 if (!shouldReconnectRef.current) return
 
+                // Rotate through known URLs to recover from stale env port values.
+                if (candidateUrlsRef.current.length > 1) {
+                    activeUrlIndexRef.current =
+                        (activeUrlIndexRef.current + 1) % candidateUrlsRef.current.length
+                }
+
                 const attempt = reconnectAttemptRef.current
                 const delay = Math.min(1000 * Math.pow(2, attempt), 8000)
                 reconnectAttemptRef.current = attempt + 1
@@ -143,6 +188,8 @@ export function useWebSocket<TIncoming = unknown>(
             }
         }
 
+        candidateUrlsRef.current = resolveCandidateUrls()
+        activeUrlIndexRef.current = 0
         connect()
 
         return () => {
@@ -155,11 +202,13 @@ export function useWebSocket<TIncoming = unknown>(
 
             const socket = socketRef.current
             socketRef.current = null
+            candidateUrlsRef.current = []
+            activeUrlIndexRef.current = 0
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.close()
             }
         }
-    }, [enabled, notifyListeners, onViewConflict, resolveUserLabel, token, userId, wsUrl])
+    }, [enabled, notifyListeners, token, userId, wsUrl])
 
     return {
         isConnected,

@@ -10,7 +10,7 @@ import { db } from '@/lib/db'
 
 export async function DELETE(
     _request: Request,
-    { params }: { params: { token: string } },
+    { params }: { params: Promise<{ token: string }> },
 ) {
     // 1) Verify session.
     const session = await auth()
@@ -26,7 +26,7 @@ export async function DELETE(
     }
 
     // 2) Resolve token and enforce ownership.
-    const { token } = params
+    const { token } = await params
 
     const link = await db.shareLink.findFirst({
         where: {

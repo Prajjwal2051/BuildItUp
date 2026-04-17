@@ -14,6 +14,18 @@ const SPINNER_LINE_REGEX = /^[\\|\/-]{1,120}$/
 type TerminalTone = 'info' | 'warn' | 'error' | 'success' | 'neutral'
 type SpawnedProcess = Awaited<ReturnType<WebContainer['spawn']>>
 
+type RuntimeTemplateNode = {
+    filename?: unknown
+    fileExtension?: unknown
+    content?: unknown
+    folderName?: unknown
+    items?: unknown
+}
+
+type RuntimeTemplateRoot = {
+    items?: unknown
+}
+
 // This removes terminal control characters so logs stay readable in the browser terminal panel.
 function normalizeTerminalOutput(raw: string): string {
     const withoutAnsi = raw.replace(ANSI_ESCAPE_REGEX, '')
@@ -103,6 +115,53 @@ function normalizePreviewUrl(url: string): string {
         return `http://${trimmedUrl}`
     }
     return `https://${trimmedUrl}`
+}
+
+function tryParseJson(text: string): boolean {
+    try {
+        JSON.parse(text)
+        return true
+    } catch {
+        return false
+    }
+}
+
+function findPackageJsonContent(template: unknown): string | null {
+    if (!template || typeof template !== 'object') return null
+
+    const root = template as RuntimeTemplateRoot
+    const walk = (nodes: unknown[]): string | null => {
+        for (const node of nodes) {
+            if (!node || typeof node !== 'object') continue
+            const item = node as RuntimeTemplateNode
+
+            if (typeof item.folderName === 'string' && Array.isArray(item.items)) {
+                const nested = walk(item.items)
+                if (nested) return nested
+                continue
+            }
+
+            const baseName =
+                typeof item.filename === 'string' ? item.filename.trim() : ''
+            const ext =
+                typeof item.fileExtension === 'string'
+                    ? item.fileExtension.trim().replace(/^\.+/, '')
+                    : ''
+            const resolvedName =
+                ext && !baseName.toLowerCase().endsWith(`.${ext.toLowerCase()}`)
+                    ? `${baseName}.${ext}`
+                    : baseName
+
+            if (resolvedName === 'package.json' && typeof item.content === 'string') {
+                return item.content
+            }
+        }
+
+        return null
+    }
+
+    const rootItems = Array.isArray(root.items) ? root.items : []
+    return walk(rootItems)
 }
 
 interface WebContainerPreviewProps {
@@ -286,6 +345,30 @@ function WebContainerPreview({
                 await withTimeout(instance.mount(files), 20000, 'Mounting project files')
                 if (cancelled || isUnmountedRef.current) return
 
+                const mountedPackageJsonRaw = await instance.fs
+                    .readFile('/package.json')
+                    .catch(() => null)
+                const mountedPackageJsonText = mountedPackageJsonRaw
+                    ? typeof mountedPackageJsonRaw === 'string'
+                        ? mountedPackageJsonRaw
+                        : new TextDecoder().decode(mountedPackageJsonRaw)
+                    : ''
+
+                if (!mountedPackageJsonText || !tryParseJson(mountedPackageJsonText)) {
+                    const fallbackPackageJson = findPackageJsonContent(initialTemplateRef.current)
+                    if (fallbackPackageJson && tryParseJson(fallbackPackageJson)) {
+                        await instance.fs.writeFile('/package.json', fallbackPackageJson)
+                        appendTerminalLog(
+                            '[warn] Recovered malformed package.json from template snapshot.\n',
+                        )
+                    } else {
+                        const preview = mountedPackageJsonText.slice(0, 120).replace(/\s+/g, ' ')
+                        throw new Error(
+                            `Invalid package.json mounted in preview${preview ? `: ${preview}` : ''}`,
+                        )
+                    }
+                }
+
                 // todo: terminal logic
 
                 const nodeModulesExists = await instance.fs
@@ -427,17 +510,17 @@ function WebContainerPreview({
                     <pre className="wrap-break-word whitespace-pre-wrap p-3 text-xs text-[#c9d4e5]">
                         {terminalLogs.length > 0
                             ? terminalLogs
-                                  .join('')
-                                  .split('\n')
-                                  .map((line, index) => (
-                                      <span
-                                          key={`${index}-${line.slice(0, 24)}`}
-                                          className={getTerminalToneClass(getTerminalTone(line))}
-                                      >
-                                          {line}
-                                          {'\n'}
-                                      </span>
-                                  ))
+                                .join('')
+                                .split('\n')
+                                .map((line, index) => (
+                                    <span
+                                        key={`${index}-${line.slice(0, 24)}`}
+                                        className={getTerminalToneClass(getTerminalTone(line))}
+                                    >
+                                        {line}
+                                        {'\n'}
+                                    </span>
+                                ))
                             : 'No logs yet.'}
                     </pre>
                 </ScrollArea>

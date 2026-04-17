@@ -4,11 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { editor as MonacoEditor } from 'monaco-editor'
 import { useWebSocket } from '@/hooks/use-websocket'
 import { usePresence } from '@/hooks/use-presence'
+import { useOTClient } from '@/hooks/use-ot-client'
 import type { CursorRange, ServerMessage, TextOperations } from '@/CollabServer/types'
 
 interface UseCollaborationOptions {
     token: string
     userId?: string
+    displayName?: string
     editor: MonacoEditor.IStandaloneCodeEditor | null
     wsUrl?: string
     enabled?: boolean
@@ -28,6 +30,7 @@ interface UseCollaborationResult {
     isConnected: boolean
     sendOp: (op: TextOperations) => boolean
     sendCursor: (cursor: CursorRange) => boolean
+    updateDisplayName: (name: string) => boolean
     localUserId: string | null
 }
 
@@ -36,6 +39,7 @@ export function useCollaboration(options: UseCollaborationOptions): UseCollabora
     const {
         token,
         userId,
+        displayName,
         editor,
         wsUrl,
         enabled = true,
@@ -43,14 +47,25 @@ export function useCollaboration(options: UseCollaborationOptions): UseCollabora
         onServerInit,
     } = options
 
-    const revisionRef = useRef(0)
     const userLabelRef = useRef(new Map<string, string>())
     const localUserIdRef = useRef<string | null>(null)
     const [localUserId, setLocalUserId] = useState<string | null>(null)
+    const [stableGuestId] = useState(() => {
+        if (typeof window === 'undefined') return `guest-${Math.random().toString(36).slice(2, 10)}`
+        const key = 'builditup-collab-client-id'
+        const existing = window.localStorage.getItem(key)
+        if (existing) return existing
+        const generated = `guest-${Math.random().toString(36).slice(2, 10)}`
+        window.localStorage.setItem(key, generated)
+        return generated
+    })
+
+    const resolvedAuthUserId = userId ?? stableGuestId
 
     const { isConnected, sendMessage, subscribe } = useWebSocket<ServerMessage>({
         token,
-        userId,
+        userId: resolvedAuthUserId,
+        displayName,
         wsUrl,
         enabled,
         resolveUserLabel: (targetUserId) => userLabelRef.current.get(targetUserId) ?? targetUserId,
@@ -61,42 +76,46 @@ export function useCollaboration(options: UseCollaborationOptions): UseCollabora
         },
     })
 
+    const { getRevision, handleServerMessage, sendLocalOperation } = useOTClient({
+        sendMessage,
+        onApplyRemoteOperation: (op, authorId, rev) => onServerOperation?.(op, authorId, rev),
+        onServerInit: (content, rev) => onServerInit?.(content, rev),
+    })
+
     useEffect(() => {
         return subscribe((message) => {
-            if (message.type === 'init' || message.type === 'operation' || message.type === 'acknowledgment') {
-                revisionRef.current = message.rev
-            }
+            handleServerMessage(message)
 
             if (message.type === 'init') {
                 localUserIdRef.current = message.selfUserId
                 setLocalUserId(message.selfUserId)
-                onServerInit?.(message.content, message.rev)
-            }
-
-            if (message.type === 'operation') {
-                onServerOperation?.(message.op, message.authorId, message.rev)
             }
         })
-    }, [onServerInit, onServerOperation, subscribe])
+    }, [handleServerMessage, subscribe])
 
     const sendCursor = useCallback(
         (cursor: CursorRange) => {
             return sendMessage({
                 type: 'cursor',
-                rev: revisionRef.current,
+                rev: getRevision(),
                 cursor,
             })
         },
-        [sendMessage],
+        [getRevision, sendMessage],
     )
 
     const sendOp = useCallback(
         (op: TextOperations) => {
-            return sendMessage({
-                type: 'operation',
-                rev: revisionRef.current,
-                op,
-            })
+            return sendLocalOperation(op)
+        },
+        [sendLocalOperation],
+    )
+
+    const updateDisplayName = useCallback(
+        (name: string) => {
+            const trimmed = name.trim()
+            if (!trimmed) return false
+            return sendMessage({ type: 'set_name', displayName: trimmed })
         },
         [sendMessage],
     )
@@ -120,6 +139,7 @@ export function useCollaboration(options: UseCollaborationOptions): UseCollabora
         isConnected,
         sendOp,
         sendCursor,
+        updateDisplayName,
         localUserId,
     }
 }

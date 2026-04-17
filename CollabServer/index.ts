@@ -5,7 +5,7 @@
 
 import { WebSocketServer } from "ws"
 import { handleMessage, handleDisconnect } from "./connection-manager"
-import { flushAllSessions } from "./persistence"
+import { flushAllSessions, startPeriodicFlush, stopPeriodicFlush } from "./persistence"
 import redis from "@/lib/redis"
 
 // Default to port 4001 unless overridden by environment.
@@ -32,6 +32,7 @@ wss.on("connection", (ws) => {
 
 // Startup log helps verify local server boot and chosen port.
 console.log(`Collab server listening on ws://localhost:${PORT}`)
+startPeriodicFlush()
 
 void redis.ping().then(() => {
     console.log("Collab server connected to Redis")
@@ -46,6 +47,7 @@ async function shutdown(signal: string) {
     isShuttingDown = true
 
     console.log(`Received ${signal}. Flushing collaboration sessions...`)
+    stopPeriodicFlush()
     await flushAllSessions()
 
     await new Promise<void>((resolve) => {

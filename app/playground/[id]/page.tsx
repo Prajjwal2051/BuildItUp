@@ -31,6 +31,8 @@ import AiSettingsModal from '@/modules/playground/components/ai-settings-modal'
 import useAISuggestion from '@/modules/playground/hooks/useAISuggestion'
 import { getAiSettings } from '@/modules/playground/actions/ai-settings'
 import SessionBadge from '@/modules/auth/components/session-badge'
+import { PresenceAvatars } from '@/modules/playground/components/presence-avatars'
+import type { User } from '@/CollabServer/types'
 import {
     Dialog,
     DialogContent,
@@ -50,6 +52,7 @@ import {
     ArrowLeftRight,
     Search,
     Share2,
+    Power,
     Loader2,
     Copy,
     Check,
@@ -131,6 +134,13 @@ function getFileName(filePath: string): string {
     return filePath.includes('/') ? filePath.slice(filePath.lastIndexOf('/') + 1) : filePath
 }
 
+function prettyCollaboratorName(name: string): string {
+    const trimmed = name.trim()
+    if (!trimmed) return 'Guest'
+    if (trimmed.startsWith('guest-')) return 'Guest'
+    return trimmed
+}
+
 // Collects all files from the tree so search can match by name/path.
 function collectFileNodes(node: FileTreeNode | null, acc: FileTreeNode[] = []): FileTreeNode[] {
     if (!node) return acc
@@ -157,6 +167,14 @@ type RuntimeTemplateItem = {
 type RuntimeTemplate = {
     folderName: string
     items: RuntimeTemplateItem[]
+}
+
+type OwnerCollabStatus = {
+    activeUsers: User[]
+    activeCount: number
+    sessionOn: boolean
+    stopped: boolean
+    updatedAt: number | null
 }
 
 // Converts the explorer tree into the shape expected by WebContainer preview.
@@ -369,6 +387,14 @@ function MainPlaygroundPage() {
     const [searchQuery, setSearchQuery] = React.useState('')
     const [isCreatingShareLink, setIsCreatingShareLink] = React.useState(false)
     const [isNavigatingHome, setIsNavigatingHome] = React.useState(false)
+    const [isStoppingCollab, setIsStoppingCollab] = React.useState(false)
+    const [ownerCollabStatus, setOwnerCollabStatus] = React.useState<OwnerCollabStatus>({
+        activeUsers: [],
+        activeCount: 0,
+        sessionOn: false,
+        stopped: false,
+        updatedAt: null,
+    })
     const [editorPreferences, setEditorPreferences] = React.useState<EditorPreferences>(
         DEFAULT_EDITOR_PREFERENCES,
     )
@@ -485,6 +511,26 @@ function MainPlaygroundPage() {
         }
     }, [])
 
+    const refreshOwnerCollabStatus = React.useCallback(async () => {
+        if (!id) return
+        try {
+            const response = await fetch(`/api/collab/playground/${id}/status`, {
+                cache: 'no-store',
+            })
+            const payload = (await response.json().catch(() => null)) as OwnerCollabStatus | null
+            if (!response.ok || !payload) return
+            setOwnerCollabStatus({
+                activeUsers: Array.isArray(payload.activeUsers) ? payload.activeUsers : [],
+                activeCount: typeof payload.activeCount === 'number' ? payload.activeCount : 0,
+                sessionOn: Boolean(payload.sessionOn),
+                stopped: Boolean(payload.stopped),
+                updatedAt: typeof payload.updatedAt === 'number' ? payload.updatedAt : null,
+            })
+        } catch {
+            // Ignore transient polling errors.
+        }
+    }, [id])
+
     // Loads the current template tree into the file explorer store and opens the first file.
     React.useEffect(() => {
         setPlaygroundId(id)
@@ -511,6 +557,20 @@ function MainPlaygroundPage() {
             void refreshAiProvider()
         }
     }, [isAiSettingsOpen, refreshAiProvider])
+
+    // Poll owner-side collaboration status so active participants are visible in real time.
+    React.useEffect(() => {
+        if (!id) return
+
+        void refreshOwnerCollabStatus()
+        const intervalId = window.setInterval(() => {
+            void refreshOwnerCollabStatus()
+        }, 4000)
+
+        return () => {
+            window.clearInterval(intervalId)
+        }
+    }, [id, refreshOwnerCollabStatus])
 
     // Restores persisted editor preferences on first client render.
     React.useEffect(() => {
@@ -1054,6 +1114,34 @@ function MainPlaygroundPage() {
         setIsShareDialogOpen(true)
     }, [])
 
+    const handleStopCollabSession = React.useCallback(async () => {
+        if (!id || isStoppingCollab) return
+
+        setIsStoppingCollab(true)
+        try {
+            const response = await fetch(`/api/collab/playground/${id}/stop`, {
+                method: 'POST',
+            })
+            const payload = (await response.json().catch(() => null)) as
+                | { ok?: boolean; error?: string }
+                | null
+
+            if (!response.ok || !payload?.ok) {
+                throw new Error(payload?.error ?? 'Failed to stop collaboration session')
+            }
+
+            toast.success('Collaboration session stopped')
+            appendTerminalLog('[info] Collaboration session stopped by owner.\n')
+            void refreshOwnerCollabStatus()
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to stop session'
+            toast.error(message)
+            appendTerminalLog(`[error] ${message}\n`)
+        } finally {
+            setIsStoppingCollab(false)
+        }
+    }, [appendTerminalLog, id, isStoppingCollab, refreshOwnerCollabStatus])
+
     // Registers inline completions so Monaco renders AI output as grey ghost text.
     React.useEffect(() => {
         const editor = editorInstanceRef.current
@@ -1100,17 +1188,17 @@ function MainPlaygroundPage() {
 
                 const replaceRange = hasSelection
                     ? new monaco.Range(
-                          selection!.startLineNumber,
-                          selection!.startColumn,
-                          selection!.endLineNumber,
-                          selection!.endColumn,
-                      )
+                        selection!.startLineNumber,
+                        selection!.startColumn,
+                        selection!.endLineNumber,
+                        selection!.endColumn,
+                    )
                     : new monaco.Range(
-                          position.lineNumber,
-                          position.column,
-                          position.lineNumber,
-                          position.column,
-                      )
+                        position.lineNumber,
+                        position.column,
+                        position.lineNumber,
+                        position.column,
+                    )
 
                 return {
                     items: [
@@ -1355,6 +1443,22 @@ function MainPlaygroundPage() {
                     <div className="flex items-center gap-2">
                         <button
                             type="button"
+                            onClick={() => void handleStopCollabSession()}
+                            disabled={!ownerCollabStatus.sessionOn || isStoppingCollab}
+                            className={cn(
+                                'flex h-9 items-center gap-1.5 rounded-md border px-3 text-[11px] transition-colors',
+                                !ownerCollabStatus.sessionOn || isStoppingCollab
+                                    ? 'cursor-not-allowed border-[#1e2028] bg-[#11161d] text-[#6a7280]'
+                                    : 'border-[#ff6b6b]/40 bg-[rgba(255,107,107,0.12)] text-[#ff8b8b] hover:border-[#ff6b6b] hover:bg-[rgba(255,107,107,0.18)]',
+                            )}
+                            title={ownerCollabStatus.sessionOn ? 'Stop collaboration session' : 'No active collaboration session'}
+                        >
+                            <Power size={13} />
+                            <span>{isStoppingCollab ? 'Stopping…' : 'Stop Session'}</span>
+                        </button>
+
+                        <button
+                            type="button"
                             onClick={() => {
                                 void handleNavigateDashboard()
                             }}
@@ -1429,6 +1533,35 @@ function MainPlaygroundPage() {
                         </button>
                     </div>
                 </div>
+
+                {ownerCollabStatus.sessionOn ? (
+                    <div className="flex items-center justify-between gap-3 border-b border-[#1e2028] bg-[#0c1117] px-4 py-2 text-[11px] text-[#8ea5b5]">
+                        <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex items-center gap-1.5 rounded-full border border-[#00d4aa]/25 bg-[rgba(0,212,170,0.08)] px-2.5 py-1 text-[#7ae8cc]">
+                                <span className="h-1.5 w-1.5 rounded-full bg-[#00d4aa]" />
+                                <span>Collaboration On</span>
+                            </div>
+
+                            <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+                                <span className="shrink-0 text-[#6a7280]">Active:</span>
+                                <span className="truncate text-[#c9d4e5]">
+                                    {ownerCollabStatus.activeUsers.length > 0
+                                        ? ownerCollabStatus.activeUsers
+                                            .map((user) => prettyCollaboratorName(user.displayName || user.userId))
+                                            .join(', ')
+                                        : 'No active collaborators'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-2 text-[#6a7280]">
+                            <PresenceAvatars users={ownerCollabStatus.activeUsers} localUserId={null} maxVisible={5} />
+                            <span>
+                                {ownerCollabStatus.activeCount} active collaborator{ownerCollabStatus.activeCount === 1 ? '' : 's'}
+                            </span>
+                        </div>
+                    </div>
+                ) : null}
 
                 <OpenFilesTabs
                     openFiles={openFiles}
@@ -1836,7 +1969,7 @@ function MainPlaygroundPage() {
                     </div>
 
                     {isTerminalOpen ? (
-                        <div className="flex h-full w-[360px] shrink-0 flex-col border-l border-[#1e2028] bg-[#0c1117]">
+                        <div className="flex h-full w-90 shrink-0 flex-col border-l border-[#1e2028] bg-[#0c1117]">
                             <div className="flex items-center justify-between border-b border-[#1e2028] px-3 py-2">
                                 <div className="flex items-center gap-2 text-[12px] text-[#c9d4e5]">
                                     <TerminalSquare size={14} />

@@ -51,6 +51,7 @@ export type ClientMessage =
         type: "auth",
         token: string,   // Share link token for document access
         userId?: string, // Optional userId for reconnecting existing sessions
+        displayName?: string, // Optional human-friendly name shown to collaborators
     }
     // Authenticate: First message after WS connects. Server validates token, joins room, sends "init".
 
@@ -70,6 +71,11 @@ export type ClientMessage =
 
     | {
         type: "ping"
+    }
+
+    | {
+        type: "set_name"
+        displayName: string
     }
 // Keep-alive: Sent periodically to maintain connection and measure latency.
 
@@ -123,6 +129,12 @@ export type ServerMessage =
         userId: string  // User ID of who disconnected
     }
     // User left: Sent to all remaining members when someone disconnects.
+
+    | {
+        type: "user_update"
+        user: User
+    }
+    // User updated: Sent when collaborator updates their display name.
 
     | {
         type: "error"

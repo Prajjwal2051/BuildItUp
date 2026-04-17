@@ -10,7 +10,7 @@ import { db } from '@/lib/db'
 
 export async function GET(
     _request: Request,
-    { params }: { params: { playgroundId: string } },
+    { params }: { params: Promise<{ playgroundId: string }> },
 ) {
     // 1) Verify session.
     const session = await auth()
@@ -18,7 +18,7 @@ export async function GET(
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { playgroundId } = params
+    const { playgroundId } = await params
     if (!playgroundId) {
         return NextResponse.json({ error: 'playgroundId is required' }, { status: 400 })
     }

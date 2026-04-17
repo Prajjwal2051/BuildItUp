@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────────
 
 import { db } from "@/lib/db"
+import redis from "@/lib/redis"
 import { verifyShareToken } from "@/lib/share-token"
 import { userColor } from "@/lib/user-color"
 import type WebSocket from "ws"
@@ -18,7 +19,7 @@ import type {
 import { getDocumentState, setDocumentState, appendOperation } from "./ot/sessions"
 import { apply, transform } from "./ot/engine"
 import { loadSession, saveSession, pushOpToHistory, flushToDB, markSessionActivity } from "./persistence"
-import { broadCastCursor, broadCastJoin, broadcastLeave, Room, RoomClient } from "./presence"
+import { broadCastCursor, broadCastJoin, broadCastUserUpdate, broadcastLeave, Room, RoomClient } from "./presence"
 
 // In-memory room index: playgroundId -> connected room members.
 const rooms = new Map<string, Room>()  // playgroundId -> room (set of clients in that playground)
@@ -28,6 +29,47 @@ const clientToRoom = new Map<WebSocket, {
     roomId: string,
     client: RoomClient
 }>()
+
+function presenceKey(playgroundId: string): string {
+    return `collab:presence:${playgroundId}`
+}
+
+function stoppedKey(playgroundId: string): string {
+    return `collab:stopped:${playgroundId}`
+}
+
+async function isSessionStopped(playgroundId: string): Promise<boolean> {
+    const value = await redis.get(stoppedKey(playgroundId))
+    return value === "1"
+}
+
+async function syncRoomPresenceToRedis(playgroundId: string): Promise<void> {
+    const room = rooms.get(playgroundId)
+    if (!room || room.size === 0) {
+        await redis.del(presenceKey(playgroundId))
+        return
+    }
+
+    const users: User[] = Array.from(room).map((c) => ({
+        userId: c.userId,
+        displayName: c.displayName,
+        avatar: undefined,
+        color: c.color,
+        cursor: null,
+        isActive: true,
+    }))
+
+    await redis.set(
+        presenceKey(playgroundId),
+        JSON.stringify({
+            active: true,
+            users,
+            updatedAt: Date.now(),
+        }),
+        "EX",
+        2 * 60 * 60,
+    )
+}
 
 // Routes incoming websocket payloads to the right handler after basic JSON decoding.
 export async function handleMessage(ws: WebSocket, raw: RawData) {
@@ -45,13 +87,16 @@ export async function handleMessage(ws: WebSocket, raw: RawData) {
 
     switch (msg.type) {
         case "auth":
-            await handleAuth(ws, msg.token, msg.userId)
+            await handleAuth(ws, msg.token, msg.userId, msg.displayName)
             break
         case "operation":
             await handleOperation(ws, msg.rev, msg.op)
             break
         case "cursor":
-            handleCursor(ws, msg.rev, msg.cursor)
+            await handleCursor(ws, msg.rev, msg.cursor)
+            break
+        case "set_name":
+            await handleSetName(ws, msg.displayName)
             break
         case "ping":
             ws.send(JSON.stringify({ type: "pong" } as ServerMessage))
@@ -63,6 +108,12 @@ export async function handleMessage(ws: WebSocket, raw: RawData) {
                 message: "Unknown message type"
             }))
     }
+}
+
+function sanitizeDisplayName(name: string | undefined, fallback: string): string {
+    if (!name) return fallback
+    const trimmed = name.trim().slice(0, 40)
+    return trimmed || fallback
 }
 
 function send(ws: WebSocket, msg: ServerMessage) {
@@ -133,7 +184,7 @@ async function resolvePlaygroundIdFromToken(token: string): Promise<{ playground
 }
 
 // Authenticates a socket, joins it to a room, and sends initial document state.
-async function handleAuth(ws: WebSocket, token: string, userId?: string) {
+async function handleAuth(ws: WebSocket, token: string, userId?: string, displayName?: string) {
     const { playgroundId } = await resolvePlaygroundIdFromToken(token)
 
     if (!playgroundId) {
@@ -142,6 +193,16 @@ async function handleAuth(ws: WebSocket, token: string, userId?: string) {
             code: "INVALID_TOKEN",
             message: "Invalid token"
         }))
+        return
+    }
+
+    if (await isSessionStopped(playgroundId)) {
+        ws.send(JSON.stringify({
+            type: "error",
+            code: "SESSION_STOPPED",
+            message: "Collaborative session has been stopped by the owner",
+        }))
+        ws.close()
         return
     }
 
@@ -162,16 +223,29 @@ async function handleAuth(ws: WebSocket, token: string, userId?: string) {
 
     // Keep IDs deterministic for signed-in users and random for guests.
     const id = userId ?? `guest-${Math.random().toString(36).slice(2)}`
+    const safeDisplayName = sanitizeDisplayName(displayName, id)
     const color = userColor(id)
 
-    const client: RoomClient = { ws, userId: id, color }
+    // Replace stale duplicate sockets for same logical user.
+    for (const existing of room) {
+        if (existing.userId !== id) continue
+        room.delete(existing)
+        clientToRoom.delete(existing.ws)
+        try {
+            existing.ws.close()
+        } catch {
+            // Ignore close errors; room references are already removed.
+        }
+    }
+
+    const client: RoomClient = { ws, userId: id, displayName: safeDisplayName, color }
     room.add(client)
     clientToRoom.set(ws, { roomId: playgroundId, client })
 
     // Presence payload used for join/leave broadcasts and user list rendering.
     const presence: User = {
         userId: id,
-        displayName: id,
+        displayName: safeDisplayName,
         avatar: undefined,
         color,
         cursor: null,
@@ -182,7 +256,7 @@ async function handleAuth(ws: WebSocket, token: string, userId?: string) {
         .filter((c) => c !== client)
         .map((c) => ({
             userId: c.userId,
-            displayName: c.userId,
+            displayName: c.displayName,
             avatar: undefined,
             color: c.color,
             cursor: null,
@@ -199,6 +273,42 @@ async function handleAuth(ws: WebSocket, token: string, userId?: string) {
 
     // Notify everyone else that a new collaborator joined.
     broadCastJoin(room, presence, client)
+    await syncRoomPresenceToRedis(playgroundId)
+}
+
+async function handleSetName(ws: WebSocket, displayName: string) {
+    const mapping = clientToRoom.get(ws)
+    if (!mapping) return
+
+    const { roomId, client } = mapping
+    if (await isSessionStopped(roomId)) {
+        send(ws, {
+            type: "error",
+            code: "SESSION_STOPPED",
+            message: "Collaborative session has been stopped by the owner",
+        })
+        ws.close()
+        return
+    }
+
+    const room = rooms.get(roomId)
+    if (!room) return
+
+    const nextDisplayName = sanitizeDisplayName(displayName, client.userId)
+    if (nextDisplayName === client.displayName) return
+    client.displayName = nextDisplayName
+
+    const updatedUser: User = {
+        userId: client.userId,
+        displayName: client.displayName,
+        avatar: undefined,
+        color: client.color,
+        cursor: null,
+        isActive: true,
+    }
+
+    broadCastUserUpdate(room, updatedUser, client)
+    await syncRoomPresenceToRedis(roomId)
 }
 
 // Applies incoming edits, transforms stale operations, then acks and broadcasts.
@@ -206,6 +316,16 @@ async function handleOperation(ws: WebSocket, rev: number, op: TextOperations) {
     const mapping = clientToRoom.get(ws)
     if (!mapping) return
     const { roomId, client } = mapping
+
+    if (await isSessionStopped(roomId)) {
+        send(ws, {
+            type: "error",
+            code: "SESSION_STOPPED",
+            message: "Collaborative session has been stopped by the owner",
+        })
+        ws.close()
+        return
+    }
 
     let state = getDocumentState(roomId)
     if (!state) {
@@ -289,10 +409,20 @@ async function handleOperation(ws: WebSocket, rev: number, op: TextOperations) {
 }
 
 // Broadcasts cursor movements so collaborators can see live selections.
-function handleCursor(ws: WebSocket, _rev: number, range: CursorRange) {
+async function handleCursor(ws: WebSocket, _rev: number, range: CursorRange) {
     const mapping = clientToRoom.get(ws)
     if (!mapping) return
     const { roomId, client } = mapping
+
+    if (await isSessionStopped(roomId)) {
+        send(ws, {
+            type: "error",
+            code: "SESSION_STOPPED",
+            message: "Collaborative session has been stopped by the owner",
+        })
+        ws.close()
+        return
+    }
 
     const room = rooms.get(roomId)
     if (!room) return
@@ -311,11 +441,13 @@ export async function handleDisconnect(ws: WebSocket) {
 
     room.delete(client)
     broadcastLeave(room, client.userId)
+    await syncRoomPresenceToRedis(roomId)
 
     if (room.size === 0) {
         // Last user left: flush final state and clean room/session caches.
         await flushToDB(roomId)
         rooms.delete(roomId)
+        await redis.del(presenceKey(roomId))
     }
 }
 

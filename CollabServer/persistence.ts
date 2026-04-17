@@ -12,7 +12,9 @@ import type { TextOperations } from "./types"
 // Keep Redis-backed live sessions warm for two hours.
 const session_TTL_seconds = 2 * 60 * 60
 const idle_flush_ms = 30 * 1000
+const periodic_flush_ms = 30 * 1000
 const idleTimers = new Map<string, ReturnType<typeof setTimeout>>()
+let periodicFlushTimer: ReturnType<typeof setInterval> | null = null
 
 // Redis key for the latest full session snapshot.
 function sessionKey(playgroundId: string) {
@@ -22,6 +24,19 @@ function sessionKey(playgroundId: string) {
 // Redis key for the rolling operation history buffer.
 function opsKey(playgroundId: string) {
     return `collab:ops:${playgroundId}`
+}
+
+function decodeSnapshotContent(content: string): unknown {
+    const trimmed = content.trim()
+    if (!trimmed) {
+        return ''
+    }
+
+    try {
+        return JSON.parse(trimmed)
+    } catch {
+        return content
+    }
 }
 
 // Resets a per-playground idle timer; when it fires, session state is flushed to DB.
@@ -44,6 +59,45 @@ export async function flushAllSessions(): Promise<void> {
     await Promise.all(Array.from(roomIds, (roomId) => flushToDB(roomId)))
 }
 
+// Starts a periodic snapshot sync that persists active sessions without clearing cache.
+export function startPeriodicFlush(): void {
+    if (periodicFlushTimer) return
+
+    periodicFlushTimer = setInterval(() => {
+        const roomIds = listDocumentStates()
+        for (const roomId of roomIds) {
+            void syncSessionToDB(roomId)
+        }
+    }, periodic_flush_ms)
+}
+
+export function stopPeriodicFlush(): void {
+    if (!periodicFlushTimer) return
+    clearInterval(periodicFlushTimer)
+    periodicFlushTimer = null
+}
+
+// Persists current content while keeping Redis and memory hot for active collaborators.
+async function syncSessionToDB(playgroundId: string): Promise<void> {
+    const state = getDocumentState(playgroundId)
+    if (!state) return
+
+    try {
+        const snapshotContent = decodeSnapshotContent(state.content)
+
+        await db.templateFile.upsert({
+            where: { playgroundId },
+            update: { content: snapshotContent as never },
+            create: {
+                playgroundId,
+                content: snapshotContent as never,
+            },
+        })
+    } catch (error) {
+        console.error(`Failed to sync collab snapshot for ${playgroundId}`, error)
+    }
+}
+
 /**
  * Load session from Redis, or from MongoDB if Redis is empty.
  */
@@ -62,9 +116,11 @@ export async function loadSession(playgroundId: string): Promise<DocumentState> 
         where: { playgroundId },
     })
 
+    const decodedTemplate = templateFile ? decodeSnapshotContent(JSON.stringify(templateFile.content)) : ''
+
     const initial: DocumentState = {
         revision: 0,
-        content: templateFile ? JSON.stringify(templateFile.content) : "",
+        content: typeof decodedTemplate === 'string' ? decodedTemplate : JSON.stringify(decodedTemplate),
         operations: [],
     }
 
@@ -119,10 +175,7 @@ export async function flushToDB(playgroundId: string): Promise<void> {
     if (!state) return
 
     // Persist final document snapshot before clearing ephemeral collab data.
-    await db.templateFile.update({
-        where: { playgroundId },
-        data: { content: JSON.parse(state.content) }
-    })
+    await syncSessionToDB(playgroundId)
     await redis.del(sessionKey(playgroundId))
     await redis.del(opsKey(playgroundId))
     deleteDocumentState(playgroundId)
