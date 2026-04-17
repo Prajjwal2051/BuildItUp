@@ -9,6 +9,7 @@ interface UsePresenceOptions {
     editor: MonacoEditor.IStandaloneCodeEditor | null
     subscribe: (listener: (message: ServerMessage) => void) => () => void
     sendCursor: (cursor: CursorRange) => void
+    activeFilePath?: string
     /** The local user's own display name, used to seed the self-entry on init */
     selfDisplayName?: string
 }
@@ -23,7 +24,7 @@ function dedupeUsers(users: User[]): User[] {
 
 // Tracks presence state and syncs local Monaco cursor updates to the collaboration server.
 export function usePresence(options: UsePresenceOptions) {
-    const { editor, subscribe, sendCursor, selfDisplayName } = options
+    const { editor, subscribe, sendCursor, activeFilePath, selfDisplayName } = options
     const [users, setUsers] = useState<User[]>([])
     // Track selfUserId so we can update self-entry when displayName resolves later
     const selfUserIdRef = useRef<string | null>(null)
@@ -122,6 +123,7 @@ export function usePresence(options: UsePresenceOptions) {
                     startCol: selection.startColumn,
                     endLine: selection.endLineNumber,
                     endColumn: selection.endColumn,
+                    filePath: activeFilePath,
                 }
                 sendCursor(cursor)
             }, 80)
@@ -131,7 +133,7 @@ export function usePresence(options: UsePresenceOptions) {
             if (timer) clearTimeout(timer)
             disposable.dispose()
         }
-    }, [editor, sendCursor])
+    }, [activeFilePath, editor, sendCursor])
 
     const updateSelfDisplayName = (userId: string, newName: string) => {
         setUsers((current) =>

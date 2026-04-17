@@ -68,7 +68,7 @@ function Avatar({ user, isSelf, isTyping }: AvatarProps) {
 
             {/* Avatar circle */}
             <div
-                className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-semibold select-none cursor-default transition-transform hover:scale-110"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-semibold select-none cursor-default transition-transform hover:scale-110"
                 style={{
                     border: `2px solid ${border}`,
                     color: color,
@@ -156,7 +156,7 @@ export function PresenceAvatars({ users, localUserId, maxVisible = 4 }: Presence
             </div>
 
             {overflow > 0 && (
-                <div className="ml-1 flex h-7 items-center justify-center rounded-full border border-[#1e2028] bg-[#11161d] px-2 text-[10px] font-medium text-[#8ea5b5]">
+                <div className="ml-1 flex w-7 h-7 items-center justify-center rounded-full border border-[#1e2028] bg-[#11161d] px-2 py-2 text-[10px] font-medium text-[#8ea5b5]">
                     +{overflow}
                 </div>
             )}

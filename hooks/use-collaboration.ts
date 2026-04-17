@@ -12,6 +12,7 @@ interface UseCollaborationOptions {
     userId?: string
     displayName?: string
     editor: MonacoEditor.IStandaloneCodeEditor | null
+    activeFilePath?: string
     wsUrl?: string
     enabled?: boolean
     onServerOperation?: (op: TextOperations, authorId: string, rev: number) => void
@@ -34,13 +35,13 @@ interface UseCollaborationResult {
     localUserId: string | null
 }
 
-// Composes websocket transport + presence synchronization and exposes editor-ready collaboration actions.
 export function useCollaboration(options: UseCollaborationOptions): UseCollaborationResult {
     const {
         token,
         userId,
         displayName,
         editor,
+        activeFilePath,
         wsUrl,
         enabled = true,
         onServerOperation,
@@ -50,9 +51,11 @@ export function useCollaboration(options: UseCollaborationOptions): UseCollabora
     const userLabelRef = useRef(new Map<string, string>())
     const localUserIdRef = useRef<string | null>(null)
     const [localUserId, setLocalUserId] = useState<string | null>(null)
+
+    // Scope the guest ID to this token so multiple playground tabs don't collide
     const [stableGuestId] = useState(() => {
         if (typeof window === 'undefined') return `guest-${Math.random().toString(36).slice(2, 10)}`
-        const key = 'builditup-collab-client-id'
+        const key = `builditup-collab-client-id:${token}`
         const existing = window.localStorage.getItem(key)
         if (existing) return existing
         const generated = `guest-${Math.random().toString(36).slice(2, 10)}`
@@ -104,26 +107,9 @@ export function useCollaboration(options: UseCollaborationOptions): UseCollabora
         [getRevision, sendMessage],
     )
 
-    useEffect(() => {
-        if (!enabled || !editor) return
-
-        const disposable = editor.onDidChangeCursorSelection((event) => {
-            const selection = event.selection
-            void sendCursor({
-                startLine: selection.startLineNumber,
-                startCol: selection.startColumn,
-                endLine: selection.endLineNumber,
-                endColumn: selection.endColumn,
-            })
-        })
-
-        return () => disposable.dispose()
-    }, [editor, enabled, sendCursor])
 
     const sendOp = useCallback(
-        (op: TextOperations) => {
-            return sendLocalOperation(op)
-        },
+        (op: TextOperations) => sendLocalOperation(op),
         [sendLocalOperation],
     )
 
@@ -131,6 +117,7 @@ export function useCollaboration(options: UseCollaborationOptions): UseCollabora
         editor,
         subscribe,
         sendCursor,
+        activeFilePath,
         selfDisplayName: displayName,
     })
 
@@ -139,7 +126,6 @@ export function useCollaboration(options: UseCollaborationOptions): UseCollabora
             const trimmed = name.trim()
             if (!trimmed) return false
             const sent = sendMessage({ type: 'set_name', displayName: trimmed })
-            // Reflect the name change immediately in the local users list (Bug 7)
             if (sent && localUserIdRef.current) {
                 updateSelfDisplayName(localUserIdRef.current, trimmed)
             }

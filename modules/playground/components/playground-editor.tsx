@@ -17,6 +17,7 @@ import {
     SplitSquareVertical,
     Bot,
     House,
+    RotateCw,
     Maximize2,
     Minimize2,
     Search,
@@ -436,6 +437,7 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
     const [searchQuery, setSearchQuery] = useState('')
     const [isFullscreen, setIsFullscreen] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
+    const [isSoftReloading, setIsSoftReloading] = useState(false)
     const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
     const [isDirty, setIsDirty] = useState(false)
     const [isDisplayNameDialogOpen, setIsDisplayNameDialogOpen] = useState(false)
@@ -655,6 +657,7 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
         token: collab?.token ?? '',
         displayName: ownerDisplayName ?? undefined,
         editor,
+        activeFilePath: activePath,
         enabled: Boolean(collab?.token && displayName),
         onServerOperation: (op, authorId, rev) => applyRemoteOperation(op, authorId, rev),
         onServerInit: (content, _rev, fileTree) => handleServerInit(content, fileTree),
@@ -774,7 +777,7 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
 `
             })
             .join('\n')
-    }, [toClassSafeId, users])
+    }, [activePath, toClassSafeId, users])
 
     const handleKeepMine = useCallback(() => setActiveConflict(null), [])
     const handleKeepTheirs = useCallback(() => {
@@ -804,8 +807,12 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
         }
         widgetsRef.current.clear()
 
+        const visibleCursorUsers = users.filter(
+            (user) => user.cursor && user.cursor.filePath === activePath,
+        )
+
         decorations.set(
-            users.flatMap((user) => {
+            visibleCursorUsers.flatMap((user) => {
                 if (!user.cursor) return []
                 const classId = toClassSafeId(user.userId)
                 return [{
@@ -820,33 +827,54 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
             }),
         )
 
-        for (const user of users) {
+        for (const user of visibleCursorUsers) {
             if (!user.cursor) continue
 
+            const lineHeight = currentEditor.getOption(monaco.editor.EditorOption.lineHeight)
             const classId = toClassSafeId(user.userId)
             const widgetId = `remote-cursor-widget-${classId}`
             const domNode = document.createElement('div')
             domNode.className = 'collab-cursor-widget'
             domNode.style.cssText = `
+                position:relative;
+                display:block;
+                width:2px;
+                height:${lineHeight}px;
+                margin:0;
+                padding:0;
                 background:${user.color};
-                color:#fff;
-                border-radius:9999px;
-                width:18px;
-                height:18px;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                font-size:9px;
-                font-weight:700;
+                border:none;
                 pointer-events:auto;
                 cursor:help;
-                white-space:nowrap;
                 z-index:100;
-                border:1px solid rgba(255,255,255,0.45);
-                transform: translateX(8px);
+                transform:none;
             `
             domNode.title = user.displayName || user.userId
-            domNode.textContent = getNameInitials(user.displayName || user.userId)
+
+            // Always show collaborator info beside the cursor.
+            const tooltipNode = document.createElement('div')
+            tooltipNode.textContent = user.displayName || user.userId
+            tooltipNode.style.cssText = `
+                position:absolute;
+                left:4px;
+                top:-24px;
+                display:block;
+                white-space:nowrap;
+                padding:2px 6px;
+                border-radius:6px;
+                border:1px solid #1e2028;
+                background:#11161d;
+                color:#d7e2f1;
+                font-size:10px;
+                line-height:1.2;
+                pointer-events:none;
+            `
+            domNode.appendChild(tooltipNode)
+
+            domNode.animate(
+                [{ opacity: 1 }, { opacity: 0.25 }, { opacity: 1 }],
+                { duration: 950, iterations: Number.POSITIVE_INFINITY },
+            )
 
             const widget: MonacoEditor.IContentWidget = {
                 getId: () => widgetId,
@@ -1033,6 +1061,55 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
             setIsSaving(false)
         }
     }, [collab?.token, router])
+
+    const handleSoftReload = useCallback(async () => {
+        if (!collab?.token) return
+
+        setIsSoftReloading(true)
+        try {
+            const response = await fetch(`/api/share/${collab.token}/content`, {
+                cache: 'no-store',
+            })
+
+            const payload = (await response.json().catch(() => null)) as
+                | {
+                    content?: unknown
+                    name?: string
+                    error?: string
+                }
+                | null
+
+            if (!response.ok) {
+                throw new Error(payload?.error ?? 'Failed to reload saved content')
+            }
+
+            const nextFiles = extractFilesFromUnknown(payload?.content)
+            const nextActivePath =
+                nextFiles.find((file) => file.path === activePathRef.current)?.path ??
+                nextFiles[0]?.path ??
+                'main.ts'
+
+            const serialized = serializeFiles(nextFiles)
+            serializedDocRef.current = serialized
+            filesRef.current = nextFiles
+            activePathRef.current = nextActivePath
+            setFiles(nextFiles)
+            setActivePath(nextActivePath)
+            applyFileToEditor(nextActivePath, nextFiles)
+            setIsDirty(false)
+
+            if (typeof payload?.name === 'string' && payload.name.trim()) {
+                setPlaygroundName(payload.name.trim())
+            }
+
+            toast.success('Reloaded latest saved content')
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to reload saved content'
+            toast.error(message)
+        } finally {
+            setIsSoftReloading(false)
+        }
+    }, [applyFileToEditor, collab?.token])
 
     useEffect(() => {
         if (!isDirty || !collab?.token) return
@@ -1342,19 +1419,6 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
                             <span>Split</span>
                         </button>
 
-                        <button
-                            type="button"
-                            onClick={() => setIsAiChatOpen((current) => !current)}
-                            className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition-colors ${isAiChatOpen
-                                ? 'border-[#00d4aa]/40 bg-[#00d4aa]/10 text-[#7ae8cc]'
-                                : 'border-[#1e2028] bg-[#11161d] text-[#8ea5b5] hover:text-white'
-                                }`}
-                            title="Toggle AI chat"
-                        >
-                            <Bot size={13} />
-                            <span>AI</span>
-                        </button>
-
                         <ToggleAi
                             isAiAutocompleteEnabled={isAiAutocompleteEnabled}
                             isAiChatOpen={isAiChatOpen}
@@ -1364,19 +1428,9 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
                             onOpenSettings={() => setIsAiSettingsOpen(true)}
                             activeProvider={activeAiProvider}
                         />
-
-                        <button
-                            type="button"
-                            onClick={() => setIsAiSettingsOpen(true)}
-                            className="flex h-8 w-8 items-center justify-center rounded-md border border-[#1e2028] bg-[#11161d] text-[#8ea5b5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
-                            title="AI settings"
-                        >
-                            <Settings size={13} />
-                        </button>
-
                         <Link
                             href="/"
-                            className="flex h-8 w-8 items-center justify-center rounded-md border border-[#1e2028] bg-[#11161d] text-[#8ea5b5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
+                            className="flex h-7 w-8 items-center justify-center rounded-md border border-[#1e2028] bg-[#11161d] text-[#8ea5b5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
                             title="Home"
                         >
                             <House size={14} />
@@ -1395,6 +1449,22 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
                             >
                                 <Save size={13} />
                                 <span>{isSaving ? 'Saving…' : 'Save'}</span>
+                            </button>
+                        )}
+
+                        {collab && (
+                            <button
+                                type="button"
+                                onClick={() => void handleSoftReload()}
+                                disabled={isSoftReloading}
+                                className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition-colors ${isSoftReloading
+                                    ? 'cursor-not-allowed border-[#1e2028] bg-[#11161d] text-[#6a7280]'
+                                    : 'border-[#1e2028] bg-[#11161d] text-[#8ea5b5] hover:border-[#00d4aa]/30 hover:text-white'
+                                    }`}
+                                title="Reload latest saved content"
+                            >
+                                <RotateCw size={13} className={isSoftReloading ? 'animate-spin' : ''} />
+                                <span>{isSoftReloading ? 'Reloading…' : 'Soft Reload'}</span>
                             </button>
                         )}
 
@@ -1502,26 +1572,6 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
                                     {aiSuggestionError}
                                 </span>
                             ) : null}
-                        </div>
-
-                        <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-[#1e2028] bg-[#0f141b] px-2 py-1">
-                            {files.map((file) => {
-                                const isActive = activeFile?.path === file.path
-                                return (
-                                    <button
-                                        key={file.path}
-                                        type="button"
-                                        onClick={() => handleSelectFile(file.path)}
-                                        className={`max-w-72 truncate rounded-md border px-2 py-1 text-[11px] transition-colors ${isActive
-                                            ? 'border-[#00d4aa]/35 bg-[#00d4aa]/12 text-[#d7e2f1]'
-                                            : 'border-[#1e2028] bg-[#11161d] text-[#8ea5b5] hover:text-white'
-                                            }`}
-                                        title={file.path}
-                                    >
-                                        {file.path}
-                                    </button>
-                                )
-                            })}
                         </div>
 
                         <div className={`min-h-0 flex-1 overflow-hidden ${isSplitEditorOpen ? 'grid grid-cols-2' : ''}`}>

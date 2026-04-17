@@ -21,7 +21,8 @@ export interface CursorRange {
     startLine: number,
     startCol: number,
     endLine: number,
-    endColumn: number
+    endColumn: number,
+    filePath?: string
 }
 
 // User: Represents a connected user's presence data.

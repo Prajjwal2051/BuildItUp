@@ -37,7 +37,7 @@ function ToggleAi({
                 <button
                     type="button"
                     className={cn(
-                        'flex h-7 items-center gap-1.5 rounded-md border px-2.5 py-4.5 text-[11px] transition-colors',
+                        'flex h-7 items-center gap-1.5 rounded-md border px-2.5 py-3.5 text-[11px] transition-colors',
                         isAiAutocompleteEnabled || isAiChatOpen
                             ? 'border-[#0f4d40] bg-[rgba(0,212,170,0.12)] text-[#7ae8cc]'
                             : 'border-[#1e2028] bg-[#11161d] text-[#c9d4e5] hover:border-[#00d4aa]/30 hover:text-white',
