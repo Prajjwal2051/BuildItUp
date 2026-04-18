@@ -671,7 +671,14 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
         editor,
         activeFilePath: activePath,
         wsUrl: process.env.NEXT_PUBLIC_COLLAB_WS_URL,
-        enabled: Boolean(collab?.token && displayName),
+        // For authenticated owners, open the WebSocket as soon as the token is
+        // available — don't block on displayName, which starts as null and is
+        // populated by a useEffect after the first render. The displayNameRef in
+        // use-websocket.ts is kept in sync separately, so the auth message on
+        // socket.onopen will always carry the latest name.
+        // For unauthenticated guests, keep the gate: they must set a display name
+        // via the JoinNameGate before the WebSocket opens.
+        enabled: Boolean(collab?.token && (session ?? displayName)),
         onServerOperation: (op, authorId, rev) => applyRemoteOperation(op, authorId, rev),
         onServerInit: (content, _rev, fileTree) => handleServerInit(content, fileTree),
     })
