@@ -16,6 +16,43 @@ type CreateShareBody = {
     expiresIn?: number // hours
 }
 
+function getPublicOrigin(request: NextRequest): string {
+    const envOrigin =
+        process.env.NEXT_PUBLIC_APP_URL ??
+        process.env.APP_URL ??
+        process.env.RENDER_EXTERNAL_URL
+
+    if (envOrigin) {
+        try {
+            return new URL(envOrigin).origin
+        } catch {
+            // Ignore malformed env URL and continue with request headers.
+        }
+    }
+
+    const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim()
+    const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim()
+    if (forwardedHost) {
+        const proto =
+            forwardedProto ??
+            (forwardedHost.includes('localhost') || forwardedHost.startsWith('127.')
+                ? 'http'
+                : 'https')
+        return `${proto}://${forwardedHost}`
+    }
+
+    const host = request.headers.get('host')?.trim()
+    if (host) {
+        const proto =
+            host.includes('localhost') || host.startsWith('127.') || host.startsWith('[::1]')
+                ? 'http'
+                : 'https'
+        return `${proto}://${host}`
+    }
+
+    return request.nextUrl.origin
+}
+
 // POST body: { playgroundId, permission, expiresIn? }
 // 1) Verify authenticated session
 // 2) Verify playground ownership
@@ -77,7 +114,7 @@ export async function POST(request: NextRequest) {
     // Creating a new share link re-opens collaboration if it was previously stopped.
     await redis.del(`collab:stopped:${playgroundId}`)
 
-    const shareUrl = `${request.nextUrl.origin}/s/${token}`
+    const shareUrl = new URL(`/s/${token}`, getPublicOrigin(request)).toString()
 
     return NextResponse.json({
         shareUrl,
