@@ -670,10 +670,12 @@ export function PlaygroundEditor({ playgroundId, collab }: PlaygroundEditorProps
         displayName: ownerDisplayName ?? undefined,
         editor,
         activeFilePath: activePath,
+        wsUrl: process.env.NEXT_PUBLIC_COLLAB_WS_URL,
         enabled: Boolean(collab?.token && displayName),
         onServerOperation: (op, authorId, rev) => applyRemoteOperation(op, authorId, rev),
         onServerInit: (content, _rev, fileTree) => handleServerInit(content, fileTree),
     })
+    
 
     const activePeopleCount = useMemo(() => {
         const unique = new Set<string>()
