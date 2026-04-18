@@ -38,6 +38,8 @@ wss.on('connection', (ws) => {
 server.listen(PORT, () => {
     console.log(`Collab server listening on port ${PORT}`)
     startPeriodicFlush()
+    // Start self-ping only after the server is ready to accept requests.
+    startSelfPing()
 })
 
 void redis.ping().then(() => {
@@ -45,20 +47,6 @@ void redis.ping().then(() => {
 }).catch((error) => {
     console.error('Redis connection check failed', error)
 })
-
-function startSelfPing(intervalMs = 14 * 60 * 1000) {
-    setInterval(async () => {
-        try {
-            const selfUrl = `http://localhost:${PORT}/`
-            await fetch(selfUrl)
-            console.log('Self-ping OK')
-        } catch {
-            console.warn('Self-ping failed')
-        }
-    }, intervalMs)
-}
-
-startSelfPing()
 
 let isShuttingDown = false
 
@@ -68,6 +56,7 @@ async function shutdown(signal: string) {
 
     console.log(`Received ${signal}. Flushing collaboration sessions...`)
     stopPeriodicFlush()
+    stopSelfPing()
     await flushAllSessions()
 
     await new Promise<void>((resolve) => {
