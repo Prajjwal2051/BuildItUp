@@ -48,6 +48,42 @@ void redis.ping().then(() => {
     console.error('Redis connection check failed', error)
 })
 
+// ─────────────────────────────────────────────────────────────────
+// SELF-PING — prevents Render free-tier spin-down.
+// Pings the public external URL (injected by Render as RENDER_EXTERNAL_URL)
+// so the request counts as real inbound traffic.
+// Falls back to localhost only in local dev where sleep is not a concern.
+// ─────────────────────────────────────────────────────────────────
+let selfPingTimer: ReturnType<typeof setInterval> | null = null
+
+function startSelfPing(intervalMs = 14 * 60 * 1000) {
+    // RENDER_EXTERNAL_URL is automatically set by Render (e.g. https://colabserver-bt3g.onrender.com).
+    // localhost pings do NOT count as inbound traffic and will NOT prevent sleep.
+    const pingUrl = process.env.RENDER_EXTERNAL_URL ?? `http://localhost:${PORT}/`
+
+    if (!process.env.RENDER_EXTERNAL_URL) {
+        console.log('RENDER_EXTERNAL_URL not set — self-ping will use localhost (dev mode, sleep prevention inactive)')
+    } else {
+        console.log(`Self-ping active → ${pingUrl} every ${intervalMs / 1000}s`)
+    }
+
+    selfPingTimer = setInterval(async () => {
+        try {
+            const res = await fetch(pingUrl, { signal: AbortSignal.timeout(10_000) })
+            console.log(`Self-ping OK (${res.status})`)
+        } catch (err) {
+            console.warn('Self-ping failed', err)
+        }
+    }, intervalMs)
+}
+
+function stopSelfPing() {
+    if (selfPingTimer !== null) {
+        clearInterval(selfPingTimer)
+        selfPingTimer = null
+    }
+}
+
 let isShuttingDown = false
 
 async function shutdown(signal: string) {
