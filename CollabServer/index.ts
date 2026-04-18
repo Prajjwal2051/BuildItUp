@@ -1,43 +1,49 @@
 // ─────────────────────────────────────────────────────────────────
 // COLLAB SERVER ENTRY POINT
-// Boots a WebSocket server and wires socket lifecycle events.
+// Boots a WebSocket server attached to an HTTP server so Render's
+// reverse proxy can forward WebSocket upgrade requests correctly.
 // ─────────────────────────────────────────────────────────────────
 
-import { WebSocketServer } from "ws"
-import { handleMessage, handleDisconnect } from "./connection-manager"
-import { flushAllSessions, startPeriodicFlush, stopPeriodicFlush } from "./persistence"
-import redis from "../lib/redis"
+import { createServer } from 'http'
+import { WebSocketServer } from 'ws'
+import { handleMessage, handleDisconnect } from './connection-manager'
+import { flushAllSessions, startPeriodicFlush, stopPeriodicFlush } from './persistence'
+import redis from '../lib/redis'
 
-// Default to port 4001 unless overridden by environment.
-const PORT = Number(process.env.COLLAB_PORT ?? 4001)
+const PORT = Number(process.env.PORT ?? process.env.COLLAB_PORT ?? 4001)
 const REDIS_URL = process.env.REDIS_URL
 
 if (!REDIS_URL) {
-    throw new Error("REDIS_URL is required for CollabServer")
+    throw new Error('REDIS_URL is required for CollabServer')
 }
 
-// Create the WS server for real-time collaboration traffic.
-const wss = new WebSocketServer({ port: PORT })
+// HTTP server handles the WS upgrade — required for Render's reverse proxy.
+const server = createServer((_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' })
+    res.end('CollabServer OK')
+})
 
-// For each client connection, delegate message and disconnect handling.
-wss.on("connection", (ws) => {
-    ws.on("message", (raw) => {
+const wss = new WebSocketServer({ server })
+
+wss.on('connection', (ws) => {
+    ws.on('message', (raw) => {
         handleMessage(ws, raw)
     })
 
-    ws.on("close", () => {
+    ws.on('close', () => {
         handleDisconnect(ws)
     })
 })
 
-// Startup log helps verify local server boot and chosen port.
-console.log(`Collab server listening on ws://localhost:${PORT}`)
-startPeriodicFlush()
+server.listen(PORT, () => {
+    console.log(`Collab server listening on port ${PORT}`)
+    startPeriodicFlush()
+})
 
 void redis.ping().then(() => {
-    console.log("Collab server connected to Redis")
+    console.log('Collab server connected to Redis')
 }).catch((error) => {
-    console.error("Redis connection check failed", error)
+    console.error('Redis connection check failed', error)
 })
 
 let isShuttingDown = false
@@ -54,14 +60,10 @@ async function shutdown(signal: string) {
         wss.close(() => resolve())
     })
 
+    server.close()
     await redis.quit()
     process.exit(0)
 }
 
-process.on("SIGTERM", () => {
-    void shutdown("SIGTERM")
-})
-
-process.on("SIGINT", () => {
-    void shutdown("SIGINT")
-})
+process.on('SIGTERM', () => { void shutdown('SIGTERM') })
+process.on('SIGINT', () => { void shutdown('SIGINT') })
