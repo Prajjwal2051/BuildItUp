@@ -112,6 +112,10 @@ Spin up instant dev environments, edit with Monaco, preview live via WebContaine
 
 ## Architecture
 
+![Orbit Code architecture diagram](public/assets/Diagram.png)
+
+<p align="center"><em>High-level system architecture and request flow.</em></p>
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                        Browser (Client)                     │
