@@ -419,6 +419,9 @@ async function createPlaygroundFromGithubRepo(repoUrl: string) {
     const headers: Record<string, string> = {
         Accept: 'application/vnd.github+json',
         'User-Agent': 'BuildItUp',
+        ...(process.env.GITHUB_TOKEN && {
+            Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+        }),
     }
 
     const treeResponse = await fetch(`${apiBase}/git/trees/${branch}?recursive=1`, {
