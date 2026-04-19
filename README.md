@@ -64,6 +64,14 @@ Spin up instant dev environments, edit with Monaco, preview live via WebContaine
 - **Integrated terminal** with streaming command output, copy-logs button, and drag-to-resize pane
 - `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` headers configured for SharedArrayBuffer support
 
+#### Preview Startup Commands (inside playground terminal)
+
+- Default flow: run `npm install`, then `npm run dev`
+- If the template has no `dev` script:
+- React / Express / Angular: run `npm start`
+- Vue: run `npm run serve`
+- Chained command support is available (`npm install && npm run dev`)
+
 ### 🤖 AI Assistant
 
 - **Inline ghost-text completions** via Monaco's `InlineCompletionsProvider` — suggestions appear at the cursor as you type

@@ -16,18 +16,6 @@ import {
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
-    Sidebar,
-    SidebarContent,
-    SidebarGroup,
-    SidebarGroupAction,
-    SidebarGroupContent,
-    SidebarGroupLabel,
-    SidebarMenu,
-    SidebarMenuItem,
-    SidebarMenuSub,
-    SidebarRail,
-} from '@/components/ui/sidebar'
-import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -36,6 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import type { FileTreeNode } from '@/modules/playground/lib/path-to-json'
 
@@ -54,6 +43,7 @@ interface TemplateFileTreeProps {
     onFileSelect?: OnFileSelect
     selectedFilePath?: string
     title?: string
+    forceOpen?: boolean
     sidebarWidth?: number
     onResizeStart?: (event: React.MouseEvent<HTMLButtonElement>) => void
     onAddFile?: (parentPath: string, filename: string, extension: string) => void
@@ -101,6 +91,7 @@ function TemplateFileTree({
     onFileSelect,
     selectedFilePath,
     title = 'Explorer',
+    forceOpen = false,
     sidebarWidth,
     onResizeStart,
     onAddFile,
@@ -117,6 +108,12 @@ function TemplateFileTree({
     const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = React.useState(false)
     const [isExplorerOpen, setIsExplorerOpen] = React.useState(true)
 
+    React.useEffect(() => {
+        if (forceOpen) {
+            setIsExplorerOpen(true)
+        }
+    }, [forceOpen])
+
     return (
         <div
             style={
@@ -124,104 +121,99 @@ function TemplateFileTree({
                     ? ({ '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties)
                     : undefined
             }
-            className="relative"
+            className="relative flex h-full flex-col bg-[#05090d] text-[#c9d4e5]"
         >
-            <Sidebar className="border-r border-[#1e2028] bg-[#05090d] text-[#c9d4e5]">
-                <SidebarContent className="bg-[#080e13]">
-                    <SidebarGroup>
-                        {/* HEADER */}
-                        <SidebarGroupLabel className="flex items-center justify-between px-6 pr-9 pt-4 pb-3 text-[11px] font-semibold uppercase tracking-widest text-[#00d4aa]">
-                            {title}
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-5 w-5 text-[#6a7280] transition-colors hover:text-white"
-                                onClick={() => setIsExplorerOpen((prev) => !prev)}
-                            >
-                                <ChevronRight
-                                    className={cn(
-                                        'h-3.5 w-3.5 transition-transform',
-                                        isExplorerOpen && 'rotate-90',
-                                    )}
-                                />
-                            </Button>
-                        </SidebarGroupLabel>
+            <div className="flex items-center justify-between px-5 pb-3 pt-5">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#00d4aa]">
+                    {title}
+                </div>
 
-                        {isRootFolder && isExplorerOpen && (
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <SidebarGroupAction className="top-3 right-3 rounded-md border border-[#1e2028] bg-[#11161d] text-[#8ea5b5] transition-all hover:border-[#00d4aa]/30 hover:bg-[rgba(0,212,170,0.08)] hover:text-white">
-                                        <Plus className="h-4 w-4" />
-                                    </SidebarGroupAction>
-                                </DropdownMenuTrigger>
+                <div className="flex items-center gap-1.5">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 rounded-md border border-transparent text-[#6a7280] transition-colors hover:border-[#1e2028] hover:bg-[#11161d] hover:text-white"
+                        onClick={() => setIsExplorerOpen((prev) => !prev)}
+                    >
+                        <ChevronRight
+                            className={cn('h-3.5 w-3.5 transition-transform', isExplorerOpen && 'rotate-90')}
+                        />
+                    </Button>
 
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => setIsNewFileDialogOpen(true)}>
-                                        <FilePlus2 className="mr-2 h-4 w-4" />
-                                        New File
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                        onClick={() => setIsNewFolderDialogOpen(true)}
-                                    >
-                                        <FolderPlus className="mr-2 h-4 w-4" />
-                                        New Folder
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        )}
+                    {isRootFolder ? (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 rounded-md border border-[#1e2028] bg-[#11161d] text-[#8ea5b5] transition-colors hover:border-[#00d4aa]/30 hover:text-white"
+                                >
+                                    <Plus className="h-3.5 w-3.5" />
+                                </Button>
+                            </DropdownMenuTrigger>
 
-                        {isExplorerOpen && (
-                            <SidebarGroupContent className="px-2 pb-3">
-                                <SidebarMenu className="gap-0.5">
-                                    {sortNodes(data.children).map((child) => (
-                                        <TemplateNode
-                                            key={child.path}
-                                            node={child}
-                                            level={0}
-                                            onFileSelect={onFileSelect}
-                                            selectedFilePath={selectedFilePath}
-                                            onAddFile={onAddFile}
-                                            onAddFolder={onAddFolder}
-                                            onDeleteFile={onDeleteFile}
-                                            onDeleteFolder={onDeleteFolder}
-                                            onRenameFile={onRenameFile}
-                                            onRenameFolder={onRenameFolder}
-                                        />
-                                    ))}
-                                </SidebarMenu>
-                            </SidebarGroupContent>
-                        )}
-                    </SidebarGroup>
-                </SidebarContent>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setIsNewFileDialogOpen(true)}>
+                                    <FilePlus2 className="mr-2 h-4 w-4" />
+                                    New File
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setIsNewFolderDialogOpen(true)}>
+                                    <FolderPlus className="mr-2 h-4 w-4" />
+                                    New Folder
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    ) : null}
+                </div>
+            </div>
 
-                <SidebarRail />
+            {isExplorerOpen ? (
+                <ScrollArea className="min-h-0 flex-1 px-3 pb-4">
+                    <div className="space-y-0.5">
+                        {sortNodes(data.children).map((child) => (
+                            <TemplateNode
+                                key={child.path}
+                                node={child}
+                                level={0}
+                                onFileSelect={onFileSelect}
+                                selectedFilePath={selectedFilePath}
+                                onAddFile={onAddFile}
+                                onAddFolder={onAddFolder}
+                                onDeleteFile={onDeleteFile}
+                                onDeleteFolder={onDeleteFolder}
+                                onRenameFile={onRenameFile}
+                                onRenameFolder={onRenameFolder}
+                            />
+                        ))}
+                    </div>
+                </ScrollArea>
+            ) : null}
 
-                <button
-                    type="button"
-                    onMouseDown={onResizeStart}
-                    title="Resize explorer"
-                    aria-label="Resize explorer"
-                    className="absolute right-0 top-0 hidden h-full w-2 translate-x-1/2 cursor-col-resize bg-transparent hover:bg-[#00d4aa]/12 md:block"
-                />
+            <button
+                type="button"
+                onMouseDown={onResizeStart}
+                title="Resize explorer"
+                aria-label="Resize explorer"
+                className="absolute right-0 top-0 hidden h-full w-2 translate-x-1/2 cursor-col-resize bg-transparent hover:bg-[#00d4aa]/12 md:block"
+            />
 
-                <NewFileDialog
-                    isOpen={isNewFileDialogOpen}
-                    onClose={() => setIsNewFileDialogOpen(false)}
-                    onCreateFile={(f, e) => {
-                        onAddFile?.(rootPath, f, e)
-                        setIsNewFileDialogOpen(false)
-                    }}
-                />
+            <NewFileDialog
+                isOpen={isNewFileDialogOpen}
+                onClose={() => setIsNewFileDialogOpen(false)}
+                onCreateFile={(f, e) => {
+                    onAddFile?.(rootPath, f, e)
+                    setIsNewFileDialogOpen(false)
+                }}
+            />
 
-                <NewFolderDialog
-                    isOpen={isNewFolderDialogOpen}
-                    onClose={() => setIsNewFolderDialogOpen(false)}
-                    onCreateFolder={(n) => {
-                        onAddFolder?.(rootPath, n)
-                        setIsNewFolderDialogOpen(false)
-                    }}
-                />
-            </Sidebar>
+            <NewFolderDialog
+                isOpen={isNewFolderDialogOpen}
+                onClose={() => setIsNewFolderDialogOpen(false)}
+                onCreateFolder={(n) => {
+                    onAddFolder?.(rootPath, n)
+                    setIsNewFolderDialogOpen(false)
+                }}
+            />
         </div>
     )
 }
@@ -255,7 +247,7 @@ function TemplateNode({
         const selected = selectedFilePath === nodePath
 
         return (
-            <SidebarMenuItem>
+            <div>
                 <div
                     onClick={() => onFileSelect?.(nodePath, node)}
                     className={cn(
@@ -321,12 +313,12 @@ function TemplateNode({
                     title="Delete File"
                     itemName={node.name}
                 />
-            </SidebarMenuItem>
+            </div>
         )
     }
 
     return (
-        <SidebarMenuItem>
+        <div>
             <Collapsible open={isOpen} onOpenChange={setIsOpen}>
                 <div
                     className="group/folder-row flex min-w-0 items-center rounded-md px-2.5 py-1 text-[11px] font-mono text-[#d6e1ef] hover:bg-[#11161d]"
@@ -384,7 +376,7 @@ function TemplateNode({
                 </div>
 
                 <CollapsibleContent>
-                    <SidebarMenuSub className="ml-2 border-l border-[#1e2028] pl-2">
+                    <div className="ml-2 border-l border-[#1e2028] pl-2">
                         {sortNodes(node.children).map((child) => (
                             <TemplateNode
                                 key={child.path}
@@ -400,7 +392,7 @@ function TemplateNode({
                                 onRenameFolder={onRenameFolder}
                             />
                         ))}
-                    </SidebarMenuSub>
+                    </div>
                 </CollapsibleContent>
             </Collapsible>
 
@@ -443,7 +435,7 @@ function TemplateNode({
                 title="Delete Folder"
                 itemName={node.name}
             />
-        </SidebarMenuItem>
+        </div>
     )
 }
 

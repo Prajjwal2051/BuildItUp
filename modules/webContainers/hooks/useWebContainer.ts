@@ -105,12 +105,30 @@ const useWebContainer = ({ templateData }: UseWebContainerProps): UseWebContaine
     }, [])
 
     useEffect(() => {
-        if (instance || isLoading || error) return
-        if (retryCount >= 2) return
+        if (instance || isLoading) return
+        if (retryCount >= 3) return
 
         setRetryCount((previous) => previous + 1)
         void bootInstance()
-    }, [bootInstance, error, instance, isLoading, retryCount])
+    }, [bootInstance, instance, isLoading, retryCount])
+
+    // Tracks server-ready events so consumers can open or embed live preview URLs.
+    useEffect(() => {
+        if (!instance) {
+            setServerUrl(null)
+            return
+        }
+
+        const maybeUnsubscribe = instance.on('server-ready', (_port, url) => {
+            setServerUrl(url)
+        })
+
+        return () => {
+            if (typeof maybeUnsubscribe === 'function') {
+                maybeUnsubscribe()
+            }
+        }
+    }, [instance])
 
     // Function to write a file in the WebContainer instance
     const writeFileSync = useCallback(

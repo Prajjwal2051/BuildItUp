@@ -47,6 +47,7 @@ model User {
 
   myplaground        Playground[]
   starMarkPlayground StarMark[]
+  gitCommits         GitCommit[]
 
   creratedAt DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
@@ -89,16 +90,17 @@ enum Templates {
 
 // defining the schema for the playgrounds, which will be the main feature of our app. It includes fields for the title, description, code, template, and relations to the User and StarMark models. The template field uses the Templates enum to specify which template is being used for each playground.
 model Playground {
-  id          String     @id @default(cuid()) @map("_id")
+  id          String      @id @default(cuid()) @map("_id")
   title       String
   description String
   code        String
-  template    Templates  @default(REACT)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  template    Templates   @default(REACT)
+  gitCommits  GitCommit[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
   starMark    StarMark[]
   userId      String
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   templateFile TemplateFile[]
   shareLinks   shareLink[]
@@ -138,25 +140,27 @@ enum SharePermission {
   VIEW_AND_EDIT
 }
 
+// defining the schema for the share link accesses, which will track the users who have accessed a shared playground. It includes fields for the share link ID, user ID, and created timestamp, as well as a relation to the shareLink model. The combination of shareLinkId and userId is unique to ensure that each user can only access a shared playground once.
 model shareLink {
-  id          String          @id @default(cuid()) @map("_id")
-  token       String          @unique
+  id           String          @id @default(cuid()) @map("_id")
+  token        String          @unique
   playgroundId String
-  permission  SharePermission @default(VIEW_ONLY)
-  createdById String
-  expiresAt   DateTime?
-  isRevoked   Boolean         @default(false)
-  accessCount Int             @default(0)
-  createdAt   DateTime        @default(now())
+  permission   SharePermission @default(VIEW_ONLY)
+  createdById  String
+  expiresAt    DateTime?
+  isRevoked    Boolean         @default(false)
+  accessCount  Int             @default(0)
+  createdAt    DateTime        @default(now())
 
-  playground Playground      @relation(fields: [playgroundId], references: [id], onDelete: Cascade)
-  createdBy  User            @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  playground Playground        @relation(fields: [playgroundId], references: [id], onDelete: Cascade)
+  createdBy  User              @relation(fields: [createdById], references: [id], onDelete: Cascade)
   accesses   ShareLinkAccess[]
 
   @@index([playgroundId])
   @@index([createdById])
 }
 
+// defining the schema for the share link accesses, which will track the users who have accessed a shared playground. It includes fields for the share link ID, user ID, and created timestamp, as well as a relation to the shareLink model. The combination of shareLinkId and userId is unique to ensure that each user can only access a shared playground once.
 model ShareLinkAccess {
   id          String    @id @default(cuid()) @map("_id")
   shareLink   shareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
@@ -167,4 +171,18 @@ model ShareLinkAccess {
   @@unique([shareLinkId, userId])
 }
 
+// defining the schema for the git commits, which will allow users to save different versions of their playgrounds. It includes fields for the commit message, snapshot of the code, playground ID, author ID, and created timestamp. It also includes relations to the Playground and User models, and indexes on the playgroundId and authorId fields for efficient querying.
+model GitCommit {
+  id           String   @id @default(cuid()) @map("_id")
+  message      String
+  snapshot     Json
+  playgroundId String
+  authorId     String
+  createdAt    DateTime @default(now())
 
+  playground Playground @relation(fields: [playgroundId], references: [id], onDelete: Cascade)
+  author     User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([playgroundId])
+  @@index([authorId])
+}

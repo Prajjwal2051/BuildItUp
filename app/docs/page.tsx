@@ -102,6 +102,12 @@ const setupSteps = [
     'Use the sidebar chat for longer prompts and inline completions for fast edits.',
 ]
 
+const previewStartCommands = [
+    { template: 'Next.js / Hono', command: 'npm install then npm run dev' },
+    { template: 'React / Express / Angular', command: 'npm install then npm start' },
+    { template: 'Vue', command: 'npm install then npm run serve' },
+]
+
 function DocsPage() {
     return (
         <div className="relative min-h-screen overflow-x-hidden bg-[#0a0d12] font-sans text-white antialiased">
@@ -203,6 +209,43 @@ function DocsPage() {
                                     </div>
                                 </div>
                             </MotionCard>
+                        </section>
+                    </ScrollReveal>
+
+                    <ScrollReveal y={40}>
+                        <section className="rounded-[28px] border border-white/10 bg-[rgba(255,255,255,0.03)] p-6 md:p-8">
+                            <div className="mb-4 flex items-center gap-2">
+                                <Rocket className="h-5 w-5 text-[#00d4aa]" />
+                                <h2 className="text-2xl font-semibold text-white">
+                                    Start Live Preview
+                                </h2>
+                            </div>
+
+                            <p className="mb-4 text-[14px] leading-6 text-neutral-400">
+                                Run commands inside the playground terminal. Execute them one by one,
+                                or use a chained command with &&.
+                            </p>
+
+                            <div className="mb-4 rounded-2xl border border-white/8 bg-black/10 p-4 font-mono text-[13px] text-[#d6e1ef]">
+                                <p>npm install</p>
+                                <p>npm run dev</p>
+                            </div>
+
+                            <div className="grid gap-3 md:grid-cols-3">
+                                {previewStartCommands.map((item) => (
+                                    <MotionCard
+                                        key={item.template}
+                                        className="rounded-2xl border border-white/8 bg-black/10 p-4"
+                                    >
+                                        <p className="text-[12px] uppercase tracking-[0.14em] text-[#00d4aa]">
+                                            {item.template}
+                                        </p>
+                                        <p className="mt-3 text-[14px] leading-6 text-neutral-300">
+                                            {item.command}
+                                        </p>
+                                    </MotionCard>
+                                ))}
+                            </div>
                         </section>
                     </ScrollReveal>
 

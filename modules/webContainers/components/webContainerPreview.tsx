@@ -189,6 +189,7 @@ interface WebContainerPreviewProps {
     forceReSetup?: boolean
     onTerminalLog?: (message: string) => void
     showInternalTerminal?: boolean
+    openPreviewInNewTab?: boolean
 }
 
 // This component will handle the rendering of the WebContainer preview, including loading states and error handling.
@@ -204,6 +205,7 @@ function WebContainerPreview({
     forceReSetup = false,
     onTerminalLog,
     showInternalTerminal = true,
+    openPreviewInNewTab = false,
 }: WebContainerPreviewProps) {
     // State to manage the preview URL and loading state
     const [previewUrl, setPreviewUrl] = React.useState<string | null>(sercverUrl)
@@ -659,6 +661,51 @@ function WebContainerPreview({
     }
 
     if (previewUrl) {
+        if (openPreviewInNewTab) {
+            return (
+                <div className="flex h-full flex-col gap-3 bg-[#0c1117] p-3">
+                    <div className="rounded-xl border border-[#1e2028] bg-[#11161d] p-3">
+                        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#00d4aa]">
+                            Preview Ready
+                        </div>
+                        <p className="mb-3 text-xs text-[#8ea5b5]">
+                            Your preview is running in a separate browser tab. If it was blocked, you can reopen it below.
+                        </p>
+                        <a
+                            href={normalizedPreviewUrl ?? undefined}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex rounded-md border border-[#0f4d40] bg-[rgba(0,212,170,0.12)] px-3 py-2 text-xs font-medium text-[#7ae8cc] transition-colors hover:bg-[rgba(0,212,170,0.18)]"
+                        >
+                            Open Preview Tab
+                        </a>
+                        <div className="mt-3 rounded-lg border border-[#1e2028] bg-[#0c1117] px-2.5 py-2 text-[11px] text-[#6a7280]">
+                            {normalizedPreviewUrl}
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-[#1e2028] bg-[#11161d] p-3">
+                        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8ea5b5]">
+                            Setup Steps
+                        </div>
+                        <div className="space-y-2">
+                            {loadingSteps.map((step) => (
+                                <div
+                                    key={step.key}
+                                    className="flex items-center justify-between rounded-lg border border-[#1e2028] bg-[#0c1117] px-2.5 py-2 text-xs text-[#c9d4e5]"
+                                >
+                                    <span>{step.label}</span>
+                                    <CheckCircle className="text-[#00d4aa]" size={14} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {showInternalTerminal && isTerminalOpen ? <TerminalPanel /> : null}
+                </div>
+            )
+        }
+
         return (
             <div className="flex h-full flex-col gap-3 bg-[#0c1117] p-3">
                 <div className="h-full min-h-100 overflow-hidden rounded-xl border border-[#1e2028] bg-[#11161d] shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
