@@ -11,6 +11,11 @@ export default {
     GitHub({
       clientId: process.env.GITHUB_ID!,
       clientSecret: process.env.GITHUB_SECRET!,
+      authorization: {
+        params: {
+          scope: "repo user:email read:user",
+        },
+      },
     }),
     Google({
       clientId: process.env.GOOGLE_ID!,

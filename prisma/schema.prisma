@@ -102,6 +102,9 @@ model Playground {
   userId      String
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  githubRepo   String?  // stores "username/repo-name"
+  githubBranch String?  // stores "main"
+
   templateFile TemplateFile[]
   shareLinks   shareLink[]
 }
