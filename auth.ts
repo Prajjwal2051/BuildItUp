@@ -1,3 +1,14 @@
+/**
+ * ===================================================================
+ * PROPRIETARY CODE - BuildItUp Authentication
+ * Owner: Prajjwal Sahu (@Prajjwal2051)
+ * GitHub: https://github.com/Prajjwal2051
+ * 
+ * Unauthorized copying or distribution is strictly prohibited.
+ * © 2024-2025 Prajjwal Sahu. All rights reserved.
+ * ===================================================================
+ */
+
 import { getUserByEmail, getUserById } from './modules/auth/actions/index'
 import { db } from '@/lib/db'
 import NextAuth from 'next-auth'
@@ -41,7 +52,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
      */
     async signIn({ user, account }) {
       // Credentials procider (dev only) doesn't return an account object, so we skip all DB checks and allow sign-in.
-      if(!account) {
+      if (!account) {
         return process.env.NODE_ENV === 'development'
       }
 

@@ -1,3 +1,14 @@
+/**
+ * ===================================================================
+ * PROPRIETARY CODE - BuildItUp Middleware
+ * Owner: Prajjwal Sahu (@Prajjwal2051)
+ * GitHub: https://github.com/Prajjwal2051
+ * 
+ * Unauthorized copying or distribution is strictly prohibited.
+ * © 2024-2025 Prajjwal Sahu. All rights reserved.
+ * ===================================================================
+ */
+
 import NextAuth from 'next-auth'
 import authConfig from './auth.config'
 import { apiAuthPrefix, publicRoutes, publicRoutePrefixes, authRoutes } from './route'

@@ -1,3 +1,14 @@
+/**
+ * ===================================================================
+ * PROPRIETARY CODE - BuildItUp Authentication Configuration
+ * Owner: Prajjwal Sahu (@Prajjwal2051)
+ * GitHub: https://github.com/Prajjwal2051
+ * 
+ * Unauthorized copying or distribution is strictly prohibited.
+ * © 2024-2025 Prajjwal Sahu. All rights reserved.
+ * ===================================================================
+ */
+
 import Google from 'next-auth/providers/google'
 import GitHub from 'next-auth/providers/github'
 import type { NextAuthConfig } from 'next-auth'
